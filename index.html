@@ -750,6 +750,7 @@ function renderModal(){
         <div class="fg-modal"><label>備註</label><textarea id="f-note" placeholder="專案說明、參考資訊...">${c.note||""}</textarea></div>
       </div>
       <div class="modal-btns">
+        ${!isNew?`<button class="btn-danger" style="margin-right:auto;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;background:#FFF0EE;color:var(--red);border:1.5px solid #FFCDD2" onclick="deleteCaseFromModal('${c.id}')">🗑 刪除案件</button>`:""}
         <button class="btn-cancel" onclick="closeModal()">取消</button>
         <button class="btn-save" onclick="saveCase('${c.id}')">${isNew?"新增派案":"儲存變更"}</button>
       </div>
@@ -906,7 +907,15 @@ function saveCase(id){
   render();
 }
 
-function deleteCase(id){
+function deleteCaseFromModal(id){
+  if(!confirm("確定刪除此案件？")) return;
+  S.cases=S.cases.filter(c=>c.id!==id);
+  saveCases(S.cases);
+  S.modal=null;
+  render();
+}
+
+
   if(!confirm("確定刪除此案件？")) return;
   S.cases=S.cases.filter(c=>c.id!==id);
   saveCases(S.cases);
