@@ -255,6 +255,7 @@ function deadlineLabel(dl){
 const KEY_CASES = "dd_cases_v2";
 const KEY_SETTINGS = "dd_settings_v2";
 const KEY_VACATIONS = "dd_vacations_v2";
+const KEY_THUMBS = "dd_thumbs_v2";
 
 function loadCases(){ try{ return JSON.parse(localStorage.getItem(KEY_CASES)||"[]"); }catch{ return []; } }
 function saveCases(c){ localStorage.setItem(KEY_CASES,JSON.stringify(c)); }
@@ -272,6 +273,55 @@ function loadSettings(){
   } catch { return { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES }; }
 }
 function saveSettings(s){ localStorage.setItem(KEY_SETTINGS,JSON.stringify(s)); }
+
+// ── THUMBNAIL STORAGE ──────────────────────────────────────────
+function loadThumbs(){ try{ return JSON.parse(localStorage.getItem(KEY_THUMBS)||"{}"); }catch{ return {}; } }
+function saveThumbs(t){ try{ localStorage.setItem(KEY_THUMBS,JSON.stringify(t)); }catch(e){ alert("圖片儲存空間不足，請刪除舊案件圖片後再試"); } }
+function getThumb(id){ return loadThumbs()[id]||null; }
+function setThumb(id,dataUrl){ const t=loadThumbs(); t[id]=dataUrl; saveThumbs(t); }
+function removeThumb(id){ const t=loadThumbs(); delete t[id]; saveThumbs(t); }
+
+// Auto-cleanup: remove thumbnails for cases whose deadline passed > 14 days ago
+function cleanupOldThumbs(){
+  const t=loadThumbs();
+  const caseMap={};
+  S.cases.forEach(c=>caseMap[c.id]=c);
+  let changed=false;
+  const cutoff=new Date(today()); cutoff.setDate(cutoff.getDate()-14);
+  Object.keys(t).forEach(id=>{
+    const c=caseMap[id];
+    if(!c||(c.deadline&&new Date(c.deadline)<cutoff)){ delete t[id]; changed=true; }
+  });
+  if(changed) saveThumbs(t);
+}
+
+// Compress image to ≤80KB using Canvas
+function compressImage(file, cb){
+  const MAX=80*1024;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width, h=img.height;
+      // Scale down to max 400px wide
+      if(w>400){ h=Math.round(h*400/w); w=400; }
+      const canvas=document.createElement("canvas");
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,w,h);
+      // Try quality from 0.9 down until ≤80KB
+      let quality=0.9;
+      let dataUrl=canvas.toDataURL("image/jpeg",quality);
+      while(dataUrl.length*0.75>MAX && quality>0.1){
+        quality=Math.round((quality-0.1)*10)/10;
+        dataUrl=canvas.toDataURL("image/jpeg",quality);
+      }
+      cb(dataUrl);
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
 // CSV Export
 function exportCSV(cases){
@@ -297,6 +347,7 @@ let S = {
   vacations: loadVacations(), // [{designer, start, end}]
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
+  kanbanWeek: "all", // "all" | "this" | "next"
   excelWeekOffset: 0, // 0=current week, -1=prev, +1=next etc
   modal: null,
   vacationModal: null, // {designer} when setting vacation
@@ -341,7 +392,12 @@ function renderList(cases){
     : cases.map(c=>`
       <tr>
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
-        <td>${dlPill(c.deadline)}</td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${c.deadline?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:#888">${c.deadline}</span>`:""}
+            ${dlPill(c.deadline)}
+          </div>
+        </td>
         <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
         <td>${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join(" ")}</td>
         <td style="font-size:12px;font-weight:600">${arrLabel(c.designers)}</td>
@@ -363,23 +419,70 @@ function renderList(cases){
 }
 
 // ── KANBAN VIEW ────────────────────────────────────────────────
+function getThisWeekRange(){
+  const now=new Date(); const day=now.getDay();
+  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1));
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  return [mon.toISOString().slice(0,10), sun.toISOString().slice(0,10)];
+}
+function getNextWeekRange(){
+  const [mon]=getThisWeekRange();
+  const nm=new Date(mon); nm.setDate(nm.getDate()+7);
+  const ns=new Date(nm); ns.setDate(nm.getDate()+6);
+  return [nm.toISOString().slice(0,10), ns.toISOString().slice(0,10)];
+}
+function filterByKanbanWeek(cases){
+  if(S.kanbanWeek==="all") return cases;
+  const [start,end]=S.kanbanWeek==="this"?getThisWeekRange():getNextWeekRange();
+  return cases.filter(c=>c.deadline&&c.deadline>=start&&c.deadline<=end);
+}
+
 function renderKanban(cases){
   const types=S.settings.jobTypes;
-  return `<div class="kanban">${STATUSES.map(status=>{
+  const weekCases=filterByKanbanWeek(cases);
+
+  // Week filter tabs
+  const tabs=["all","this","next"].map(w=>{
+    const label=w==="all"?"全部":w==="this"?"本週":"下週";
+    const active=S.kanbanWeek===w;
+    return `<button onclick="S.kanbanWeek='${w}';render()" style="padding:5px 14px;border:none;border-radius:20px;font-size:11px;font-weight:${active?"700":"500"};cursor:pointer;font-family:inherit;background:${active?"var(--accent)":"#F0F0F8"};color:${active?"#fff":"var(--text2)"};">${label}</button>`;
+  }).join("");
+  const weekBar=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
+    <span style="font-size:11px;color:var(--text3);font-weight:700;margin-right:4px">顯示範圍</span>${tabs}
+  </div>`;
+
+  const cols=STATUSES.map(status=>{
     const s=STATUS_STYLE[status];
-    const col=cases.filter(c=>c.status===status);
+    const col=weekCases.filter(c=>c.status===status);
     const cards=col.map(c=>{
       const firstType=toArr(c.jobTypes)[0]||"";
       const tc=typeColor(firstType,types);
+      const thumb=getThumb(c.id);
+      const thumbHtml=thumb
+        ? `<div style="width:90px;min-width:90px;height:90px;border-radius:7px;overflow:hidden;background:#F0F0F0;flex-shrink:0;position:relative;cursor:pointer" onclick="event.stopPropagation();openThumbUpload('${c.id}')">
+            <img src="${thumb}" style="width:100%;height:100%;object-fit:cover"/>
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .15s;display:flex;align-items:center;justify-content:center;opacity:0" class="thumb-overlay" onmouseenter="this.style.opacity=1;this.style.background='rgba(0,0,0,.35)'" onmouseleave="this.style.opacity=0;this.style.background='rgba(0,0,0,0)'">
+              <span style="color:#fff;font-size:10px;font-weight:700">更換</span>
+            </div>
+          </div>`
+        : `<div style="width:90px;min-width:90px;height:90px;border-radius:7px;background:#F5F5FB;border:1.5px dashed #D0D0E8;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();openThumbUpload('${c.id}')">
+            <span style="font-size:18px">🖼</span>
+            <span style="font-size:9px;color:#aaa;font-weight:600">上傳縮圖</span>
+          </div>`;
       return `<div class="k-card" style="border-left-color:${s.border}" onclick="openEdit('${c.id}')">
-        <div class="k-card-top">
-          <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
-          <button class="k-card-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div class="k-card-top">
+              <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
+              <button class="k-card-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
+            </div>
+            <div class="k-card-name">${arrLabel(c.designers)}</div>
+            <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
+            ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
+            ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
+          </div>
+          ${thumbHtml}
         </div>
-        <div class="k-card-name">${arrLabel(c.designers)}</div>
-        <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
-        ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
-        ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
       </div>`;
     }).join("");
     return `<div class="k-col">
@@ -388,7 +491,8 @@ function renderKanban(cases){
         <span class="k-col-count" style="background:${s.bg};color:${s.text}">${col.length}</span>
       </div>${cards||`<div style="text-align:center;padding:20px;color:#ccc;font-size:12px">無案件</div>`}
     </div>`;
-  }).join("")}</div>`;
+  }).join("");
+  return `<div>${weekBar}<div class="kanban">${cols}</div></div>`;
 }
 
 // ── TIMELINE VIEW ──────────────────────────────────────────────
@@ -396,15 +500,27 @@ function renderTimeline(cases){
   if(!cases.length) return `<div class="empty">尚無派案記錄</div>`;
   const types=S.settings.jobTypes;
   const map={};
-  [...cases].sort((a,b)=>a.date.localeCompare(b.date)).forEach(c=>{(map[c.date]=map[c.date]||[]).push(c);});
+  // Sort by deadline; cases without deadline go to end under key "none"
+  const sorted=[...cases].sort((a,b)=>{
+    if(!a.deadline&&!b.deadline) return 0;
+    if(!a.deadline) return 1;
+    if(!b.deadline) return -1;
+    return a.deadline.localeCompare(b.deadline);
+  });
+  sorted.forEach(c=>{
+    const key=c.deadline||"none";
+    (map[key]=map[key]||[]).push(c);
+  });
   return `<div class="timeline">${Object.entries(map).map(([date,items])=>`
     <div class="tl-row">
       <div class="tl-date">
-        <div class="tl-date-main">${date.slice(5)}</div>
-        <div class="tl-date-year">${date.slice(0,4)}</div>
+        ${date==="none"
+          ? `<div class="tl-date-main" style="color:#bbb">無截止</div>`
+          : `<div class="tl-date-main">${date.slice(5)}</div><div class="tl-date-year">${date.slice(0,4)}</div>`
+        }
       </div>
       <div class="tl-body">
-        <div class="tl-line"></div><div class="tl-dot"></div>
+        <div class="tl-line"></div><div class="tl-dot" style="${date==="none"?"background:#ccc;box-shadow:none":""}"></div>
         <div class="tl-cards">${items.map(c=>{
           const firstType=toArr(c.jobTypes)[0]||"";
           const tc=typeColor(firstType,types);
@@ -1008,9 +1124,33 @@ function saveCase(id){
 function deleteCaseFromModal(id){
   if(!confirm("確定刪除此案件？")) return;
   S.cases=S.cases.filter(c=>c.id!==id);
+  removeThumb(id);
   saveCases(S.cases);
   S.modal=null;
   render();
+}
+
+function deleteCase(id){
+  if(!confirm("確定刪除此案件？")) return;
+  S.cases=S.cases.filter(c=>c.id!==id);
+  removeThumb(id);
+  saveCases(S.cases);
+  render();
+}
+
+// ── THUMBNAIL UPLOAD ───────────────────────────────────────────
+function openThumbUpload(id){
+  const inp=document.createElement("input");
+  inp.type="file"; inp.accept="image/*";
+  inp.onchange=e=>{
+    const file=e.target.files[0];
+    if(!file) return;
+    compressImage(file,dataUrl=>{
+      setThumb(id,dataUrl);
+      render();
+    });
+  };
+  inp.click();
 }
 
 
@@ -1111,6 +1251,7 @@ function removeSales(i){ S.settings.sales.splice(i,1); saveAndRender(); }
 function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(v&&!S.settings.sales.includes(v)){ S.settings.sales.push(v); saveAndRender(); } }
 
 // ── INIT ───────────────────────────────────────────────────────
+cleanupOldThumbs();
 render();
 </script>
 </body>
