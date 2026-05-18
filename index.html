@@ -916,12 +916,6 @@ function deleteCaseFromModal(id){
 }
 
 
-  if(!confirm("確定刪除此案件？")) return;
-  S.cases=S.cases.filter(c=>c.id!==id);
-  saveCases(S.cases);
-  render();
-}
-
 // ── EMAIL PARSER (rule-based) ──────────────────────────────────
 function parseEmail(){
   const text=document.getElementById("email-paste")?.value||"";
