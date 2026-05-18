@@ -3,412 +3,260 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>🎨 Design Dispatch 派案管理系統</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<title>🎨 Design Dispatch v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Noto Sans TC',sans-serif;background:#F2F3F8;min-height:100vh;color:#1a1a2e}
+:root {
+  --bg: #F0F1F7;
+  --surface: #fff;
+  --navy: #1a1a2e;
+  --navy2: #252540;
+  --accent: #4361EE;
+  --accent2: #3A0CA3;
+  --green: #27AE60;
+  --yellow: #D4AC0D;
+  --red: #E74C3C;
+  --orange: #F9844A;
+  --border: #E8E8F0;
+  --text: #1a1a2e;
+  --text2: #666;
+  --text3: #aaa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
 
-  /* Header */
-  .header{background:#1a1a2e;padding:0 28px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.3)}
-  .logo{padding:16px 0;margin-right:auto}
-  .logo span{font-size:17px;font-weight:800;color:#fff}
-  .logo small{font-size:11px;color:#7777bb;margin-left:10px}
-  .nav-tabs{display:flex;gap:2px}
-  .nav-tab{background:none;color:#7777bb;border:none;border-radius:8px 8px 0 0;padding:14px 16px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
-  .nav-tab.active{background:rgba(255,255,255,.15);color:#fff}
-  .header-btns{display:flex;gap:8px;padding:8px 0}
-  .btn-export{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 14px;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit}
-  .btn-add{background:#4361EE;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+/* ── HEADER ── */
+.header{background:var(--navy);padding:0 24px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.3)}
+.logo{padding:14px 0;margin-right:auto;display:flex;align-items:baseline;gap:10px}
+.logo-title{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:#6666aa;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase}
+.nav{display:flex;gap:2px}
+.nav-btn{background:none;color:#6666aa;border:none;border-radius:6px 6px 0 0;padding:12px 14px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s;letter-spacing:.3px;white-space:nowrap}
+.nav-btn.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-btn:hover:not(.active){color:#aaaadd}
+.hdr-actions{display:flex;gap:6px;padding:6px 0}
+.btn{border:none;border-radius:7px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.18)}
+.btn-ghost:hover{background:rgba(255,255,255,.18)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#3251dd}
+.btn-danger{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-family:inherit;padding:3px 6px}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:6px}
 
-  /* Filter Bar */
-  .filter-bar{background:#fff;border-bottom:1px solid #EBEBEB;padding:10px 28px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-  .filter-group{display:flex;align-items:center;gap:5px}
-  .filter-group label{font-size:11px;color:#888;font-weight:600}
-  .filter-group select{padding:5px 8px;border-radius:6px;border:1.5px solid #E0E0E0;font-size:12px;color:#333;background:#FAFAFA;font-family:inherit}
-  .filter-count{margin-left:auto;font-size:11px;color:#aaa}
-  .btn-clear{background:none;border:none;color:#E74C3C;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+/* ── FILTER BAR ── */
+.filter-bar{background:var(--surface);border-bottom:1.5px solid var(--border);padding:9px 24px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.fg{display:flex;align-items:center;gap:5px}
+.fg label{font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.3px}
+.fg select,.fg input{padding:4px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:12px;color:var(--text);background:#FAFAFA;font-family:inherit}
+.filter-count{margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.btn-clear-filter{background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;font-weight:700;font-family:inherit}
 
-  /* Content */
-  .content{padding:22px 28px}
+/* ── CONTENT ── */
+.content{padding:20px 24px}
 
-  /* LIST VIEW */
-  .table-wrap{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow-x:auto}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  thead tr{background:#F8F8FC}
-  th{padding:10px 14px;text-align:left;font-weight:700;color:#888;font-size:11px;letter-spacing:.5px;border-bottom:1.5px solid #EBEBEB}
-  tbody tr{border-bottom:1px solid #F0F0F0;transition:background .1s}
-  tbody tr:hover{background:#FAFAFE}
-  td{padding:10px 14px;vertical-align:middle}
-  .td-date{color:#555;white-space:nowrap}
-  .td-note{color:#888;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .td-actions button{background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit}
-  .btn-edit{color:#4361EE;margin-right:8px}
-  .btn-delete{color:#E74C3C}
+/* ── TABLE (LIST) ── */
+.table-wrap{background:var(--surface);border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:#F5F5FC}
+th{padding:9px 12px;text-align:left;font-weight:700;color:var(--text3);font-size:10px;letter-spacing:.6px;border-bottom:1.5px solid var(--border);white-space:nowrap;text-transform:uppercase}
+tbody tr{border-bottom:1px solid #F3F3F8;transition:background .1s}
+tbody tr:hover{background:#FAFAFE}
+td{padding:9px 12px;vertical-align:middle}
+.td-actions button{background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;padding:2px 6px;border-radius:4px}
+.btn-edit{color:var(--accent)}
+.btn-edit:hover{background:#EEF0FF}
+.btn-del{color:var(--red)}
+.btn-del:hover{background:#FFF0EE}
 
-  /* BADGE */
-  .badge{display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
-  .badge-market{background:#EEEEFF;color:#4361EE}
-  .status-pill{display:inline-flex;align-items:center;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
-  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;flex-shrink:0}
+/* ── DEADLINE PILL ── */
+.deadline{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace}
+.deadline.ok{background:#EAFAF1;color:var(--green)}
+.deadline.warn{background:#FEF9E7;color:var(--yellow)}
+.deadline.urgent{background:#FFF0EE;color:var(--red);animation:pulse-bg 1.5s infinite}
+.deadline.none{background:#F5F5F5;color:var(--text3)}
+@keyframes pulse-bg{0%,100%{opacity:1}50%{opacity:.6}}
 
-  /* KANBAN */
-  .kanban{display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
-  .kanban-col{min-width:260px;flex:1;background:#F8F8FC;border-radius:12px;padding:14px}
-  .kanban-col-header{display:flex;align-items:center;margin-bottom:12px}
-  .kanban-col-title{font-weight:700;font-size:13px}
-  .kanban-col-count{margin-left:auto;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700}
-  .kanban-card{background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s}
-  .kanban-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
-  .kanban-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-  .kanban-card-name{font-weight:700;color:#1a1a2e;font-size:14px;margin-bottom:4px}
-  .kanban-card-meta{font-size:12px;color:#888}
-  .kanban-card-note{font-size:11px;color:#aaa;margin-top:6px;font-style:italic}
-  .btn-kanban-del{background:none;border:none;cursor:pointer;color:#DDD;font-size:15px;line-height:1;font-family:inherit}
+/* ── BADGE ── */
+.badge{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.badge-market{background:#EEEEFF;color:var(--accent)}
+.status-pill{display:inline-flex;align-items:center;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;flex-shrink:0}
 
-  /* TIMELINE */
-  .timeline{max-width:720px;margin:0 auto}
-  .tl-row{display:flex;gap:20px;margin-bottom:20px}
-  .tl-date{text-align:right;min-width:90px;padding-top:4px}
-  .tl-date-main{font-size:13px;font-weight:700;color:#1a1a2e}
-  .tl-date-year{font-size:11px;color:#aaa}
-  .tl-body{position:relative;padding-left:20px;flex:1}
-  .tl-line{position:absolute;left:0;top:0;bottom:0;width:2px;background:#EBEBEB}
-  .tl-dot{position:absolute;left:-4px;top:6px;width:10px;height:10px;border-radius:50%;background:#4361EE;border:2px solid #fff;box-shadow:0 0 0 2px #4361EE}
-  .tl-cards{display:flex;flex-wrap:wrap;gap:8px}
-  .tl-card{background:#fff;border-radius:10px;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.07);min-width:160px}
-  .tl-card-name{font-weight:700;font-size:13px;color:#1a1a2e;margin-bottom:4px;display:flex;align-items:center;gap:6px}
-  .tl-badges{display:flex;gap:4px;flex-wrap:wrap}
+/* ── KANBAN ── */
+.kanban{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
+.k-col{min-width:250px;flex:1;background:#F5F5FC;border-radius:10px;padding:12px}
+.k-col-hdr{display:flex;align-items:center;margin-bottom:10px;gap:6px}
+.k-col-title{font-weight:700;font-size:12px}
+.k-col-count{margin-left:auto;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:800;font-family:'DM Mono',monospace}
+.k-card{background:var(--surface);border-radius:9px;padding:12px;margin-bottom:9px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s;border-left:3px solid transparent}
+.k-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.k-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:4px}
+.k-card-name{font-weight:700;color:var(--text);font-size:13px;margin-bottom:3px}
+.k-card-meta{font-size:11px;color:var(--text3)}
+.k-card-note{font-size:10px;color:var(--text3);margin-top:5px;font-style:italic;line-height:1.4}
+.k-card-del{background:none;border:none;cursor:pointer;color:#CCC;font-size:14px;line-height:1;padding:2px;flex-shrink:0}
+.k-card-del:hover{color:var(--red)}
 
-  /* STATS */
-  .stats{display:flex;flex-direction:column;gap:24px}
-  .stat-card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
-  .stat-title{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:16px}
-  .bar-chart{display:flex;gap:6px;align-items:flex-end;height:90px}
-  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-  .bar-val{font-size:10px;color:#888}
-  .bar-fill{width:100%;border-radius:4px;transition:height .3s}
-  .bar-label{font-size:9px;color:#aaa}
-  .designer-group-label{font-size:11px;font-weight:700;color:#aaa;letter-spacing:.5px;margin-bottom:8px}
-  .designer-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
-  .designer-name{width:70px;font-size:12px;font-weight:600;color:#333;text-align:right}
-  .designer-bar-wrap{flex:1;background:#F0F0F0;border-radius:6px;height:12px;overflow:hidden}
-  .designer-bar{background:#4361EE;height:100%;border-radius:6px;transition:width .4s}
-  .designer-count{width:28px;font-size:12px;font-weight:700;color:#4361EE}
-  .type-grid{display:flex;flex-wrap:wrap;gap:8px}
-  .type-chip{border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:8px}
-  .type-chip-label{font-size:12px;font-weight:700}
-  .type-chip-count{font-size:14px;font-weight:800;color:#1a1a2e}
+/* ── TIMELINE ── */
+.timeline{max-width:700px;margin:0 auto}
+.tl-row{display:flex;gap:18px;margin-bottom:18px}
+.tl-date{text-align:right;min-width:80px;padding-top:3px}
+.tl-date-main{font-size:12px;font-weight:700;color:var(--text);font-family:'DM Mono',monospace}
+.tl-date-year{font-size:10px;color:var(--text3)}
+.tl-body{position:relative;padding-left:18px;flex:1}
+.tl-line{position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-dot{position:absolute;left:-4px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 0 0 2px var(--accent)}
+.tl-cards{display:flex;flex-wrap:wrap;gap:7px}
+.tl-card{background:var(--surface);border-radius:9px;padding:9px 12px;box-shadow:0 2px 8px rgba(0,0,0,.07);min-width:150px}
+.tl-card-name{font-weight:700;font-size:12px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.tl-badges{display:flex;gap:3px;flex-wrap:wrap}
 
-  /* MODAL */
-  .modal-overlay{position:fixed;inset:0;background:rgba(15,15,25,.6);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
-  .modal{background:#fff;border-radius:16px;padding:32px;width:420px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,.2)}
-  .modal h3{font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:20px}
-  .form-group{margin-bottom:14px}
-  .form-group label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}
-  .form-group input,.form-group select{width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e0e0e0;font-size:14px;outline:none;font-family:inherit}
-  .modal-btns{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
-  .btn-cancel{background:#f5f5f5;color:#333;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit}
-  .btn-save{background:#1a1a2e;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit}
+/* ── EXCEL VIEW ── */
+.excel-wrap{overflow-x:auto;background:var(--surface);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.excel-table{border-collapse:collapse;font-size:11px;min-width:100%}
+.excel-table th,.excel-table td{border:1px solid #E8E8F0;padding:0}
+.excel-th-corner{background:#F0F0F8;width:90px;min-width:90px;position:sticky;left:0;z-index:10}
+.excel-th-date{background:#F0F0F8;min-width:130px;max-width:160px;text-align:center;padding:6px 8px;font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;font-family:'DM Mono',monospace}
+.excel-th-date.today-col{background:#EEF0FF;color:var(--accent)}
+.excel-th-designer{background:#F0F0F8;position:sticky;left:0;z-index:5;padding:7px 10px;font-weight:700;font-size:11px;color:var(--text);min-width:90px;white-space:nowrap;border-right:2px solid #D0D0E8}
+.excel-cell{vertical-align:top;padding:4px;min-width:130px;max-width:160px;background:var(--surface);position:relative}
+.excel-cell.today-col{background:#FAFAFF}
+.excel-chip{border-radius:5px;padding:3px 6px;margin-bottom:3px;cursor:pointer;transition:box-shadow .1s;border-left:3px solid transparent}
+.excel-chip:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.excel-chip-title{font-size:10px;font-weight:700;color:var(--text);line-height:1.3}
+.excel-chip-meta{font-size:9px;color:var(--text3);margin-top:1px}
+.excel-add-btn{display:block;width:100%;background:none;border:1px dashed #D0D0E0;border-radius:5px;padding:4px;font-size:10px;color:var(--text3);cursor:pointer;font-family:inherit;text-align:center;margin-top:2px}
+.excel-add-btn:hover{background:#F5F5FF;color:var(--accent);border-color:var(--accent)}
 
-  .empty{text-align:center;padding:60px;color:#bbb;font-size:14px}
+/* ── STATS ── */
+.stats{display:flex;flex-direction:column;gap:20px}
+.stat-card{background:var(--surface);border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.stat-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px}
+.bar-chart{display:flex;gap:5px;align-items:flex-end;height:80px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-val{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace}
+.bar-fill{width:100%;border-radius:3px;transition:height .3s}
+.bar-lbl{font-size:8px;color:var(--text3)}
+.designer-group-lbl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
+.d-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.d-name{width:65px;font-size:11px;font-weight:600;color:var(--text);text-align:right}
+.d-bar-wrap{flex:1;background:#F0F0F0;border-radius:5px;height:10px;overflow:hidden}
+.d-bar{background:var(--accent);height:100%;border-radius:5px;transition:width .4s}
+.d-count{width:24px;font-size:11px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace}
+.type-grid{display:flex;flex-wrap:wrap;gap:7px}
+.type-chip{border-radius:7px;padding:7px 12px;display:flex;align-items:center;gap:7px}
+.type-chip-lbl{font-size:11px;font-weight:700}
+.type-chip-count{font-size:13px;font-weight:800;color:var(--text)}
+
+/* ── SETTINGS ── */
+.settings{display:flex;flex-direction:column;gap:20px;max-width:600px}
+.setting-card{background:var(--surface);border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.setting-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.tag-item{display:inline-flex;align-items:center;gap:5px;background:#F0F0F8;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--text)}
+.tag-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;line-height:1;padding:0 2px}
+.tag-del:hover{color:var(--red)}
+.add-tag-row{display:flex;gap:8px}
+.add-tag-input{flex:1;padding:7px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;outline:none}
+.add-tag-input:focus{border-color:var(--accent)}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(15,15,30,.65);display:flex;align-items:center;justify-content:center;z-index:300;backdrop-filter:blur(5px)}
+.modal{background:var(--surface);border-radius:16px;padding:28px;width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 32px 100px rgba(0,0,0,.25)}
+.modal h3{font-size:16px;font-weight:800;color:var(--text);margin-bottom:20px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.single{grid-template-columns:1fr}
+.fg-modal label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px;letter-spacing:.3px}
+.fg-modal input,.fg-modal select,.fg-modal textarea{width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;outline:none;font-family:inherit;transition:border .15s}
+.fg-modal input:focus,.fg-modal select:focus,.fg-modal textarea:focus{border-color:var(--accent)}
+.fg-modal textarea{resize:vertical;min-height:70px;line-height:1.5}
+.modal-btns{display:flex;gap:8px;margin-top:22px;justify-content:flex-end}
+.btn-cancel{background:#F0F0F0;color:var(--text);border:none;border-radius:8px;padding:9px 20px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
+.btn-cancel:hover{background:#E5E5E5}
+.btn-save{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+.btn-save:hover{background:var(--navy2)}
+
+/* ── EMAIL PARSER ── */
+.email-section{background:#F8F8FF;border-radius:10px;padding:14px;margin-bottom:14px;border:1.5px solid #E0E0F5}
+.email-section label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px}
+.email-section textarea{width:100%;padding:8px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;resize:vertical;min-height:80px;outline:none}
+.btn-parse{margin-top:8px;background:var(--accent);color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.parse-status{font-size:11px;color:var(--text3);margin-top:6px;font-style:italic}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:50px;color:var(--text3);font-size:13px}
+
+/* ── MONTH NAMES ── */
 </style>
 </head>
 <body>
-
 <div id="app"></div>
 
 <script>
-const MARKETS = ["AP","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
-const JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout"];
-const DESIGNERS = {
+// ── CONSTANTS ──────────────────────────────────────────────────
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DEFAULT_JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout"];
+const DEFAULT_MARKETS = ["AP","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
+const DEFAULT_DESIGNERS = {
   "2D": ["Faye","Alan","Avis","Carol","Roy","Jou"],
   "插畫": ["Mona","Cathy","Emilia","Echo","Heiwin"],
   "3D": []
 };
-const ALL_DESIGNERS = Object.values(DESIGNERS).flat();
+const DEFAULT_SALES = ["Ann","Ben","Chris","Dana","Eric","Fiona","Other"];
 const STATUSES = ["進行中","已完成","擱置"];
 const STATUS_STYLE = {
-  "進行中": { bg:"#E8F4FD", text:"#2980B9", dot:"#2980B9" },
-  "已完成":  { bg:"#EAFAF1", text:"#27AE60", dot:"#27AE60" },
-  "擱置":   { bg:"#FEF9E7", text:"#D4AC0D", dot:"#D4AC0D" },
+  "進行中": {bg:"#E8F4FD",text:"#2980B9",dot:"#2980B9",border:"#2980B9"},
+  "已完成":  {bg:"#EAFAF1",text:"#27AE60",dot:"#27AE60",border:"#27AE60"},
+  "擱置":   {bg:"#FEF9E7",text:"#D4AC0D",dot:"#D4AC0D",border:"#D4AC0D"},
 };
-const TYPE_COLORS = ["#6C63FF","#FF6584","#43BCCD","#F9844A","#4CC9F0","#F72585","#7209B7","#3A0CA3","#4361EE","#4895EF"];
-const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TYPE_COLORS = ["#6C63FF","#FF6584","#43BCCD","#F9844A","#4CC9F0","#F72585","#7209B7","#3A0CA3","#4361EE","#4895EF","#E76F51","#2A9D8F"];
 
-function typeColor(t){ return TYPE_COLORS[JOB_TYPES.indexOf(t) % TYPE_COLORS.length] || "#888"; }
-function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function typeColor(t,types){ return TYPE_COLORS[types.indexOf(t) % TYPE_COLORS.length] || "#888"; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function today(){ return new Date().toISOString().slice(0,10); }
+function allDesigners(dObj){ return Object.values(dObj).flat(); }
 
-// Storage
-const KEY = "design_dispatch_cases";
-function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||"[]"); }catch{ return []; } }
-function save(c){ try{ localStorage.setItem(KEY,JSON.stringify(c)); }catch{} }
-
-// State
-let state = {
-  cases: load(),
-  view: "list",
-  filter: { market:"", designer:"", jobType:"", status:"" },
-  modal: null, // null | "new" | case object
-};
-
-function filtered(){
-  const f = state.filter;
-  return state.cases.filter(c=>
-    (!f.market   || c.market===f.market) &&
-    (!f.designer || c.designer===f.designer) &&
-    (!f.jobType  || c.jobType===f.jobType) &&
-    (!f.status   || c.status===f.status)
-  );
+// Deadline helpers
+function deadlineStatus(dl){
+  if(!dl) return "none";
+  const diff = Math.ceil((new Date(dl)-new Date(today()))/(1000*60*60*24));
+  if(diff<0) return "urgent";
+  if(diff<=3) return "urgent";
+  if(diff<=7) return "warn";
+  return "ok";
+}
+function deadlineLabel(dl){
+  if(!dl) return "無截止日";
+  const diff = Math.ceil((new Date(dl)-new Date(today()))/(1000*60*60*24));
+  if(diff<0) return `逾期 ${-diff}天`;
+  if(diff===0) return "今天截止";
+  if(diff===1) return "明天截止";
+  return `剩 ${diff} 天`;
 }
 
-// Render helpers
-function badge(label, bg, color){
-  return `<span class="badge" style="background:${bg};color:${color}">${label}</span>`;
+// ── STORAGE ────────────────────────────────────────────────────
+const KEY_CASES = "dd_cases_v2";
+const KEY_SETTINGS = "dd_settings_v2";
+
+function loadCases(){ try{ return JSON.parse(localStorage.getItem(KEY_CASES)||"[]"); }catch{ return []; } }
+function saveCases(c){ localStorage.setItem(KEY_CASES,JSON.stringify(c)); }
+function loadSettings(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY_SETTINGS)||"{}");
+    return {
+      jobTypes: s.jobTypes || DEFAULT_JOB_TYPES,
+      markets: s.markets || DEFAULT_MARKETS,
+      designers: s.designers || DEFAULT_DESIGNERS,
+      sales: s.sales || DEFAULT_SALES,
+    };
+  } catch { return { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES }; }
 }
-function statusPill(status){
-  const s = STATUS_STYLE[status]||{};
-  return `<span class="status-pill" style="background:${s.bg};color:${s.text}"><span class="dot" style="background:${s.dot}"></span>${status}</span>`;
-}
-function dot(status){
-  const s = STATUS_STYLE[status]||{};
-  return `<span class="dot" style="background:${s.dot}"></span>`;
-}
+function saveSettings(s){ localStorage.setItem(KEY_SETTINGS,JSON.stringify(s)); }
 
-// Views
-function renderList(cases){
-  const rows = cases.length===0
-    ? `<tr><td colspan="7" class="empty">尚無派案記錄</td></tr>`
-    : cases.map(c=>`
-      <tr>
-        <td class="td-date">${c.date}</td>
-        <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
-        <td>${badge(c.jobType, typeColor(c.jobType)+"28", typeColor(c.jobType))}</td>
-        <td style="font-weight:600">${c.designer}</td>
-        <td>${statusPill(c.status)}</td>
-        <td class="td-note">${c.note||"—"}</td>
-        <td class="td-actions" style="white-space:nowrap">
-          <button class="btn-edit" onclick="openEdit('${c.id}')">編輯</button>
-          <button class="btn-delete" onclick="deleteCase('${c.id}')">刪除</button>
-        </td>
-      </tr>`).join("");
-  return `<div class="table-wrap"><table>
-    <thead><tr><th>日期</th><th>市場</th><th>案件種類</th><th>設計師</th><th>狀態</th><th>備註</th><th></th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table></div>`;
-}
-
-function renderKanban(cases){
-  return `<div class="kanban">${STATUSES.map(status=>{
-    const s = STATUS_STYLE[status];
-    const col = cases.filter(c=>c.status===status);
-    const cards = col.map(c=>`
-      <div class="kanban-card" onclick="openEdit('${c.id}')">
-        <div class="kanban-card-top">
-          ${badge(c.jobType, typeColor(c.jobType)+"28", typeColor(c.jobType))}
-          <button class="btn-kanban-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
-        </div>
-        <div class="kanban-card-name">${c.designer}</div>
-        <div class="kanban-card-meta">${c.market} · ${c.date}</div>
-        ${c.note?`<div class="kanban-card-note">${c.note}</div>`:""}
-      </div>`).join("");
-    return `<div class="kanban-col">
-      <div class="kanban-col-header">
-        ${dot(status)}<span class="kanban-col-title" style="color:${s.text}">${status}</span>
-        <span class="kanban-col-count" style="background:${s.bg};color:${s.text}">${col.length}</span>
-      </div>${cards}
-    </div>`;
-  }).join("")}</div>`;
-}
-
-function renderTimeline(cases){
-  if(!cases.length) return `<div class="empty">尚無派案記錄</div>`;
-  const map = {};
-  [...cases].sort((a,b)=>a.date.localeCompare(b.date)).forEach(c=>{ (map[c.date]=map[c.date]||[]).push(c); });
-  return `<div class="timeline">${Object.entries(map).map(([date,items])=>`
-    <div class="tl-row">
-      <div class="tl-date">
-        <div class="tl-date-main">${date.slice(5)}</div>
-        <div class="tl-date-year">${date.slice(0,4)}</div>
-      </div>
-      <div class="tl-body">
-        <div class="tl-line"></div>
-        <div class="tl-dot"></div>
-        <div class="tl-cards">${items.map(c=>`
-          <div class="tl-card">
-            <div class="tl-card-name">${c.designer}${dot(c.status)}</div>
-            <div class="tl-badges">
-              ${badge(c.market,"#EEEEFF","#4361EE")}
-              ${badge(c.jobType, typeColor(c.jobType)+"28", typeColor(c.jobType))}
-            </div>
-          </div>`).join("")}
-        </div>
-      </div>
-    </div>`).join("")}
-  </div>`;
-}
-
-function renderStats(){
-  const year = new Date().getFullYear();
-  const yearly = state.cases.filter(c=>c.date.startsWith(String(year)));
-
-  const byD = {}; ALL_DESIGNERS.forEach(d=>byD[d]=0);
-  yearly.forEach(c=>{ byD[c.designer]=(byD[c.designer]||0)+1; });
-
-  const byT = {}; JOB_TYPES.forEach(t=>byT[t]=0);
-  yearly.forEach(c=>{ byT[c.jobType]=(byT[c.jobType]||0)+1; });
-
-  const byM = Array(12).fill(0);
-  yearly.forEach(c=>{ byM[parseInt(c.date.slice(5,7))-1]++; });
-  const maxM = Math.max(...byM,1);
-  const maxD = Math.max(...Object.values(byD),1);
-
-  const monthBars = byM.map((v,i)=>`
-    <div class="bar-col">
-      <span class="bar-val">${v||""}</span>
-      <div class="bar-fill" style="background:${v?"#4361EE":"#F0F0F0"};height:${Math.max(4,v/maxM*60)}px"></div>
-      <span class="bar-label">${MONTH_NAMES[i]}</span>
-    </div>`).join("");
-
-  const designerRows = Object.entries(DESIGNERS).map(([group,list])=>{
-    if(!list.length) return "";
-    return `<div style="margin-bottom:14px">
-      <div class="designer-group-label">${group}</div>
-      ${list.map(d=>`
-        <div class="designer-row">
-          <div class="designer-name">${d}</div>
-          <div class="designer-bar-wrap"><div class="designer-bar" style="width:${byD[d]/maxD*100}%"></div></div>
-          <div class="designer-count">${byD[d]}</div>
-        </div>`).join("")}
-    </div>`;
-  }).join("");
-
-  const typeChips = Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`
-    <div class="type-chip" style="background:${typeColor(t)}18">
-      <span class="type-chip-label" style="color:${typeColor(t)}">${t}</span>
-      <span class="type-chip-count">${v}</span>
-    </div>`).join("") || `<span style="color:#bbb;font-size:13px">今年尚無資料</span>`;
-
-  return `<div class="stats">
-    <div class="stat-card"><div class="stat-title">📅 ${year} 年月份派案量</div><div class="bar-chart">${monthBars}</div></div>
-    <div class="stat-card"><div class="stat-title">👤 設計師派案量（${year}）</div>${designerRows}</div>
-    <div class="stat-card"><div class="stat-title">📋 案件種類分佈（${year}）</div><div class="type-grid">${typeChips}</div></div>
-  </div>`;
-}
-
-// Modal
-function renderModal(){
-  if(!state.modal) return "";
-  const c = state.modal==="new" ? { id:"",date:today(),market:"TW",jobType:"V1",designer:"Faye",status:"進行中",note:"" } : state.modal;
-  const isEdit = state.modal!=="new";
-
-  const designerOptions = Object.entries(DESIGNERS).map(([g,list])=>
-    list.length ? `<optgroup label="${g}">${list.map(d=>`<option${d===c.designer?" selected":""}>${d}</option>`).join("")}</optgroup>` : ""
-  ).join("");
-
-  return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
-      <h3>${isEdit?"✏️ 編輯案件":"＋ 新增派案"}</h3>
-      <div class="form-group"><label>日期</label><input type="date" id="f-date" value="${c.date}"/></div>
-      <div class="form-group"><label>市場</label><select id="f-market">${MARKETS.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
-      <div class="form-group"><label>案件種類</label><select id="f-jobType">${JOB_TYPES.map(j=>`<option${j===c.jobType?" selected":""}>${j}</option>`).join("")}</select></div>
-      <div class="form-group"><label>設計師</label><select id="f-designer">${designerOptions}</select></div>
-      <div class="form-group"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
-      <div class="form-group"><label>備註</label><input type="text" id="f-note" value="${c.note||""}" placeholder="選填"/></div>
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="closeModal()">取消</button>
-        <button class="btn-save" onclick="saveCase('${c.id}')">${isEdit?"儲存":"新增"}</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-// Filter bar
-function renderFilter(){
-  if(state.view==="stats") return "";
-  const f = state.filter;
-  const hasFilter = Object.values(f).some(Boolean);
-  const sel = (key,opts)=>`<select onchange="setFilter('${key}',this.value)">
-    <option value="">全部</option>
-    ${opts.map(o=>`<option${o===f[key]?" selected":""}>${o}</option>`).join("")}
-  </select>`;
-  return `<div class="filter-bar">
-    <div class="filter-group"><label>市場</label>${sel("market",MARKETS)}</div>
-    <div class="filter-group"><label>設計師</label>${sel("designer",ALL_DESIGNERS)}</div>
-    <div class="filter-group"><label>案件種類</label>${sel("jobType",JOB_TYPES)}</div>
-    <div class="filter-group"><label>狀態</label>${sel("status",STATUSES)}</div>
-    <span class="filter-count">${filtered().length} 筆</span>
-    ${hasFilter?`<button class="btn-clear" onclick="clearFilter()">✕ 清除</button>`:""}
-  </div>`;
-}
-
-function render(){
-  const cases = filtered();
-  let viewHtml = "";
-  if(state.view==="list")     viewHtml = renderList(cases);
-  else if(state.view==="kanban")   viewHtml = renderKanban(cases);
-  else if(state.view==="timeline") viewHtml = renderTimeline(cases);
-  else                             viewHtml = renderStats();
-
-  const tabs = ["list","kanban","timeline","stats"];
-  const tabLabels = {"list":"☰ 列表","kanban":"⬛ 看板","timeline":"📅 時間軸","stats":"📊 統計"};
-
-  document.getElementById("app").innerHTML = `
-    <div class="header">
-      <div class="logo"><span>🎨 Design Dispatch</span><small>派案管理系統</small></div>
-      <div class="nav-tabs">${tabs.map(t=>`<button class="nav-tab${state.view===t?" active":""}" onclick="setView('${t}')">${tabLabels[t]}</button>`).join("")}</div>
-      <div class="header-btns">
-        <button class="btn-export" onclick="exportCSV()">⬇ 匯出 CSV</button>
-        <button class="btn-add" onclick="openNew()">＋ 新增派案</button>
-      </div>
-    </div>
-    ${renderFilter()}
-    <div class="content">${viewHtml}</div>
-    ${renderModal()}
-  `;
-}
-
-// Actions
-function setView(v){ state.view=v; render(); }
-function setFilter(k,v){ state.filter[k]=v; render(); }
-function clearFilter(){ state.filter={market:"",designer:"",jobType:"",status:""}; render(); }
-function openNew(){ state.modal="new"; render(); }
-function closeModal(){ state.modal=null; render(); }
-
-function openEdit(id){
-  const c = state.cases.find(x=>x.id===id);
-  if(c){ state.modal={...c}; render(); }
-}
-
-function saveCase(id){
-  const c = {
-    id: id || uid(),
-    date:     document.getElementById("f-date").value,
-    market:   document.getElementById("f-market").value,
-    jobType:  document.getElementById("f-jobType").value,
-    designer: document.getElementById("f-designer").value,
-    status:   document.getElementById("f-status").value,
-    note:     document.getElementById("f-note").value,
-  };
-  if(id){ state.cases = state.cases.map(x=>x.id===id?c:x); }
-  else   { state.cases = [c, ...state.cases]; }
-  save(state.cases);
-  state.modal = null;
-  render();
-}
-
-function deleteCase(id){
-  if(!confirm("確定刪除此案件？")) return;
-  state.cases = state.cases.filter(c=>c.id!==id);
-  save(state.cases);
-  render();
-}
-
-function exportCSV(){
-  const cases = filtered();
-  const header = ["日期","市場","案件種類","設計師","狀態","備註"];
-  const rows = cases.map(c=>[c.date,c.market,c.jobType,c.designer,c.status,c.note||""].join(","));
+// CSV Export
+function exportCSV(cases){
+  const header = ["日期","截止日","市場","案件種類","設計師","業務","狀態","信件連結","備註"];
+  const rows = cases.map(c=>[c.date,c.deadline||"",c.market,c.jobType,c.designer,c.sales||"",c.status,c.emailLink||"",c.note||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
   const csv = [header.join(","),...rows].join("\n");
   const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
@@ -417,6 +265,537 @@ function exportCSV(){
   URL.revokeObjectURL(url);
 }
 
+// ── STATE ──────────────────────────────────────────────────────
+let S = {
+  cases: loadCases(),
+  settings: loadSettings(),
+  view: "list",
+  filter: {market:"",designer:"",jobType:"",status:"",sales:""},
+  modal: null, // null | "new" | case obj
+  parseText: "",
+  parseStatus: "",
+};
+
+function filtered(){
+  const f=S.filter;
+  return S.cases.filter(c=>
+    (!f.market   || c.market===f.market) &&
+    (!f.designer || c.designer===f.designer) &&
+    (!f.jobType  || c.jobType===f.jobType) &&
+    (!f.status   || c.status===f.status) &&
+    (!f.sales    || c.sales===f.sales)
+  );
+}
+
+// ── RENDER HELPERS ─────────────────────────────────────────────
+function badge(label,bg,color){
+  return `<span class="badge" style="background:${bg};color:${color}">${label}</span>`;
+}
+function statusPill(status){
+  const s=STATUS_STYLE[status]||{};
+  return `<span class="status-pill" style="background:${s.bg};color:${s.text}"><span class="dot" style="background:${s.dot}"></span>${status}</span>`;
+}
+function dotHtml(status){
+  const s=STATUS_STYLE[status]||{};
+  return `<span class="dot" style="background:${s.dot}"></span>`;
+}
+function dlPill(dl){
+  const st=deadlineStatus(dl);
+  const icon=st==="urgent"?"🔴":st==="warn"?"🟡":st==="ok"?"🟢":"—";
+  return `<span class="deadline ${st}">${icon} ${deadlineLabel(dl)}</span>`;
+}
+
+// ── LIST VIEW ──────────────────────────────────────────────────
+function renderList(cases){
+  const types=S.settings.jobTypes;
+  const rows = cases.length===0
+    ? `<tr><td colspan="9" class="empty">尚無派案記錄 — 點右上角「＋ 新增派案」開始</td></tr>`
+    : cases.map(c=>`
+      <tr>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
+        <td>${dlPill(c.deadline)}</td>
+        <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
+        <td>${badge(c.jobType,typeColor(c.jobType,types)+"28",typeColor(c.jobType,types))}</td>
+        <td style="font-weight:700">${c.designer}</td>
+        <td style="font-size:11px;color:#888">${c.sales||"—"}</td>
+        <td>${statusPill(c.status)}</td>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#888">${c.note||"—"}</td>
+        <td style="white-space:nowrap">
+          ${c.emailLink?`<a href="${c.emailLink}" target="_blank" style="color:var(--accent);font-size:11px;margin-right:6px">📧</a>`:""}
+          <button class="td-actions btn-edit" onclick="openEdit('${c.id}')">編輯</button>
+          <button class="td-actions btn-del" onclick="deleteCase('${c.id}')">刪除</button>
+        </td>
+      </tr>`).join("");
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>派案日</th><th>截止日</th><th>市場</th><th>案件種類</th><th>設計師</th><th>業務</th><th>狀態</th><th>備註</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ── KANBAN VIEW ────────────────────────────────────────────────
+function renderKanban(cases){
+  const types=S.settings.jobTypes;
+  return `<div class="kanban">${STATUSES.map(status=>{
+    const s=STATUS_STYLE[status];
+    const col=cases.filter(c=>c.status===status);
+    const cards=col.map(c=>{
+      const tc=typeColor(c.jobType,types);
+      return `<div class="k-card" style="border-left-color:${s.border}" onclick="openEdit('${c.id}')">
+        <div class="k-card-top">
+          <div>${badge(c.jobType,tc+"28",tc)}</div>
+          <button class="k-card-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
+        </div>
+        <div class="k-card-name">${c.designer}</div>
+        <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
+        ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
+        ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
+      </div>`;
+    }).join("");
+    return `<div class="k-col">
+      <div class="k-col-hdr">
+        ${dotHtml(status)}<span class="k-col-title" style="color:${s.text}">${status}</span>
+        <span class="k-col-count" style="background:${s.bg};color:${s.text}">${col.length}</span>
+      </div>${cards||`<div style="text-align:center;padding:20px;color:#ccc;font-size:12px">無案件</div>`}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+// ── TIMELINE VIEW ──────────────────────────────────────────────
+function renderTimeline(cases){
+  if(!cases.length) return `<div class="empty">尚無派案記錄</div>`;
+  const types=S.settings.jobTypes;
+  const map={};
+  [...cases].sort((a,b)=>a.date.localeCompare(b.date)).forEach(c=>{(map[c.date]=map[c.date]||[]).push(c);});
+  return `<div class="timeline">${Object.entries(map).map(([date,items])=>`
+    <div class="tl-row">
+      <div class="tl-date">
+        <div class="tl-date-main">${date.slice(5)}</div>
+        <div class="tl-date-year">${date.slice(0,4)}</div>
+      </div>
+      <div class="tl-body">
+        <div class="tl-line"></div><div class="tl-dot"></div>
+        <div class="tl-cards">${items.map(c=>{
+          const tc=typeColor(c.jobType,types);
+          return `<div class="tl-card">
+            <div class="tl-card-name">${c.designer}${dotHtml(c.status)}</div>
+            <div class="tl-badges">
+              ${badge(c.market,"#EEEEFF","#4361EE")}
+              ${badge(c.jobType,tc+"28",tc)}
+            </div>
+            ${c.deadline?`<div style="margin-top:4px">${dlPill(c.deadline)}</div>`:""}
+          </div>`;
+        }).join("")}</div>
+      </div>
+    </div>`).join("")}</div>`;
+}
+
+// ── EXCEL VIEW ─────────────────────────────────────────────────
+function renderExcel(cases){
+  // Get unique dates sorted
+  const dateSet=new Set(cases.map(c=>c.date));
+  // Add today if not present, and show a range
+  dateSet.add(today());
+  const dates=[...dateSet].sort();
+
+  const types=S.settings.jobTypes;
+  const designers=allDesigners(S.settings.designers);
+  const todayStr=today();
+
+  const dateHeaders=dates.map(d=>{
+    const isToday=d===todayStr;
+    const dd=new Date(d);
+    const label=`${d.slice(5)}<br><span style="font-weight:400;font-size:9px">${["日","一","二","三","四","五","六"][dd.getDay()]}</span>`;
+    return `<th class="excel-th-date${isToday?" today-col":""}">${label}</th>`;
+  }).join("");
+
+  const rows=designers.map(designer=>{
+    const cells=dates.map(date=>{
+      const isToday=date===todayStr;
+      const dayCases=cases.filter(c=>c.designer===designer&&c.date===date);
+      const chips=dayCases.map(c=>{
+        const tc=typeColor(c.jobType,types);
+        const dlSt=deadlineStatus(c.deadline);
+        const urgentBorder=dlSt==="urgent"?"2px solid #E74C3C":dlSt==="warn"?"2px solid #D4AC0D":"none";
+        return `<div class="excel-chip" style="background:${tc}15;border-left-color:${tc};outline:${urgentBorder};outline-offset:-2px" onclick="openEdit('${c.id}')">
+          <div class="excel-chip-title">${c.jobType} · ${c.market}</div>
+          <div class="excel-chip-meta">${c.status}${c.deadline?" · "+deadlineLabel(c.deadline):""}</div>
+        </div>`;
+      }).join("");
+      return `<td class="excel-cell${isToday?" today-col":""}">${chips}<button class="excel-add-btn" onclick="openNewForDesignerDate('${designer}','${date}')">＋</button></td>`;
+    }).join("");
+    return `<tr><td class="excel-th-designer">${designer}</td>${cells}</tr>`;
+  }).join("");
+
+  return `<div class="excel-wrap"><table class="excel-table">
+    <thead><tr><th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888">設計師 ╲ 日期</th>${dateHeaders}</tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ── STATS VIEW ─────────────────────────────────────────────────
+function renderStats(){
+  const year=new Date().getFullYear();
+  const yearly=S.cases.filter(c=>c.date.startsWith(String(year)));
+  const types=S.settings.jobTypes;
+  const designers=allDesigners(S.settings.designers);
+
+  const byD={}; designers.forEach(d=>byD[d]=0);
+  yearly.forEach(c=>{byD[c.designer]=(byD[c.designer]||0)+1;});
+
+  const byT={}; types.forEach(t=>byT[t]=0);
+  yearly.forEach(c=>{byT[c.jobType]=(byT[c.jobType]||0)+1;});
+
+  const byM=Array(12).fill(0);
+  yearly.forEach(c=>{byM[parseInt(c.date.slice(5,7))-1]++;});
+  const maxM=Math.max(...byM,1);
+  const maxD=Math.max(...Object.values(byD),1);
+
+  // Urgent cases
+  const urgent=S.cases.filter(c=>c.status!=="已完成"&&deadlineStatus(c.deadline)==="urgent");
+  const warn=S.cases.filter(c=>c.status!=="已完成"&&deadlineStatus(c.deadline)==="warn");
+
+  const urgentBlock=(urgent.length||warn.length)?`
+    <div class="stat-card">
+      <div class="stat-title">⚠️ 需注意截止日</div>
+      ${urgent.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:8px 10px;background:#FFF0EE;border-radius:8px;font-size:12px">
+        <span style="color:#E74C3C;font-weight:700">🔴 逾期/今截</span>
+        <span style="font-weight:700">${c.designer}</span>
+        <span style="color:#888">${c.jobType} · ${c.market}</span>
+        <span style="margin-left:auto;color:#888;font-size:11px">${c.deadline}</span>
+      </div>`).join("")}
+      ${warn.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:8px 10px;background:#FEF9E7;border-radius:8px;font-size:12px">
+        <span style="color:#D4AC0D;font-weight:700">🟡 快到期</span>
+        <span style="font-weight:700">${c.designer}</span>
+        <span style="color:#888">${c.jobType} · ${c.market}</span>
+        <span style="margin-left:auto;color:#888;font-size:11px">${deadlineLabel(c.deadline)}</span>
+      </div>`).join("")}
+    </div>`:"";
+
+  const monthBars=byM.map((v,i)=>`
+    <div class="bar-col">
+      <span class="bar-val">${v||""}</span>
+      <div class="bar-fill" style="background:${v?"var(--accent)":"#F0F0F0"};height:${Math.max(3,v/maxM*55)}px"></div>
+      <span class="bar-lbl">${MONTH_NAMES[i]}</span>
+    </div>`).join("");
+
+  const dRows=Object.entries(S.settings.designers).map(([group,list])=>list.length?`
+    <div style="margin-bottom:12px">
+      <div class="designer-group-lbl">${group}</div>
+      ${list.map(d=>`<div class="d-row">
+        <div class="d-name">${d}</div>
+        <div class="d-bar-wrap"><div class="d-bar" style="width:${byD[d]/maxD*100}%"></div></div>
+        <div class="d-count">${byD[d]}</div>
+      </div>`).join("")}
+    </div>`:"").join("");
+
+  const typeChips=Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`
+    <div class="type-chip" style="background:${typeColor(t,types)}18">
+      <span class="type-chip-lbl" style="color:${typeColor(t,types)}">${t}</span>
+      <span class="type-chip-count">${v}</span>
+    </div>`).join("")||`<span style="color:#bbb;font-size:12px">今年尚無資料</span>`;
+
+  return `<div class="stats">
+    ${urgentBlock}
+    <div class="stat-card"><div class="stat-title">📅 ${year} 年月份派案量</div><div class="bar-chart">${monthBars}</div></div>
+    <div class="stat-card"><div class="stat-title">👤 設計師派案量（${year}）</div>${dRows}</div>
+    <div class="stat-card"><div class="stat-title">📋 案件種類分佈（${year}）</div><div class="type-grid">${typeChips}</div></div>
+  </div>`;
+}
+
+// ── SETTINGS VIEW ──────────────────────────────────────────────
+function renderSettings(){
+  const s=S.settings;
+  function tagList(items,removeAction){
+    return items.map((item,i)=>`<span class="tag-item">${item}<button class="tag-del" onclick="${removeAction}(${i})">×</button></span>`).join("");
+  }
+  function designerSection(group,list,idx){
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:7px;text-transform:uppercase">${group}</div>
+      <div class="tag-list">${list.map((d,i)=>`<span class="tag-item">${d}<button class="tag-del" onclick="removeDesigner('${group}',${i})">×</button></span>`).join("")}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="new-designer-${group}" placeholder="新增設計師姓名"/>
+        <button class="btn btn-primary btn-sm" onclick="addDesigner('${group}')">新增</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="settings">
+    <div class="setting-card">
+      <div class="setting-title">🌍 市場</div>
+      <div class="tag-list">${tagList(s.markets,"removeMarket")}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="new-market" placeholder="新增市場代號"/>
+        <button class="btn btn-primary btn-sm" onclick="addMarket()">新增</button>
+      </div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-title">📋 案件種類</div>
+      <div class="tag-list">${tagList(s.jobTypes,"removeJobType")}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="new-jobtype" placeholder="新增案件種類"/>
+        <button class="btn btn-primary btn-sm" onclick="addJobType()">新增</button>
+      </div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-title">👤 設計師</div>
+      ${Object.entries(s.designers).map(([g,list])=>designerSection(g,list)).join("")}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:7px">新增群組</div>
+        <div class="add-tag-row">
+          <input class="add-tag-input" id="new-designer-group" placeholder="群組名稱（如：3D）"/>
+          <button class="btn btn-primary btn-sm" onclick="addDesignerGroup()">新增群組</button>
+        </div>
+      </div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-title">💼 業務名單</div>
+      <div class="tag-list">${tagList(s.sales,"removeSales")}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="new-sales" placeholder="新增業務姓名"/>
+        <button class="btn btn-primary btn-sm" onclick="addSales()">新增</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── MODAL ──────────────────────────────────────────────────────
+function renderModal(){
+  if(!S.modal) return "";
+  const isNew=S.modal==="new"||S.modal._preset;
+  const c=isNew
+    ? { id:"",date:today(),deadline:"",market:S.settings.markets[0]||"TW",jobType:S.settings.jobTypes[0]||"V1",designer:(S.modal._preset?.designer||allDesigners(S.settings.designers)[0]||""),sales:"",status:"進行中",note:"",emailLink:"",emailNote:"", ...(S.modal._preset||{}) }
+    : S.modal;
+
+  const types=S.settings.jobTypes;
+  const markets=S.settings.markets;
+  const designers=allDesigners(S.settings.designers);
+  const sales=S.settings.sales;
+
+  const designerOpts=Object.entries(S.settings.designers).map(([g,list])=>
+    list.length?`<optgroup label="${g}">${list.map(d=>`<option${d===c.designer?" selected":""}>${d}</option>`).join("")}</optgroup>`:""
+  ).join("");
+
+  const parseSection=`
+    <div class="email-section">
+      <label>📧 貼上信件內容（AI 自動辨識派案資訊）</label>
+      <textarea id="email-paste" placeholder="將信件內容貼上於此，系統會嘗試自動填入市場、案件種類、截止日等資訊...">${S.parseText}</textarea>
+      <button class="btn-parse" onclick="parseEmail()">🔍 自動辨識</button>
+      <div class="parse-status" id="parse-status">${S.parseStatus}</div>
+    </div>`;
+
+  return `<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h3>${isNew?"＋ 新增派案":"✏️ 編輯案件"}</h3>
+      ${parseSection}
+      <div class="form-row">
+        <div class="fg-modal"><label>派案日期</label><input type="date" id="f-date" value="${c.date}"/></div>
+        <div class="fg-modal"><label>截止日期</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
+      </div>
+      <div class="form-row">
+        <div class="fg-modal"><label>市場</label><select id="f-market">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>案件種類</label><select id="f-jobType">${types.map(j=>`<option${j===c.jobType?" selected":""}>${j}</option>`).join("")}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="fg-modal"><label>設計師</label><select id="f-designer">${designerOpts}</select></div>
+        <div class="fg-modal"><label>業務來源</label>
+          <select id="f-sales-select" onchange="syncSalesInput()">${["",  ...sales].map(s=>`<option${s===c.sales?" selected":""}>${s}</option>`).join("")}</select>
+          <input type="text" id="f-sales" value="${c.sales||""}" placeholder="或直接輸入業務名稱" style="margin-top:5px"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg-modal"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>信件連結</label><input type="text" id="f-emailLink" value="${c.emailLink||""}" placeholder="貼上信件 URL（選填）"/></div>
+      </div>
+      <div class="form-row single">
+        <div class="fg-modal"><label>備註</label><textarea id="f-note" placeholder="專案說明、參考資訊...">${c.note||""}</textarea></div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-save" onclick="saveCase('${c.id}')">${isNew?"新增派案":"儲存變更"}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── FILTER BAR ─────────────────────────────────────────────────
+function renderFilter(){
+  if(S.view==="stats"||S.view==="settings") return "";
+  const f=S.filter;
+  const s=S.settings;
+  const hasFilter=Object.values(f).some(Boolean);
+  function sel(key,opts){
+    return `<select onchange="setFilter('${key}',this.value)">
+      <option value="">全部</option>
+      ${opts.map(o=>`<option${o===f[key]?" selected":""}>${o}</option>`).join("")}
+    </select>`;
+  }
+  return `<div class="filter-bar">
+    <div class="fg"><label>市場</label>${sel("market",s.markets)}</div>
+    <div class="fg"><label>設計師</label>${sel("designer",allDesigners(s.designers))}</div>
+    <div class="fg"><label>種類</label>${sel("jobType",s.jobTypes)}</div>
+    <div class="fg"><label>狀態</label>${sel("status",STATUSES)}</div>
+    <div class="fg"><label>業務</label>${sel("sales",s.sales)}</div>
+    <span class="filter-count">${filtered().length} 筆</span>
+    ${hasFilter?`<button class="btn-clear-filter" onclick="clearFilter()">✕ 清除</button>`:""}
+  </div>`;
+}
+
+// ── MAIN RENDER ────────────────────────────────────────────────
+function render(){
+  const cases=filtered();
+  const VIEWS=[
+    {key:"list",label:"☰ 列表"},
+    {key:"kanban",label:"⬛ 看板"},
+    {key:"timeline",label:"📅 時間軸"},
+    {key:"excel",label:"📊 總覽表"},
+    {key:"stats",label:"📈 統計"},
+    {key:"settings",label:"⚙️ 設定"},
+  ];
+
+  let viewHtml="";
+  if(S.view==="list")       viewHtml=renderList(cases);
+  else if(S.view==="kanban")     viewHtml=renderKanban(cases);
+  else if(S.view==="timeline")   viewHtml=renderTimeline(cases);
+  else if(S.view==="excel")      viewHtml=renderExcel(cases);
+  else if(S.view==="stats")      viewHtml=renderStats();
+  else                           viewHtml=renderSettings();
+
+  // Urgent badge for stats
+  const urgentCount=S.cases.filter(c=>c.status!=="已完成"&&deadlineStatus(c.deadline)==="urgent").length;
+
+  document.getElementById("app").innerHTML=`
+    <div class="header">
+      <div class="logo">
+        <span class="logo-title">🎨 Design Dispatch</span>
+        <span class="logo-sub">v2</span>
+      </div>
+      <nav class="nav">${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="stats"&&urgentCount?` <span style="background:#E74C3C;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${urgentCount}</span>`:""}</button>`).join("")}</nav>
+      <div class="hdr-actions">
+        <button class="btn btn-ghost" onclick="exportCSV(filtered())">⬇ CSV</button>
+        <button class="btn btn-primary" onclick="openNew()">＋ 新增派案</button>
+      </div>
+    </div>
+    ${renderFilter()}
+    <div class="content">${viewHtml}</div>
+    ${renderModal()}
+  `;
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────
+function setView(v){ S.view=v; render(); }
+function setFilter(k,v){ S.filter[k]=v; render(); }
+function clearFilter(){ S.filter={market:"",designer:"",jobType:"",status:"",sales:""}; render(); }
+function openNew(){ S.modal="new"; S.parseText=""; S.parseStatus=""; render(); }
+function openNewForDesignerDate(designer,date){ S.modal={_preset:{designer,date}}; S.parseText=""; S.parseStatus=""; render(); }
+function closeModal(){ S.modal=null; S.parseText=""; S.parseStatus=""; render(); }
+
+function openEdit(id){
+  const c=S.cases.find(x=>x.id===id);
+  if(c){ S.modal={...c}; S.parseText=""; S.parseStatus=""; render(); }
+}
+
+function syncSalesInput(){
+  const sel=document.getElementById("f-sales-select");
+  const inp=document.getElementById("f-sales");
+  if(sel&&inp&&sel.value) inp.value=sel.value;
+}
+
+function saveCase(id){
+  const salesSel=document.getElementById("f-sales-select");
+  const salesInp=document.getElementById("f-sales");
+  const sales=(salesInp&&salesInp.value.trim())||(salesSel&&salesSel.value)||"";
+  const c={
+    id:id||uid(),
+    date:document.getElementById("f-date").value,
+    deadline:document.getElementById("f-deadline").value||"",
+    market:document.getElementById("f-market").value,
+    jobType:document.getElementById("f-jobType").value,
+    designer:document.getElementById("f-designer").value,
+    sales,
+    status:document.getElementById("f-status").value,
+    note:document.getElementById("f-note").value,
+    emailLink:document.getElementById("f-emailLink").value,
+  };
+  if(id){ S.cases=S.cases.map(x=>x.id===id?c:x); }
+  else   { S.cases=[c,...S.cases]; }
+  saveCases(S.cases);
+  S.modal=null; S.parseText=""; S.parseStatus="";
+  render();
+}
+
+function deleteCase(id){
+  if(!confirm("確定刪除此案件？")) return;
+  S.cases=S.cases.filter(c=>c.id!==id);
+  saveCases(S.cases);
+  render();
+}
+
+// ── EMAIL PARSER (rule-based) ──────────────────────────────────
+function parseEmail(){
+  const text=document.getElementById("email-paste")?.value||"";
+  S.parseText=text;
+  if(!text.trim()){ S.parseStatus="請貼上信件內容"; render(); return; }
+
+  const txt=text.toUpperCase();
+  const result={};
+
+  // Market
+  for(const m of S.settings.markets){
+    if(txt.includes(m.toUpperCase())){ result.market=m; break; }
+  }
+  // Job type
+  for(const j of S.settings.jobTypes){
+    if(txt.toUpperCase().includes(j.toUpperCase())){ result.jobType=j; break; }
+  }
+  // Deadline - look for date patterns YYYY/MM/DD or MM/DD or YYYY-MM-DD
+  const dlMatch=text.match(/(?:deadline|截止|due|by|before)[^\d]*(\d{4}[-/]\d{1,2}[-/]\d{1,2})/i)
+    || text.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
+  if(dlMatch){
+    result.deadline=dlMatch[1].replace(/\//g,"-");
+  }
+  // Designer
+  for(const d of allDesigners(S.settings.designers)){
+    if(text.includes(d)){ result.designer=d; break; }
+  }
+  // Sales
+  for(const s of S.settings.sales){
+    if(text.toLowerCase().includes(s.toLowerCase())){ result.sales=s; break; }
+  }
+
+  // Apply to form
+  if(result.market){ const el=document.getElementById("f-market"); if(el) el.value=result.market; }
+  if(result.jobType){ const el=document.getElementById("f-jobType"); if(el) el.value=result.jobType; }
+  if(result.deadline){ const el=document.getElementById("f-deadline"); if(el) el.value=result.deadline; }
+  if(result.designer){ const el=document.getElementById("f-designer"); if(el) el.value=result.designer; }
+  if(result.sales){ const el=document.getElementById("f-sales"); if(el) el.value=result.sales; }
+
+  const found=Object.keys(result).length;
+  S.parseStatus=found
+    ? `✅ 辨識到 ${found} 個欄位：${Object.entries(result).map(([k,v])=>`${k}=${v}`).join("、")}`
+    : "⚠️ 未辨識到已知欄位，請手動填寫";
+  // Re-render modal area only (keep form state)
+  const ps=document.getElementById("parse-status");
+  if(ps) ps.textContent=S.parseStatus;
+}
+
+// ── SETTINGS ACTIONS ───────────────────────────────────────────
+function saveAndRender(){ saveSettings(S.settings); render(); }
+
+function removeMarket(i){ S.settings.markets.splice(i,1); saveAndRender(); }
+function addMarket(){ const v=document.getElementById("new-market")?.value.trim(); if(v&&!S.settings.markets.includes(v)){ S.settings.markets.push(v); saveAndRender(); } }
+
+function removeJobType(i){ S.settings.jobTypes.splice(i,1); saveAndRender(); }
+function addJobType(){ const v=document.getElementById("new-jobtype")?.value.trim(); if(v&&!S.settings.jobTypes.includes(v)){ S.settings.jobTypes.push(v); saveAndRender(); } }
+
+function removeDesigner(group,i){ S.settings.designers[group].splice(i,1); saveAndRender(); }
+function addDesigner(group){ const v=document.getElementById(`new-designer-${group}`)?.value.trim(); if(v&&!S.settings.designers[group].includes(v)){ S.settings.designers[group].push(v); saveAndRender(); } }
+function addDesignerGroup(){ const v=document.getElementById("new-designer-group")?.value.trim(); if(v&&!S.settings.designers[v]){ S.settings.designers[v]=[]; saveAndRender(); } }
+
+function removeSales(i){ S.settings.sales.splice(i,1); saveAndRender(); }
+function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(v&&!S.settings.sales.includes(v)){ S.settings.sales.push(v); saveAndRender(); } }
+
+// ── INIT ───────────────────────────────────────────────────────
 render();
 </script>
 </body>
