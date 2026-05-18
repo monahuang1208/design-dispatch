@@ -186,6 +186,24 @@ td{padding:9px 12px;vertical-align:middle}
 /* ── EMPTY ── */
 .empty{text-align:center;padding:50px;color:var(--text3);font-size:13px}
 
+/* ── MULTI-SELECT DROPDOWN ── */
+.ms-wrap{position:relative}
+.ms-trigger{width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;outline:none;font-family:inherit;transition:border .15s;background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:38px}
+.ms-trigger:focus,.ms-trigger.open{border-color:var(--accent)}
+.ms-trigger-text{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+.ms-trigger-arrow{color:#aaa;font-size:10px;flex-shrink:0}
+.ms-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--accent);border-radius:10px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.15);max-height:220px;overflow-y:auto;padding:6px}
+.ms-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text);transition:background .1s;user-select:none}
+.ms-item:hover{background:#F0F0FF}
+.ms-item.checked{background:#EEF0FF;color:var(--accent);font-weight:700}
+.ms-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.ms-optgroup-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;padding:6px 10px 3px;border-top:1px solid var(--border);margin-top:3px}
+.ms-optgroup-label:first-child{border-top:none;margin-top:0}
+.ms-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.ms-chip{display:inline-flex;align-items:center;gap:4px;background:#EEF0FF;color:var(--accent);border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
+.ms-chip-x{background:none;border:none;cursor:pointer;color:#aaa;font-size:12px;line-height:1;padding:0;margin-left:1px}
+.ms-chip-x:hover{color:var(--red)}
+
 /* ── MONTH NAMES ── */
 </style>
 </head>
@@ -258,7 +276,7 @@ function saveSettings(s){ localStorage.setItem(KEY_SETTINGS,JSON.stringify(s)); 
 // CSV Export
 function exportCSV(cases){
   const header = ["日期","截止日","市場","案件種類","設計師","業務","狀態","信件連結","備註"];
-  const rows = cases.map(c=>[c.date,c.deadline||"",c.market,c.jobType,c.designer,c.sales||"",c.status,c.emailLink||"",c.note||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
+  const rows = cases.map(c=>[c.date,c.deadline||"",c.market,toArr(c.jobTypes).join("/"),toArr(c.designers).join("/"),c.sales||"",c.status,c.emailLink||"",c.note||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
   const csv = [header.join(","),...rows].join("\n");
   const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
@@ -266,6 +284,11 @@ function exportCSV(cases){
   a.href=url; a.download=`dispatch_${today()}.csv`; a.click();
   URL.revokeObjectURL(url);
 }
+
+// ── MULTI-VALUE HELPERS ────────────────────────────────────────
+// Normalize old single-string fields to arrays
+function toArr(v){ if(!v) return []; if(Array.isArray(v)) return v; return [v]; }
+function arrLabel(arr){ return toArr(arr).join(", ")||"—"; }
 
 // ── STATE ──────────────────────────────────────────────────────
 let S = {
@@ -285,8 +308,8 @@ function filtered(){
   const f=S.filter;
   return S.cases.filter(c=>
     (!f.market   || c.market===f.market) &&
-    (!f.designer || c.designer===f.designer) &&
-    (!f.jobType  || c.jobType===f.jobType) &&
+    (!f.designer || toArr(c.designers).includes(f.designer)) &&
+    (!f.jobType  || toArr(c.jobTypes).includes(f.jobType)) &&
     (!f.status   || c.status===f.status) &&
     (!f.sales    || c.sales===f.sales)
   );
@@ -320,8 +343,8 @@ function renderList(cases){
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
         <td>${dlPill(c.deadline)}</td>
         <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
-        <td>${badge(c.jobType,typeColor(c.jobType,types)+"28",typeColor(c.jobType,types))}</td>
-        <td style="font-weight:700">${c.designer}</td>
+        <td>${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join(" ")}</td>
+        <td style="font-size:12px;font-weight:600">${arrLabel(c.designers)}</td>
         <td style="font-size:11px;color:#888">${c.sales||"—"}</td>
         <td>${statusPill(c.status)}</td>
         <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#888">${c.note||"—"}</td>
@@ -346,13 +369,14 @@ function renderKanban(cases){
     const s=STATUS_STYLE[status];
     const col=cases.filter(c=>c.status===status);
     const cards=col.map(c=>{
-      const tc=typeColor(c.jobType,types);
+      const firstType=toArr(c.jobTypes)[0]||"";
+      const tc=typeColor(firstType,types);
       return `<div class="k-card" style="border-left-color:${s.border}" onclick="openEdit('${c.id}')">
         <div class="k-card-top">
-          <div>${badge(c.jobType,tc+"28",tc)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
           <button class="k-card-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
         </div>
-        <div class="k-card-name">${c.designer}</div>
+        <div class="k-card-name">${arrLabel(c.designers)}</div>
         <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
         ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
         ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
@@ -382,12 +406,13 @@ function renderTimeline(cases){
       <div class="tl-body">
         <div class="tl-line"></div><div class="tl-dot"></div>
         <div class="tl-cards">${items.map(c=>{
-          const tc=typeColor(c.jobType,types);
+          const firstType=toArr(c.jobTypes)[0]||"";
+          const tc=typeColor(firstType,types);
           return `<div class="tl-card">
-            <div class="tl-card-name">${c.designer}${dotHtml(c.status)}</div>
+            <div class="tl-card-name">${arrLabel(c.designers)}${dotHtml(c.status)}</div>
             <div class="tl-badges">
               ${badge(c.market,"#EEEEFF","#4361EE")}
-              ${badge(c.jobType,tc+"28",tc)}
+              ${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}
             </div>
             ${c.deadline?`<div style="margin-top:4px">${dlPill(c.deadline)}</div>`:""}
           </div>`;
@@ -481,13 +506,14 @@ function renderExcel(cases){
   }).join("");
 
   // Count cases per designer per day (for workload warning)
-  // keyed by designer+date
+  // keyed by designer+date — support multi-designer
   const dayCounts={};
   S.cases.forEach(c=>{
-    // count by deadline date
     if(c.deadline){
-      const k=`${c.designer}|${c.deadline}`;
-      dayCounts[k]=(dayCounts[k]||0)+1;
+      toArr(c.designers).forEach(d=>{
+        const k=`${d}|${c.deadline}`;
+        dayCounts[k]=(dayCounts[k]||0)+1;
+      });
     }
   });
 
@@ -511,22 +537,26 @@ function renderExcel(cases){
       }
 
       // Cases by DEADLINE on this date
-      const dayCases=S.cases.filter(c=>c.designer===designer&&c.deadline===date&&c.status!=="已完成");
-      const completedCases=S.cases.filter(c=>c.designer===designer&&c.deadline===date&&c.status==="已完成");
+      const dayCases=S.cases.filter(c=>toArr(c.designers).includes(designer)&&c.deadline===date&&c.status!=="已完成");
+      const completedCases=S.cases.filter(c=>toArr(c.designers).includes(designer)&&c.deadline===date&&c.status==="已完成");
       const allDayCases=[...dayCases,...completedCases];
 
       const chips=allDayCases.map(c=>{
-        const tc=typeColor(c.jobType,types);
+        const firstType=toArr(c.jobTypes)[0]||"";
+        const tc=typeColor(firstType,types);
         const dlSt=deadlineStatus(c.deadline);
         const chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":c.status==="已完成"?"#EAFAF1":"#fff";
         const chipBorder=dlSt==="urgent"?"#E74C3C":dlSt==="warn"?"#D4AC0D":c.status==="已完成"?"#27AE60":tc;
         const noteHtml=c.note?`<div style="font-size:9px;color:#888;margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${c.note}</div>`:"";
+        // Multi-designer indicator (show other designers if >1)
+        const otherDesigners=toArr(c.designers).filter(d=>d!==designer);
+        const coDesignerHtml=otherDesigners.length?`<span style="font-size:9px;color:#888;margin-left:2px">+${otherDesigners.join(",")}</span>`:"";
         // Status quick-change
         const nextStatus=c.status==="進行中"?"已完成":c.status==="已完成"?"擱置":"進行中";
         const statusIcon=c.status==="已完成"?"✅":c.status==="擱置"?"⏸":"▶";
         return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
-            <span style="font-size:10px;font-weight:700;color:${tc};flex:1;line-height:1.3">${c.jobType} · ${c.market}</span>
+            <span style="font-size:10px;font-weight:700;color:${tc};flex:1;line-height:1.3">${toArr(c.jobTypes).join("/")} · ${c.market}${coDesignerHtml}</span>
             <button onclick="event.stopPropagation();quickStatus('${c.id}','${nextStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
           </div>
           ${noteHtml}
@@ -587,10 +617,10 @@ function renderStats(){
   const designers=allDesigners(S.settings.designers);
 
   const byD={}; designers.forEach(d=>byD[d]=0);
-  yearly.forEach(c=>{byD[c.designer]=(byD[c.designer]||0)+1;});
+  yearly.forEach(c=>{ toArr(c.designers).forEach(d=>{ if(byD[d]!==undefined) byD[d]++; }); });
 
   const byT={}; types.forEach(t=>byT[t]=0);
-  yearly.forEach(c=>{byT[c.jobType]=(byT[c.jobType]||0)+1;});
+  yearly.forEach(c=>{ toArr(c.jobTypes).forEach(j=>{ if(byT[j]!==undefined) byT[j]++; }); });
 
   const byM=Array(12).fill(0);
   yearly.forEach(c=>{byM[parseInt(c.date.slice(5,7))-1]++;});
@@ -606,14 +636,14 @@ function renderStats(){
       <div class="stat-title">⚠️ 需注意截止日</div>
       ${urgent.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:8px 10px;background:#FFF0EE;border-radius:8px;font-size:12px">
         <span style="color:#E74C3C;font-weight:700">🔴 逾期/今截</span>
-        <span style="font-weight:700">${c.designer}</span>
-        <span style="color:#888">${c.jobType} · ${c.market}</span>
+        <span style="font-weight:700">${arrLabel(c.designers)}</span>
+        <span style="color:#888">${toArr(c.jobTypes).join("/")} · ${c.market}</span>
         <span style="margin-left:auto;color:#888;font-size:11px">${c.deadline}</span>
       </div>`).join("")}
       ${warn.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:8px 10px;background:#FEF9E7;border-radius:8px;font-size:12px">
         <span style="color:#D4AC0D;font-weight:700">🟡 快到期</span>
-        <span style="font-weight:700">${c.designer}</span>
-        <span style="color:#888">${c.jobType} · ${c.market}</span>
+        <span style="font-weight:700">${arrLabel(c.designers)}</span>
+        <span style="color:#888">${toArr(c.jobTypes).join("/")} · ${c.market}</span>
         <span style="margin-left:auto;color:#888;font-size:11px">${deadlineLabel(c.deadline)}</span>
       </div>`).join("")}
     </div>`:"";
@@ -709,24 +739,57 @@ function renderModal(){
   if(!S.modal) return "";
   const isNew=S.modal==="new"||S.modal._preset;
   const c=isNew
-    ? { id:"",date:today(),deadline:"",market:S.settings.markets[0]||"TW",jobType:S.settings.jobTypes[0]||"V1",designer:(S.modal._preset?.designer||allDesigners(S.settings.designers)[0]||""),sales:"",status:"進行中",note:"",emailLink:"", ...(S.modal._preset||{}), deadline: S.modal._preset?.deadline||"" }
-    : S.modal;
+    ? { id:"",date:today(),deadline:"",market:S.settings.markets[0]||"TW",jobTypes:S.modal._preset?.jobTypes||[S.settings.jobTypes[0]||"V1"],designers:(S.modal._preset?.designers||[S.modal._preset?.designer||allDesigners(S.settings.designers)[0]||""].filter(Boolean)),sales:"",status:"進行中",note:"",emailLink:"", ...(S.modal._preset||{}), deadline: S.modal._preset?.deadline||"" }
+    : {...S.modal, designers:toArr(S.modal.designers||S.modal.designer), jobTypes:toArr(S.modal.jobTypes||S.modal.jobType)};
 
   const types=S.settings.jobTypes;
   const markets=S.settings.markets;
-  const designers=allDesigners(S.settings.designers);
   const sales=S.settings.sales;
 
-  const designerOpts=Object.entries(S.settings.designers).map(([g,list])=>
-    list.length?`<optgroup label="${g}">${list.map(d=>`<option${d===c.designer?" selected":""}>${d}</option>`).join("")}</optgroup>`:""
-  ).join("");
+  // Build multi-select HTML for designers (grouped)
+  function msDesigners(){
+    const sel=c.designers||[];
+    const opts=Object.entries(S.settings.designers).map(([group,list])=>
+      list.length?`<div class="ms-optgroup-label">${group}</div>${list.map(d=>`
+        <label class="ms-item${sel.includes(d)?" checked":""}">
+          <input type="checkbox" value="${d}" ${sel.includes(d)?"checked":""} onchange="toggleModalDesigner('${d}',this.checked)"/>
+          ${d}
+        </label>`).join("")}`:""
+    ).join("");
+    const label=sel.length?sel.join(", "):"選擇設計師…";
+    return `<div class="ms-wrap" id="ms-designer-wrap">
+      <button type="button" class="ms-trigger" id="ms-designer-btn" onclick="toggleMsDropdown('ms-designer')">
+        <span class="ms-trigger-text">${label}</span><span class="ms-trigger-arrow">▾</span>
+      </button>
+      <div class="ms-dropdown" id="ms-designer-dd" style="display:none">${opts}</div>
+    </div>
+    <div class="ms-chips" id="ms-designer-chips">${sel.map(d=>`<span class="ms-chip">${d}<button class="ms-chip-x" onclick="toggleModalDesigner('${d}',false)">×</button></span>`).join("")}</div>`;
+  }
 
-  const vacationWarn = isNew && c.designer && isDesignerOnVacation(c.designer, c.deadline||c.date)
-    ? `<div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#E65100">⚠️ <strong>${c.designer}</strong> 在此期間已設定休假，請確認是否仍要派案</div>`
+  // Build multi-select HTML for jobTypes
+  function msJobTypes(){
+    const sel=c.jobTypes||[];
+    const opts=types.map(j=>`
+      <label class="ms-item${sel.includes(j)?" checked":""}">
+        <input type="checkbox" value="${j}" ${sel.includes(j)?"checked":""} onchange="toggleModalJobType('${j}',this.checked)"/>
+        ${j}
+      </label>`).join("");
+    const label=sel.length?sel.join(", "):"選擇案件種類…";
+    return `<div class="ms-wrap" id="ms-jobtype-wrap">
+      <button type="button" class="ms-trigger" id="ms-jobtype-btn" onclick="toggleMsDropdown('ms-jobtype')">
+        <span class="ms-trigger-text">${label}</span><span class="ms-trigger-arrow">▾</span>
+      </button>
+      <div class="ms-dropdown" id="ms-jobtype-dd" style="display:none">${opts}</div>
+    </div>
+    <div class="ms-chips" id="ms-jobtype-chips">${sel.map(j=>`<span class="ms-chip" style="background:${typeColor(j,types)}22;color:${typeColor(j,types)}">${j}<button class="ms-chip-x" onclick="toggleModalJobType('${j}',false)">×</button></span>`).join("")}</div>`;
+  }
+
+  const vacationWarn = isNew && c.designers && c.designers.some(d=>isDesignerOnVacation(d,c.deadline||c.date))
+    ? `<div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#E65100">⚠️ 部分設計師在此期間已設定休假，請確認是否仍要派案</div>`
     : "";
 
   return `<div class="overlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
+    <div class="modal" onclick="closeMsDropdownsOnOutside(event)">
       <h3>${isNew?"＋ 新增派案":"✏️ 編輯案件"}</h3>
       <div id="vac-warn">${vacationWarn}</div>
       <div class="form-row">
@@ -735,12 +798,12 @@ function renderModal(){
       </div>
       <div class="form-row">
         <div class="fg-modal"><label>市場</label><select id="f-market">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
-        <div class="fg-modal"><label>案件種類</label><select id="f-jobType">${types.map(j=>`<option${j===c.jobType?" selected":""}>${j}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>案件種類（可複選）</label>${msJobTypes()}</div>
       </div>
       <div class="form-row">
-        <div class="fg-modal"><label>設計師</label><select id="f-designer" onchange="checkVacationWarn()">${designerOpts}</select></div>
+        <div class="fg-modal"><label>設計師（可複選）</label>${msDesigners()}</div>
         <div class="fg-modal"><label>業務來源</label>
-          <select id="f-sales-select" onchange="syncSalesInput()">${["",  ...sales].map(s=>`<option${s===c.sales?" selected":""}>${s}</option>`).join("")}</select>
+          <select id="f-sales-select">${["",  ...sales].map(s=>`<option${s===c.sales?" selected":""}>${s}</option>`).join("")}</select>
         </div>
       </div>
       <div class="form-row">
@@ -859,13 +922,52 @@ function render(){
 function setView(v){ S.view=v; render(); }
 function setFilter(k,v){ S.filter[k]=v; render(); }
 function clearFilter(){ S.filter={market:"",designer:"",jobType:"",status:"",sales:""}; render(); }
-function openNew(){ S.modal="new"; S.parseText=""; S.parseStatus=""; render(); }
-function openNewForDesignerDate(designer,deadline){ S.modal={_preset:{designer,deadline}}; S.parseText=""; S.parseStatus=""; render(); }
+function openNew(){ S.modal={_preset:{designers:[allDesigners(S.settings.designers)[0]||""].filter(Boolean),jobTypes:[S.settings.jobTypes[0]||"V1"]}}; S.parseText=""; S.parseStatus=""; render(); }
+function openNewForDesignerDate(designer,deadline){ S.modal={_preset:{designers:[designer],jobTypes:[S.settings.jobTypes[0]||"V1"],deadline}}; S.parseText=""; S.parseStatus=""; render(); }
 function closeModal(){ S.modal=null; S.parseText=""; S.parseStatus=""; render(); }
 
 function openEdit(id){
   const c=S.cases.find(x=>x.id===id);
-  if(c){ S.modal={...c}; S.parseText=""; S.parseStatus=""; render(); }
+  if(c){
+    // Normalize legacy single-value fields to arrays
+    const normalized={...c, designers:toArr(c.designers||c.designer), jobTypes:toArr(c.jobTypes||c.jobType)};
+    S.modal=normalized; S.parseText=""; S.parseStatus=""; render();
+  }
+}
+
+// ── MULTI-SELECT DROPDOWN LOGIC ────────────────────────────────
+// Temporary state for modal multi-selects (lives in S.modal object)
+function toggleMsDropdown(id){
+  const dd=document.getElementById(`${id}-dd`);
+  const btn=document.getElementById(`${id}-btn`);
+  if(!dd) return;
+  const isOpen=dd.style.display!=="none";
+  // Close all first
+  document.querySelectorAll(".ms-dropdown").forEach(el=>el.style.display="none");
+  document.querySelectorAll(".ms-trigger").forEach(el=>el.classList.remove("open"));
+  if(!isOpen){ dd.style.display="block"; btn&&btn.classList.add("open"); }
+}
+function closeMsDropdownsOnOutside(e){
+  if(!e.target.closest(".ms-wrap")){
+    document.querySelectorAll(".ms-dropdown").forEach(el=>el.style.display="none");
+    document.querySelectorAll(".ms-trigger").forEach(el=>el.classList.remove("open"));
+  }
+}
+function toggleModalDesigner(name,checked){
+  if(!S.modal||S.modal==="new") S.modal={_preset:{designers:[],jobTypes:[S.settings.jobTypes[0]||"V1"]}};
+  const cur=toArr(S.modal.designers||S.modal._preset?.designers||[]);
+  const updated=checked?[...new Set([...cur,name])]:cur.filter(d=>d!==name);
+  if(S.modal._preset){ S.modal._preset.designers=updated; }
+  else { S.modal.designers=updated; }
+  render();
+}
+function toggleModalJobType(name,checked){
+  if(!S.modal||S.modal==="new") S.modal={_preset:{jobTypes:[],designers:[]}};
+  const cur=toArr(S.modal.jobTypes||S.modal._preset?.jobTypes||[]);
+  const updated=checked?[...new Set([...cur,name])]:cur.filter(j=>j!==name);
+  if(S.modal._preset){ S.modal._preset.jobTypes=updated; }
+  else { S.modal.jobTypes=updated; }
+  render();
 }
 
 function syncSalesInput(){
@@ -874,33 +976,29 @@ function syncSalesInput(){
 }
 
 function checkVacationWarn(){
-  const designer=document.getElementById("f-designer")?.value;
-  const deadline=document.getElementById("f-deadline")?.value||document.getElementById("f-date")?.value||"";
-  const warn=document.getElementById("vac-warn");
-  if(!warn) return;
-  if(designer && deadline && isDesignerOnVacation(designer,deadline)){
-    warn.innerHTML=`<div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#E65100">⚠️ <strong>${designer}</strong> 在此期間已設定休假，請確認是否仍要派案</div>`;
-  } else {
-    warn.innerHTML="";
-  }
+  // handled inline in renderModal
 }
 
 function saveCase(id){
   const salesSel=document.getElementById("f-sales-select");
   const sales=(salesSel&&salesSel.value)||"";
+  // Read multi-select values from current S.modal state
+  const isNew=!id||S.modal._preset;
+  const curDesigners = isNew ? toArr(S.modal._preset?.designers) : toArr(S.modal.designers);
+  const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
     deadline:document.getElementById("f-deadline").value||"",
     market:document.getElementById("f-market").value,
-    jobType:document.getElementById("f-jobType").value,
-    designer:document.getElementById("f-designer").value,
+    jobTypes:curJobTypes.length?curJobTypes:[S.settings.jobTypes[0]||"V1"],
+    designers:curDesigners.length?curDesigners:[allDesigners(S.settings.designers)[0]||""],
     sales,
     status:document.getElementById("f-status").value,
     note:document.getElementById("f-note").value,
     emailLink:"",
   };
-  if(id){ S.cases=S.cases.map(x=>x.id===id?c:x); }
+  if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else   { S.cases=[c,...S.cases]; }
   saveCases(S.cases);
   S.modal=null; S.parseText=""; S.parseStatus="";
@@ -948,12 +1046,17 @@ function parseEmail(){
     if(text.toLowerCase().includes(s.toLowerCase())){ result.sales=s; break; }
   }
 
-  // Apply to form
+  // Apply to form — for multi-select, update S.modal state
   if(result.market){ const el=document.getElementById("f-market"); if(el) el.value=result.market; }
-  if(result.jobType){ const el=document.getElementById("f-jobType"); if(el) el.value=result.jobType; }
+  if(result.jobType){
+    if(S.modal&&S.modal._preset){ S.modal._preset.jobTypes=[result.jobType]; }
+    else if(S.modal){ S.modal.jobTypes=[result.jobType]; }
+  }
   if(result.deadline){ const el=document.getElementById("f-deadline"); if(el) el.value=result.deadline; }
-  if(result.designer){ const el=document.getElementById("f-designer"); if(el) el.value=result.designer; }
-  if(result.sales){ const el=document.getElementById("f-sales"); if(el) el.value=result.sales; }
+  if(result.designer){
+    if(S.modal&&S.modal._preset){ S.modal._preset.designers=[result.designer]; }
+    else if(S.modal){ S.modal.designers=[result.designer]; }
+  }
 
   const found=Object.keys(result).length;
   S.parseStatus=found
