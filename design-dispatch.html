@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🎨 Design Dispatch 派案管理系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Noto Sans TC',sans-serif;background:#F2F3F8;min-height:100vh;color:#1a1a2e}
+
+  /* Header */
+  .header{background:#1a1a2e;padding:0 28px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+  .logo{padding:16px 0;margin-right:auto}
+  .logo span{font-size:17px;font-weight:800;color:#fff}
+  .logo small{font-size:11px;color:#7777bb;margin-left:10px}
+  .nav-tabs{display:flex;gap:2px}
+  .nav-tab{background:none;color:#7777bb;border:none;border-radius:8px 8px 0 0;padding:14px 16px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
+  .nav-tab.active{background:rgba(255,255,255,.15);color:#fff}
+  .header-btns{display:flex;gap:8px;padding:8px 0}
+  .btn-export{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 14px;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit}
+  .btn-add{background:#4361EE;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+
+  /* Filter Bar */
+  .filter-bar{background:#fff;border-bottom:1px solid #EBEBEB;padding:10px 28px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .filter-group{display:flex;align-items:center;gap:5px}
+  .filter-group label{font-size:11px;color:#888;font-weight:600}
+  .filter-group select{padding:5px 8px;border-radius:6px;border:1.5px solid #E0E0E0;font-size:12px;color:#333;background:#FAFAFA;font-family:inherit}
+  .filter-count{margin-left:auto;font-size:11px;color:#aaa}
+  .btn-clear{background:none;border:none;color:#E74C3C;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+
+  /* Content */
+  .content{padding:22px 28px}
+
+  /* LIST VIEW */
+  .table-wrap{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:#F8F8FC}
+  th{padding:10px 14px;text-align:left;font-weight:700;color:#888;font-size:11px;letter-spacing:.5px;border-bottom:1.5px solid #EBEBEB}
+  tbody tr{border-bottom:1px solid #F0F0F0;transition:background .1s}
+  tbody tr:hover{background:#FAFAFE}
+  td{padding:10px 14px;vertical-align:middle}
+  .td-date{color:#555;white-space:nowrap}
+  .td-note{color:#888;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .td-actions button{background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit}
+  .btn-edit{color:#4361EE;margin-right:8px}
+  .btn-delete{color:#E74C3C}
+
+  /* BADGE */
+  .badge{display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+  .badge-market{background:#EEEEFF;color:#4361EE}
+  .status-pill{display:inline-flex;align-items:center;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;flex-shrink:0}
+
+  /* KANBAN */
+  .kanban{display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
+  .kanban-col{min-width:260px;flex:1;background:#F8F8FC;border-radius:12px;padding:14px}
+  .kanban-col-header{display:flex;align-items:center;margin-bottom:12px}
+  .kanban-col-title{font-weight:700;font-size:13px}
+  .kanban-col-count{margin-left:auto;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700}
+  .kanban-card{background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s}
+  .kanban-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+  .kanban-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .kanban-card-name{font-weight:700;color:#1a1a2e;font-size:14px;margin-bottom:4px}
+  .kanban-card-meta{font-size:12px;color:#888}
+  .kanban-card-note{font-size:11px;color:#aaa;margin-top:6px;font-style:italic}
+  .btn-kanban-del{background:none;border:none;cursor:pointer;color:#DDD;font-size:15px;line-height:1;font-family:inherit}
+
+  /* TIMELINE */
+  .timeline{max-width:720px;margin:0 auto}
+  .tl-row{display:flex;gap:20px;margin-bottom:20px}
+  .tl-date{text-align:right;min-width:90px;padding-top:4px}
+  .tl-date-main{font-size:13px;font-weight:700;color:#1a1a2e}
+  .tl-date-year{font-size:11px;color:#aaa}
+  .tl-body{position:relative;padding-left:20px;flex:1}
+  .tl-line{position:absolute;left:0;top:0;bottom:0;width:2px;background:#EBEBEB}
+  .tl-dot{position:absolute;left:-4px;top:6px;width:10px;height:10px;border-radius:50%;background:#4361EE;border:2px solid #fff;box-shadow:0 0 0 2px #4361EE}
+  .tl-cards{display:flex;flex-wrap:wrap;gap:8px}
+  .tl-card{background:#fff;border-radius:10px;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.07);min-width:160px}
+  .tl-card-name{font-weight:700;font-size:13px;color:#1a1a2e;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .tl-badges{display:flex;gap:4px;flex-wrap:wrap}
+
+  /* STATS */
+  .stats{display:flex;flex-direction:column;gap:24px}
+  .stat-card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .stat-title{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:16px}
+  .bar-chart{display:flex;gap:6px;align-items:flex-end;height:90px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .bar-val{font-size:10px;color:#888}
+  .bar-fill{width:100%;border-radius:4px;transition:height .3s}
+  .bar-label{font-size:9px;color:#aaa}
+  .designer-group-label{font-size:11px;font-weight:700;color:#aaa;letter-spacing:.5px;margin-bottom:8px}
+  .designer-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+  .designer-name{width:70px;font-size:12px;font-weight:600;color:#333;text-align:right}
+  .designer-bar-wrap{flex:1;background:#F0F0F0;border-radius:6px;height:12px;overflow:hidden}
+  .designer-bar{background:#4361EE;height:100%;border-radius:6px;transition:width .4s}
+  .designer-count{width:28px;font-size:12px;font-weight:700;color:#4361EE}
+  .type-grid{display:flex;flex-wrap:wrap;gap:8px}
+  .type-chip{border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:8px}
+  .type-chip-label{font-size:12px;font-weight:700}
+  .type-chip-count{font-size:14px;font-weight:800;color:#1a1a2e}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,15,25,.6);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+  .modal{background:#fff;border-radius:16px;padding:32px;width:420px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,.2)}
+  .modal h3{font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:20px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}
+  .form-group input,.form-group select{width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e0e0e0;font-size:14px;outline:none;font-family:inherit}
+  .modal-btns{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+  .btn-cancel{background:#f5f5f5;color:#333;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit}
+  .btn-save{background:#1a1a2e;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit}
+
+  .empty{text-align:center;padding:60px;color:#bbb;font-size:14px}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const MARKETS = ["AP","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
+const JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout"];
+const DESIGNERS = {
+  "2D": ["Faye","Alan","Avis","Carol","Roy","Jou"],
+  "插畫": ["Mona","Cathy","Emilia","Echo","Heiwin"],
+  "3D": []
+};
+const ALL_DESIGNERS = Object.values(DESIGNERS).flat();
+const STATUSES = ["進行中","已完成","擱置"];
+const STATUS_STYLE = {
+  "進行中": { bg:"#E8F4FD", text:"#2980B9", dot:"#2980B9" },
+  "已完成":  { bg:"#EAFAF1", text:"#27AE60", dot:"#27AE60" },
+  "擱置":   { bg:"#FEF9E7", text:"#D4AC0D", dot:"#D4AC0D" },
+};
+const TYPE_COLORS = ["#6C63FF","#FF6584","#43BCCD","#F9844A","#4CC9F0","#F72585","#7209B7","#3A0CA3","#4361EE","#4895EF"];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function typeColor(t){ return TYPE_COLORS[JOB_TYPES.indexOf(t) % TYPE_COLORS.length] || "#888"; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+// Storage
+const KEY = "design_dispatch_cases";
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||"[]"); }catch{ return []; } }
+function save(c){ try{ localStorage.setItem(KEY,JSON.stringify(c)); }catch{} }
+
+// State
+let state = {
+  cases: load(),
+  view: "list",
+  filter: { market:"", designer:"", jobType:"", status:"" },
+  modal: null, // null | "new" | case object
+};
+
+function filtered(){
+  const f = state.filter;
+  return state.cases.filter(c=>
+    (!f.market   || c.market===f.market) &&
+    (!f.designer || c.designer===f.designer) &&
+    (!f.jobType  || c.jobType===f.jobType) &&
+    (!f.status   || c.status===f.status)
+  );
+}
+
+// Render helpers
+function badge(label, bg, color){
+  return `<span class="badge" style="background:${bg};color:${color}">${label}</span>`;
+}
+function statusPill(status){
+  const s = STATUS_STYLE[status]||{};
+  return `<span class="status-pill" style="background:${s.bg};color:${s.text}"><span class="dot" style="background:${s.dot}"></span>${status}</span>`;
+}
+function dot(status){
+  const s = STATUS_STYLE[status]||{};
+  return `<span class="dot" style="background:${s.dot}"></span>`;
+}
+
+// Views
+function renderList(cases){
+  const rows = cases.length===0
+    ? `<tr><td colspan="7" class="empty">尚無派案記錄</td></tr>`
+    : cases.map(c=>`
+      <tr>
+        <td class="td-date">${c.date}</td>
+        <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
+        <td>${badge(c.jobType, typeColor(c.jobType)+"28", typeColor(c.jobType))}</td>
+        <td style="font-weight:600">${c.designer}</td>
+        <td>${statusPill(c.status)}</td>
+        <td class="td-note">${c.note||"—"}</td>
+        <td class="td-actions" style="white-space:nowrap">
+          <button class="btn-edit" onclick="openEdit('${c.id}')">編輯</button>
+          <button class="btn-delete" onclick="deleteCase('${c.id}')">刪除</button>
+        </td>
+      </tr>`).join("");
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>日期</th><th>市場</th><th>案件種類</th><th>設計師</th><th>狀態</th><th>備註</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function renderKanban(cases){
+  return `<div class="kanban">${STATUSES.map(status=>{
+    const s = STATUS_STYLE[status];
+    const col = cases.filter(c=>c.status===status);
+    const cards = col.map(c=>`
+      <div class="kanban-card" onclick="openEdit('${c.id}')">
+        <div class="kanban-card-top">
+          ${badge(c.jobType, typeColor(c.jobType)+"28", typeColor(c.jobType))}
+          <button class="btn-kanban-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
+        </div>
+        <div class="kanban-card-name">${c.designer}</div>
+        <div class="kanban-card-meta">${c.market} · ${c.date}</div>
+        ${c.note?`<div class="kanban-card-note">${c.note}</div>`:""}
+      </div>`).join("");
+    return `<div class="kanban-col">
+      <div class="kanban-col-header">
+        ${dot(status)}<span class="kanban-col-title" style="color:${s.text}">${status}</span>
+        <span class="kanban-col-count" style="background:${s.bg};color:${s.text}">${col.length}</span>
+      </div>${cards}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderTimeline(cases){
+  if(!cases.length) return `<div class="empty">尚無派案記錄</div>`;
+  const map = {};
+  [...cases].sort((a,b)=>a.date.localeCompare(b.date)).forEach(c=>{ (map[c.date]=map[c.date]||[]).push(c); });
+  return `<div class="timeline">${Object.entries(map).map(([date,items])=>`
+    <div class="tl-row">
+      <div class="tl-date">
+        <div class="tl-date-main">${date.slice(5)}</div>
+        <div class="tl-date-year">${date.slice(0,4)}</div>
+      </div>
+      <div class="tl-body">
+        <div class="tl-line"></div>
+        <div class="tl-dot"></div>
+        <div class="tl-cards">${items.map(c=>`
+          <div class="tl-card">
+            <div class="tl-card-name">${c.designer}${dot(c.status)}</div>
+            <div class="tl-badges">
+              ${badge(c.market,"#EEEEFF","#4361EE")}
+              ${badge(c.jobType, typeColor(c.jobType)+"28", typeColor(c.jobType))}
+            </div>
+          </div>`).join("")}
+        </div>
+      </div>
+    </div>`).join("")}
+  </div>`;
+}
+
+function renderStats(){
+  const year = new Date().getFullYear();
+  const yearly = state.cases.filter(c=>c.date.startsWith(String(year)));
+
+  const byD = {}; ALL_DESIGNERS.forEach(d=>byD[d]=0);
+  yearly.forEach(c=>{ byD[c.designer]=(byD[c.designer]||0)+1; });
+
+  const byT = {}; JOB_TYPES.forEach(t=>byT[t]=0);
+  yearly.forEach(c=>{ byT[c.jobType]=(byT[c.jobType]||0)+1; });
+
+  const byM = Array(12).fill(0);
+  yearly.forEach(c=>{ byM[parseInt(c.date.slice(5,7))-1]++; });
+  const maxM = Math.max(...byM,1);
+  const maxD = Math.max(...Object.values(byD),1);
+
+  const monthBars = byM.map((v,i)=>`
+    <div class="bar-col">
+      <span class="bar-val">${v||""}</span>
+      <div class="bar-fill" style="background:${v?"#4361EE":"#F0F0F0"};height:${Math.max(4,v/maxM*60)}px"></div>
+      <span class="bar-label">${MONTH_NAMES[i]}</span>
+    </div>`).join("");
+
+  const designerRows = Object.entries(DESIGNERS).map(([group,list])=>{
+    if(!list.length) return "";
+    return `<div style="margin-bottom:14px">
+      <div class="designer-group-label">${group}</div>
+      ${list.map(d=>`
+        <div class="designer-row">
+          <div class="designer-name">${d}</div>
+          <div class="designer-bar-wrap"><div class="designer-bar" style="width:${byD[d]/maxD*100}%"></div></div>
+          <div class="designer-count">${byD[d]}</div>
+        </div>`).join("")}
+    </div>`;
+  }).join("");
+
+  const typeChips = Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`
+    <div class="type-chip" style="background:${typeColor(t)}18">
+      <span class="type-chip-label" style="color:${typeColor(t)}">${t}</span>
+      <span class="type-chip-count">${v}</span>
+    </div>`).join("") || `<span style="color:#bbb;font-size:13px">今年尚無資料</span>`;
+
+  return `<div class="stats">
+    <div class="stat-card"><div class="stat-title">📅 ${year} 年月份派案量</div><div class="bar-chart">${monthBars}</div></div>
+    <div class="stat-card"><div class="stat-title">👤 設計師派案量（${year}）</div>${designerRows}</div>
+    <div class="stat-card"><div class="stat-title">📋 案件種類分佈（${year}）</div><div class="type-grid">${typeChips}</div></div>
+  </div>`;
+}
+
+// Modal
+function renderModal(){
+  if(!state.modal) return "";
+  const c = state.modal==="new" ? { id:"",date:today(),market:"TW",jobType:"V1",designer:"Faye",status:"進行中",note:"" } : state.modal;
+  const isEdit = state.modal!=="new";
+
+  const designerOptions = Object.entries(DESIGNERS).map(([g,list])=>
+    list.length ? `<optgroup label="${g}">${list.map(d=>`<option${d===c.designer?" selected":""}>${d}</option>`).join("")}</optgroup>` : ""
+  ).join("");
+
+  return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h3>${isEdit?"✏️ 編輯案件":"＋ 新增派案"}</h3>
+      <div class="form-group"><label>日期</label><input type="date" id="f-date" value="${c.date}"/></div>
+      <div class="form-group"><label>市場</label><select id="f-market">${MARKETS.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
+      <div class="form-group"><label>案件種類</label><select id="f-jobType">${JOB_TYPES.map(j=>`<option${j===c.jobType?" selected":""}>${j}</option>`).join("")}</select></div>
+      <div class="form-group"><label>設計師</label><select id="f-designer">${designerOptions}</select></div>
+      <div class="form-group"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
+      <div class="form-group"><label>備註</label><input type="text" id="f-note" value="${c.note||""}" placeholder="選填"/></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-save" onclick="saveCase('${c.id}')">${isEdit?"儲存":"新增"}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Filter bar
+function renderFilter(){
+  if(state.view==="stats") return "";
+  const f = state.filter;
+  const hasFilter = Object.values(f).some(Boolean);
+  const sel = (key,opts)=>`<select onchange="setFilter('${key}',this.value)">
+    <option value="">全部</option>
+    ${opts.map(o=>`<option${o===f[key]?" selected":""}>${o}</option>`).join("")}
+  </select>`;
+  return `<div class="filter-bar">
+    <div class="filter-group"><label>市場</label>${sel("market",MARKETS)}</div>
+    <div class="filter-group"><label>設計師</label>${sel("designer",ALL_DESIGNERS)}</div>
+    <div class="filter-group"><label>案件種類</label>${sel("jobType",JOB_TYPES)}</div>
+    <div class="filter-group"><label>狀態</label>${sel("status",STATUSES)}</div>
+    <span class="filter-count">${filtered().length} 筆</span>
+    ${hasFilter?`<button class="btn-clear" onclick="clearFilter()">✕ 清除</button>`:""}
+  </div>`;
+}
+
+function render(){
+  const cases = filtered();
+  let viewHtml = "";
+  if(state.view==="list")     viewHtml = renderList(cases);
+  else if(state.view==="kanban")   viewHtml = renderKanban(cases);
+  else if(state.view==="timeline") viewHtml = renderTimeline(cases);
+  else                             viewHtml = renderStats();
+
+  const tabs = ["list","kanban","timeline","stats"];
+  const tabLabels = {"list":"☰ 列表","kanban":"⬛ 看板","timeline":"📅 時間軸","stats":"📊 統計"};
+
+  document.getElementById("app").innerHTML = `
+    <div class="header">
+      <div class="logo"><span>🎨 Design Dispatch</span><small>派案管理系統</small></div>
+      <div class="nav-tabs">${tabs.map(t=>`<button class="nav-tab${state.view===t?" active":""}" onclick="setView('${t}')">${tabLabels[t]}</button>`).join("")}</div>
+      <div class="header-btns">
+        <button class="btn-export" onclick="exportCSV()">⬇ 匯出 CSV</button>
+        <button class="btn-add" onclick="openNew()">＋ 新增派案</button>
+      </div>
+    </div>
+    ${renderFilter()}
+    <div class="content">${viewHtml}</div>
+    ${renderModal()}
+  `;
+}
+
+// Actions
+function setView(v){ state.view=v; render(); }
+function setFilter(k,v){ state.filter[k]=v; render(); }
+function clearFilter(){ state.filter={market:"",designer:"",jobType:"",status:""}; render(); }
+function openNew(){ state.modal="new"; render(); }
+function closeModal(){ state.modal=null; render(); }
+
+function openEdit(id){
+  const c = state.cases.find(x=>x.id===id);
+  if(c){ state.modal={...c}; render(); }
+}
+
+function saveCase(id){
+  const c = {
+    id: id || uid(),
+    date:     document.getElementById("f-date").value,
+    market:   document.getElementById("f-market").value,
+    jobType:  document.getElementById("f-jobType").value,
+    designer: document.getElementById("f-designer").value,
+    status:   document.getElementById("f-status").value,
+    note:     document.getElementById("f-note").value,
+  };
+  if(id){ state.cases = state.cases.map(x=>x.id===id?c:x); }
+  else   { state.cases = [c, ...state.cases]; }
+  save(state.cases);
+  state.modal = null;
+  render();
+}
+
+function deleteCase(id){
+  if(!confirm("確定刪除此案件？")) return;
+  state.cases = state.cases.filter(c=>c.id!==id);
+  save(state.cases);
+  render();
+}
+
+function exportCSV(){
+  const cases = filtered();
+  const header = ["日期","市場","案件種類","設計師","狀態","備註"];
+  const rows = cases.map(c=>[c.date,c.market,c.jobType,c.designer,c.status,c.note||""].join(","));
+  const csv = [header.join(","),...rows].join("\n");
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download=`dispatch_${today()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>
