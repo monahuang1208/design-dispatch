@@ -256,11 +256,15 @@ const KEY_CASES = "dd_cases_v2";
 const KEY_SETTINGS = "dd_settings_v2";
 const KEY_VACATIONS = "dd_vacations_v2";
 const KEY_THUMBS = "dd_thumbs_v2";
+const KEY_FREEROWS = "dd_freerows_v2";
 
 function loadCases(){ try{ return JSON.parse(localStorage.getItem(KEY_CASES)||"[]"); }catch{ return []; } }
 function saveCases(c){ localStorage.setItem(KEY_CASES,JSON.stringify(c)); }
 function loadVacations(){ try{ return JSON.parse(localStorage.getItem(KEY_VACATIONS)||"[]"); }catch{ return []; } }
 function saveVacations(v){ localStorage.setItem(KEY_VACATIONS,JSON.stringify(v)); }
+// Free rows: [{id, label, cells:{dateStr: text}}]
+function loadFreeRows(){ try{ return JSON.parse(localStorage.getItem(KEY_FREEROWS)||"[]"); }catch{ return []; } }
+function saveFreeRows(r){ localStorage.setItem(KEY_FREEROWS,JSON.stringify(r)); }
 function loadSettings(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY_SETTINGS)||"{}");
@@ -344,7 +348,8 @@ function arrLabel(arr){ return toArr(arr).join(", ")||"—"; }
 let S = {
   cases: loadCases(),
   settings: loadSettings(),
-  vacations: loadVacations(), // [{designer, start, end}]
+  vacations: loadVacations(),
+  freeRows: loadFreeRows(), // [{id, label, cells:{dateStr:text}}]
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   kanbanWeek: "all", // "all" | "this" | "next"
@@ -537,6 +542,32 @@ function renderTimeline(cases){
     </div>`).join("")}</div>`;
 }
 
+// ── FREE ROWS (自由文字列) ────────────────────────────────────────
+function renderFreeRows(dates){
+  if(!S.freeRows||!S.freeRows.length) return "";
+  return S.freeRows.map(row=>{
+    const cells=dates.map(date=>{
+      const text=row.cells[date]||"";
+      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;min-width:130px;background:#FFFEF5">
+        <div contenteditable="true"
+          onblur="saveFreeCell('${row.id}','${date}',this.innerText.trim())"
+          style="font-size:10px;color:#555;min-height:20px;outline:none;line-height:1.5;white-space:pre-wrap;word-break:break-word"
+        >${text}</div>
+      </td>`;
+    }).join("");
+    return `<tr>
+      <td style="background:#FFFEF5;position:sticky;left:0;z-index:5;padding:6px 10px;border:1px solid #E8E8F0;border-right:2px solid #D0D0E8;vertical-align:middle">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span contenteditable="true" onblur="saveFreeRowLabel('${row.id}',this.innerText.trim())"
+            style="font-size:11px;font-weight:700;color:#888;outline:none;min-width:30px;cursor:text"
+          >${row.label||"備注列"}</span>
+          <button onclick="deleteFreeRow('${row.id}')" title="刪除此列" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:0;line-height:1;flex-shrink:0" onmouseover="this.style.color='#E74C3C'" onmouseout="this.style.color='#ccc'">×</button>
+        </div>
+      </td>${cells}
+    </tr>`;
+  }).join("");
+}
+
 // ── EXCEL VIEW (Weekly Calendar by Deadline) ───────────────────
 const DAY_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -663,19 +694,27 @@ function renderExcel(cases){
         const dlSt=deadlineStatus(c.deadline);
         const chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":c.status==="已完成"?"#EAFAF1":"#fff";
         const chipBorder=dlSt==="urgent"?"#E74C3C":dlSt==="warn"?"#D4AC0D":c.status==="已完成"?"#27AE60":tc;
-        const noteHtml=c.note?`<div style="font-size:9px;color:#888;margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${c.note}</div>`:"";
-        // Multi-designer indicator (show other designers if >1)
+        const isDone=c.status==="已完成";
+        const strikeStyle=isDone?"text-decoration:line-through;opacity:0.55":"";
+        // Main text: note if set, else jobTypes · market
+        const mainText=c.note||(toArr(c.jobTypes).join("/")+` · ${c.market}`);
+        // Sub line: jobTypes·market hint (when note shown) + deadlineTime
+        const subParts=[];
+        if(c.note) subParts.push(toArr(c.jobTypes).join("/")+` · ${c.market}`);
+        if(c.deadlineTime) subParts.push(`⏰ ${c.deadlineTime}`);
+        const subHtml=subParts.length?`<div style="font-size:9px;color:#888;margin-top:1px;line-height:1.3;${isDone?"opacity:0.55":""}">${subParts.join(" · ")}</div>`:"";
+        // Multi-designer indicator
         const otherDesigners=toArr(c.designers).filter(d=>d!==designer);
-        const coDesignerHtml=otherDesigners.length?`<span style="font-size:9px;color:#888;margin-left:2px">+${otherDesigners.join(",")}</span>`:"";
+        const coDesignerHtml=otherDesigners.length?`<span style="font-size:9px;color:#aaa;margin-left:2px">+${otherDesigners.join(",")}</span>`:"";
         // Status quick-change
         const nextStatus=c.status==="進行中"?"已完成":c.status==="已完成"?"擱置":"進行中";
         const statusIcon=c.status==="已完成"?"✅":c.status==="擱置"?"⏸":"▶";
         return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
-            <span style="font-size:10px;font-weight:700;color:${tc};flex:1;line-height:1.3">${toArr(c.jobTypes).join("/")} · ${c.market}${coDesignerHtml}</span>
+            <span style="font-size:10px;font-weight:700;color:${tc};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
             <button onclick="event.stopPropagation();quickStatus('${c.id}','${nextStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
           </div>
-          ${noteHtml}
+          ${subHtml}
         </div>`;
       }).join("");
 
@@ -719,8 +758,11 @@ function renderExcel(cases){
         <th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888">設計師 ╲ 截止日</th>
         ${dateHeaders}
       </tr></thead>
-      <tbody>${rows}</tbody>
+      <tbody>${rows}${renderFreeRows(dates)}</tbody>
     </table>
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid var(--border);background:#FAFAFE">
+      <button onclick="addFreeRow()" style="background:none;border:1.5px dashed #C0C0D8;border-radius:7px;padding:5px 14px;font-size:11px;font-weight:700;color:#888;cursor:pointer;font-family:inherit">＋ 新增自由文字列</button>
     </div>
   </div>`;
 }
@@ -911,6 +953,9 @@ function renderModal(){
       <div class="form-row">
         <div class="fg-modal"><label>派案日期</label><input type="date" id="f-date" value="${c.date}"/></div>
         <div class="fg-modal"><label>截止日期</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
+      </div>
+      <div class="form-row">
+        <div class="fg-modal"><label>截止時間 <span style="font-weight:400;color:#aaa">（如：中午前、17:00）</span></label><input type="text" id="f-deadline-time" placeholder="選填，如：中午前、EOD、17:00" value="${c.deadlineTime||""}"/></div>
       </div>
       <div class="form-row">
         <div class="fg-modal"><label>市場</label><select id="f-market">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
@@ -1106,6 +1151,7 @@ function saveCase(id){
     id:id||uid(),
     date:document.getElementById("f-date").value,
     deadline:document.getElementById("f-deadline").value||"",
+    deadlineTime:document.getElementById("f-deadline-time")?.value.trim()||"",
     market:document.getElementById("f-market").value,
     jobTypes:curJobTypes.length?curJobTypes:[S.settings.jobTypes[0]||"V1"],
     designers:curDesigners.length?curDesigners:[allDesigners(S.settings.designers)[0]||""],
@@ -1249,6 +1295,33 @@ function addDesignerGroup(){ const v=document.getElementById("new-designer-group
 
 function removeSales(i){ S.settings.sales.splice(i,1); saveAndRender(); }
 function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(v&&!S.settings.sales.includes(v)){ S.settings.sales.push(v); saveAndRender(); } }
+
+// ── FREE ROW ACTIONS ───────────────────────────────────────────
+function addFreeRow(){
+  const row={id:uid(),label:"備注列",cells:{}};
+  S.freeRows=[...S.freeRows,row];
+  saveFreeRows(S.freeRows);
+  render();
+}
+function deleteFreeRow(id){
+  if(!confirm("確定刪除此列？")) return;
+  S.freeRows=S.freeRows.filter(r=>r.id!==id);
+  saveFreeRows(S.freeRows);
+  render();
+}
+function saveFreeRowLabel(id,label){
+  S.freeRows=S.freeRows.map(r=>r.id===id?{...r,label:label||"備注列"}:r);
+  saveFreeRows(S.freeRows);
+}
+function saveFreeCell(rowId,date,text){
+  S.freeRows=S.freeRows.map(r=>{
+    if(r.id!==rowId) return r;
+    const cells={...r.cells};
+    if(text) cells[date]=text; else delete cells[date];
+    return {...r,cells};
+  });
+  saveFreeRows(S.freeRows);
+}
 
 // ── INIT ───────────────────────────────────────────────────────
 cleanupOldThumbs();
