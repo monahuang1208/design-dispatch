@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>🎨 Design Dispatch v2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #F0F1F7;
@@ -211,6 +212,11 @@ td{padding:9px 12px;vertical-align:middle}
 <div id="app"></div>
 
 <script>
+// ── SUPABASE ───────────────────────────────────────────────────
+const SUPA_URL = "https://lczpbtkoxsvlsucbqoxp.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw";
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
 // ── CONSTANTS ──────────────────────────────────────────────────
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DEFAULT_JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout"];
@@ -258,27 +264,98 @@ const KEY_VACATIONS = "dd_vacations_v2";
 const KEY_THUMBS = "dd_thumbs_v2";
 const KEY_FREEROWS = "dd_freerows_v2";
 
-function loadCases(){ try{ return JSON.parse(localStorage.getItem(KEY_CASES)||"[]"); }catch{ return []; } }
-function saveCases(c){ localStorage.setItem(KEY_CASES,JSON.stringify(c)); }
-function loadVacations(){ try{ return JSON.parse(localStorage.getItem(KEY_VACATIONS)||"[]"); }catch{ return []; } }
-function saveVacations(v){ localStorage.setItem(KEY_VACATIONS,JSON.stringify(v)); }
-// Free rows: [{id, label, cells:{dateStr: text}}]
-function loadFreeRows(){ try{ return JSON.parse(localStorage.getItem(KEY_FREEROWS)||"[]"); }catch{ return []; } }
-function saveFreeRows(r){ localStorage.setItem(KEY_FREEROWS,JSON.stringify(r)); }
-function loadSettings(){
-  try{
-    const s = JSON.parse(localStorage.getItem(KEY_SETTINGS)||"{}");
-    return {
-      jobTypes: s.jobTypes || DEFAULT_JOB_TYPES,
-      markets: s.markets || DEFAULT_MARKETS,
-      designers: s.designers || DEFAULT_DESIGNERS,
-      sales: s.sales || DEFAULT_SALES,
-    };
-  } catch { return { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES }; }
-}
-function saveSettings(s){ localStorage.setItem(KEY_SETTINGS,JSON.stringify(s)); }
+// ── SUPABASE DATA LAYER ────────────────────────────────────────
+// 所有讀寫都是 async，透過 initApp() 統一載入
 
-// ── THUMBNAIL STORAGE ──────────────────────────────────────────
+// Cases
+async function loadCases(){
+  const {data,error}=await db.from("cases").select("*").order("created_at",{ascending:false});
+  if(error){ console.error("loadCases",error); return []; }
+  return (data||[]).map(dbToCase);
+}
+async function saveCase_db(c){
+  const row=caseToDb(c);
+  const {error}=await db.from("cases").upsert(row,{onConflict:"id"});
+  if(error) console.error("saveCase_db",error);
+}
+async function deleteCaseDb(id){
+  const {error}=await db.from("cases").delete().eq("id",id);
+  if(error) console.error("deleteCaseDb",error);
+}
+
+// Vacations
+async function loadVacations(){
+  const {data,error}=await db.from("vacations").select("*");
+  if(error){ console.error("loadVacations",error); return []; }
+  return (data||[]).map(r=>({_dbId:r.id, designer:r.designer, start:r.start_date, end:r.end_date}));
+}
+async function addVacationDb(designer,start,end){
+  const {data,error}=await db.from("vacations").insert({designer,start_date:start,end_date:end}).select().single();
+  if(error){ console.error("addVacationDb",error); return null; }
+  return {_dbId:data.id, designer, start, end};
+}
+async function removeVacationDb(dbId){
+  const {error}=await db.from("vacations").delete().eq("id",dbId);
+  if(error) console.error("removeVacationDb",error);
+}
+
+// Settings
+async function loadSettings(){
+  const {data,error}=await db.from("settings").select("*");
+  if(error){ console.error("loadSettings",error); }
+  const map={};
+  (data||[]).forEach(r=>{ map[r.key]=r.value; });
+  return {
+    jobTypes: map.jobTypes || DEFAULT_JOB_TYPES,
+    markets:  map.markets  || DEFAULT_MARKETS,
+    designers:map.designers|| DEFAULT_DESIGNERS,
+    sales:    map.sales    || DEFAULT_SALES,
+  };
+}
+async function saveSettings(s){
+  const rows=Object.entries(s).map(([key,value])=>({key,value}));
+  const {error}=await db.from("settings").upsert(rows,{onConflict:"key"});
+  if(error) console.error("saveSettings",error);
+}
+
+// Free rows
+async function loadFreeRows(){
+  const {data,error}=await db.from("free_rows").select("*");
+  if(error){ console.error("loadFreeRows",error); return []; }
+  return (data||[]).map(r=>({id:r.id,label:r.label,cells:r.cells||{}}));
+}
+async function saveFreeRowDb(row){
+  const {error}=await db.from("free_rows").upsert({id:row.id,label:row.label,cells:row.cells},{onConflict:"id"});
+  if(error) console.error("saveFreeRowDb",error);
+}
+async function deleteFreeRowDb(id){
+  const {error}=await db.from("free_rows").delete().eq("id",id);
+  if(error) console.error("deleteFreeRowDb",error);
+}
+
+// ── DB ↔ APP FIELD MAPPERS ─────────────────────────────────────
+function caseToDb(c){
+  return {
+    id:c.id, date:c.date, deadline:c.deadline||null,
+    deadline_time:c.deadlineTime||null,
+    market:c.market, job_types:c.jobTypes||[],
+    designers:c.designers||[], sales:c.sales||null,
+    status:c.status, note:c.note||null,
+    email_link:c.emailLink||null,
+  };
+}
+function dbToCase(r){
+  return {
+    id:r.id, date:r.date, deadline:r.deadline||"",
+    deadlineTime:r.deadline_time||"",
+    market:r.market, jobTypes:r.job_types||[],
+    designers:r.designers||[], sales:r.sales||"",
+    status:r.status, note:r.note||"",
+    emailLink:r.email_link||"",
+  };
+}
+
+// ── THUMBNAIL STORAGE（保留 localStorage，base64 不適合存 DB）──
 function loadThumbs(){ try{ return JSON.parse(localStorage.getItem(KEY_THUMBS)||"{}"); }catch{ return {}; } }
 function saveThumbs(t){ try{ localStorage.setItem(KEY_THUMBS,JSON.stringify(t)); }catch(e){ alert("圖片儲存空間不足，請刪除舊案件圖片後再試"); } }
 function getThumb(id){ return loadThumbs()[id]||null; }
@@ -346,10 +423,10 @@ function arrLabel(arr){ return toArr(arr).join(", ")||"—"; }
 
 // ── STATE ──────────────────────────────────────────────────────
 let S = {
-  cases: loadCases(),
-  settings: loadSettings(),
-  vacations: loadVacations(),
-  freeRows: loadFreeRows(), // [{id, label, cells:{dateStr:text}}]
+  cases: [],
+  settings: { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES },
+  vacations: [],
+  freeRows: [],
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   kanbanWeek: "all", // "all" | "this" | "next"
@@ -1143,7 +1220,6 @@ function checkVacationWarn(){
 function saveCase(id){
   const salesSel=document.getElementById("f-sales-select");
   const sales=(salesSel&&salesSel.value)||"";
-  // Read multi-select values from current S.modal state
   const isNew=!id||S.modal._preset;
   const curDesigners = isNew ? toArr(S.modal._preset?.designers) : toArr(S.modal.designers);
   const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
@@ -1161,8 +1237,8 @@ function saveCase(id){
     emailLink:"",
   };
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
-  else   { S.cases=[c,...S.cases]; }
-  saveCases(S.cases);
+  else { S.cases=[c,...S.cases]; }
+  saveCase_db(c);
   S.modal=null; S.parseText=""; S.parseStatus="";
   render();
 }
@@ -1171,7 +1247,7 @@ function deleteCaseFromModal(id){
   if(!confirm("確定刪除此案件？")) return;
   S.cases=S.cases.filter(c=>c.id!==id);
   removeThumb(id);
-  saveCases(S.cases);
+  deleteCaseDb(id);
   S.modal=null;
   render();
 }
@@ -1180,7 +1256,7 @@ function deleteCase(id){
   if(!confirm("確定刪除此案件？")) return;
   S.cases=S.cases.filter(c=>c.id!==id);
   removeThumb(id);
-  saveCases(S.cases);
+  deleteCaseDb(id);
   render();
 }
 
@@ -1199,40 +1275,19 @@ function openThumbUpload(id){
   inp.click();
 }
 
-
 // ── EMAIL PARSER (rule-based) ──────────────────────────────────
 function parseEmail(){
   const text=document.getElementById("email-paste")?.value||"";
   S.parseText=text;
   if(!text.trim()){ S.parseStatus="請貼上信件內容"; render(); return; }
-
   const txt=text.toUpperCase();
   const result={};
-
-  // Market
-  for(const m of S.settings.markets){
-    if(txt.includes(m.toUpperCase())){ result.market=m; break; }
-  }
-  // Job type
-  for(const j of S.settings.jobTypes){
-    if(txt.toUpperCase().includes(j.toUpperCase())){ result.jobType=j; break; }
-  }
-  // Deadline - look for date patterns YYYY/MM/DD or MM/DD or YYYY-MM-DD
-  const dlMatch=text.match(/(?:deadline|截止|due|by|before)[^\d]*(\d{4}[-/]\d{1,2}[-/]\d{1,2})/i)
-    || text.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
-  if(dlMatch){
-    result.deadline=dlMatch[1].replace(/\//g,"-");
-  }
-  // Designer
-  for(const d of allDesigners(S.settings.designers)){
-    if(text.includes(d)){ result.designer=d; break; }
-  }
-  // Sales
-  for(const s of S.settings.sales){
-    if(text.toLowerCase().includes(s.toLowerCase())){ result.sales=s; break; }
-  }
-
-  // Apply to form — for multi-select, update S.modal state
+  for(const m of S.settings.markets){ if(txt.includes(m.toUpperCase())){ result.market=m; break; } }
+  for(const j of S.settings.jobTypes){ if(txt.toUpperCase().includes(j.toUpperCase())){ result.jobType=j; break; } }
+  const dlMatch=text.match(/(?:deadline|截止|due|by|before)[^\d]*(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/i)||text.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/);
+  if(dlMatch){ result.deadline=dlMatch[1].replace(/\//g,"-"); }
+  for(const d of allDesigners(S.settings.designers)){ if(text.includes(d)){ result.designer=d; break; } }
+  for(const s of S.settings.sales){ if(text.toLowerCase().includes(s.toLowerCase())){ result.sales=s; break; } }
   if(result.market){ const el=document.getElementById("f-market"); if(el) el.value=result.market; }
   if(result.jobType){
     if(S.modal&&S.modal._preset){ S.modal._preset.jobTypes=[result.jobType]; }
@@ -1243,12 +1298,10 @@ function parseEmail(){
     if(S.modal&&S.modal._preset){ S.modal._preset.designers=[result.designer]; }
     else if(S.modal){ S.modal.designers=[result.designer]; }
   }
-
   const found=Object.keys(result).length;
   S.parseStatus=found
     ? `✅ 辨識到 ${found} 個欄位：${Object.entries(result).map(([k,v])=>`${k}=${v}`).join("、")}`
     : "⚠️ 未辨識到已知欄位，請手動填寫";
-  // Re-render modal area only (keep form state)
   const ps=document.getElementById("parse-status");
   if(ps) ps.textContent=S.parseStatus;
 }
@@ -1256,27 +1309,31 @@ function parseEmail(){
 // ── VACATION ACTIONS ───────────────────────────────────────────
 function openVacationModal(designer){ S.vacationModal={designer}; render(); }
 function closeVacationModal(){ S.vacationModal=null; render(); }
-function addVacation(designer){
+async function addVacation(designer){
   const start=document.getElementById("vac-start")?.value;
   const end=document.getElementById("vac-end")?.value;
   if(!start||!end){ alert("請選擇開始與結束日期"); return; }
   if(end<start){ alert("結束日期不能早於開始日期"); return; }
-  S.vacations=[...S.vacations,{designer,start,end}];
-  saveVacations(S.vacations);
+  const row=await addVacationDb(designer,start,end);
+  if(row) S.vacations=[...S.vacations,row];
   render();
 }
-function removeVacation(designer,idx){
+async function removeVacation(designer,idx){
   const list=S.vacations.filter(v=>v.designer===designer);
-  list.splice(idx,1);
-  S.vacations=S.vacations.filter(v=>v.designer!==designer).concat(list);
-  saveVacations(S.vacations);
+  const target=list[idx];
+  if(!target) return;
+  await removeVacationDb(target._dbId);
+  S.vacations=S.vacations.filter(v=>v!==target);
   render();
 }
 
 // ── QUICK STATUS TOGGLE ────────────────────────────────────────
 function quickStatus(id,newStatus){
-  S.cases=S.cases.map(c=>c.id===id?{...c,status:newStatus}:c);
-  saveCases(S.cases);
+  const c=S.cases.find(x=>x.id===id);
+  if(!c) return;
+  const updated={...c,status:newStatus};
+  S.cases=S.cases.map(x=>x.id===id?updated:x);
+  saveCase_db(updated);
   render();
 }
 
@@ -1297,35 +1354,69 @@ function removeSales(i){ S.settings.sales.splice(i,1); saveAndRender(); }
 function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(v&&!S.settings.sales.includes(v)){ S.settings.sales.push(v); saveAndRender(); } }
 
 // ── FREE ROW ACTIONS ───────────────────────────────────────────
-function addFreeRow(){
+async function addFreeRow(){
   const row={id:uid(),label:"備注列",cells:{}};
   S.freeRows=[...S.freeRows,row];
-  saveFreeRows(S.freeRows);
+  await saveFreeRowDb(row);
   render();
 }
-function deleteFreeRow(id){
+async function deleteFreeRow(id){
   if(!confirm("確定刪除此列？")) return;
   S.freeRows=S.freeRows.filter(r=>r.id!==id);
-  saveFreeRows(S.freeRows);
+  await deleteFreeRowDb(id);
   render();
 }
-function saveFreeRowLabel(id,label){
+async function saveFreeRowLabel(id,label){
   S.freeRows=S.freeRows.map(r=>r.id===id?{...r,label:label||"備注列"}:r);
-  saveFreeRows(S.freeRows);
+  const row=S.freeRows.find(r=>r.id===id);
+  if(row) await saveFreeRowDb(row);
 }
-function saveFreeCell(rowId,date,text){
+async function saveFreeCell(rowId,date,text){
   S.freeRows=S.freeRows.map(r=>{
     if(r.id!==rowId) return r;
     const cells={...r.cells};
     if(text) cells[date]=text; else delete cells[date];
     return {...r,cells};
   });
-  saveFreeRows(S.freeRows);
+  const row=S.freeRows.find(r=>r.id===rowId);
+  if(row) await saveFreeRowDb(row);
+}
+
+// ── LOADING SCREEN ─────────────────────────────────────────────
+function renderLoading(){
+  document.getElementById("app").innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;color:#888">
+      <div style="font-size:32px">🎨</div>
+      <div style="font-size:14px;font-weight:600">Design Dispatch 載入中…</div>
+      <div style="width:200px;height:3px;background:#eee;border-radius:2px;overflow:hidden">
+        <div style="width:40%;height:100%;background:var(--accent);border-radius:2px;animation:loading-bar 1.2s ease-in-out infinite"></div>
+      </div>
+    </div>
+    <style>@keyframes loading-bar{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}</style>`;
 }
 
 // ── INIT ───────────────────────────────────────────────────────
-cleanupOldThumbs();
-render();
+async function initApp(){
+  renderLoading();
+  try {
+    const [cases, settings, vacations, freeRows] = await Promise.all([
+      loadCases(), loadSettings(), loadVacations(), loadFreeRows()
+    ]);
+    S.cases=cases;
+    S.settings=settings;
+    S.vacations=vacations;
+    S.freeRows=freeRows;
+    cleanupOldThumbs();
+    render();
+  } catch(e) {
+    console.error("initApp failed",e);
+    document.getElementById("app").innerHTML=`<div style="padding:40px;text-align:center;color:#E74C3C">
+      <div style="font-size:24px;margin-bottom:12px">⚠️ 連線失敗</div>
+      <div style="font-size:13px;color:#888">無法連接到資料庫，請檢查網路後重新整理</div>
+    </div>`;
+  }
+}
+initApp();
 </script>
 </body>
 </html>
