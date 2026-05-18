@@ -220,10 +220,9 @@ function allDesigners(dObj){ return Object.values(dObj).flat(); }
 function deadlineStatus(dl){
   if(!dl) return "none";
   const diff = Math.ceil((new Date(dl)-new Date(today()))/(1000*60*60*24));
-  if(diff<0) return "urgent";
-  if(diff<=3) return "urgent";
-  if(diff<=7) return "warn";
-  return "ok";
+  if(diff<0) return "urgent";   // 逾期
+  if(diff<=1) return "warn";    // 今天或明天截止 → 黃色
+  return "ok";                  // 其餘 → 綠色
 }
 function deadlineLabel(dl){
   if(!dl) return "無截止日";
@@ -237,9 +236,12 @@ function deadlineLabel(dl){
 // ── STORAGE ────────────────────────────────────────────────────
 const KEY_CASES = "dd_cases_v2";
 const KEY_SETTINGS = "dd_settings_v2";
+const KEY_VACATIONS = "dd_vacations_v2";
 
 function loadCases(){ try{ return JSON.parse(localStorage.getItem(KEY_CASES)||"[]"); }catch{ return []; } }
 function saveCases(c){ localStorage.setItem(KEY_CASES,JSON.stringify(c)); }
+function loadVacations(){ try{ return JSON.parse(localStorage.getItem(KEY_VACATIONS)||"[]"); }catch{ return []; } }
+function saveVacations(v){ localStorage.setItem(KEY_VACATIONS,JSON.stringify(v)); }
 function loadSettings(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY_SETTINGS)||"{}");
@@ -269,9 +271,12 @@ function exportCSV(cases){
 let S = {
   cases: loadCases(),
   settings: loadSettings(),
+  vacations: loadVacations(), // [{designer, start, end}]
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
-  modal: null, // null | "new" | case obj
+  excelWeekOffset: 0, // 0=current week, -1=prev, +1=next etc
+  modal: null,
+  vacationModal: null, // {designer} when setting vacation
   parseText: "",
   parseStatus: "",
 };
@@ -391,47 +396,187 @@ function renderTimeline(cases){
     </div>`).join("")}</div>`;
 }
 
-// ── EXCEL VIEW ─────────────────────────────────────────────────
-function renderExcel(cases){
-  // Get unique dates sorted
-  const dateSet=new Set(cases.map(c=>c.date));
-  // Add today if not present, and show a range
-  dateSet.add(today());
-  const dates=[...dateSet].sort();
+// ── EXCEL VIEW (Weekly Calendar by Deadline) ───────────────────
+const DAY_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+function getWeekDates(offset){
+  // Returns Mon-Fri dates for the week with given offset from current week
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day===0?6:day-1) + offset*7);
+  const dates=[];
+  for(let i=0;i<5;i++){
+    const d=new Date(mon);
+    d.setDate(mon.getDate()+i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  return dates;
+}
+
+function getWeekLabel(dates){
+  // e.g. "5/18 (Mon) – 5/22 (Fri)"
+  const fmt=d=>{
+    const dt=new Date(d);
+    return `${dt.getMonth()+1}/${dt.getDate()} (${DAY_SHORT[dt.getDay()]})`;
+  };
+  return `${fmt(dates[0])} – ${fmt(dates[4])}`;
+}
+
+function getMonthWeeks(year,month){
+  // Return all Mon-Fri weeks that overlap with given month
+  // Find first Monday of or before first day
+  const first=new Date(year,month,1);
+  const last=new Date(year,month+1,0);
+  const weeks=[];
+  let mon=new Date(first);
+  const fd=first.getDay();
+  mon.setDate(first.getDate()-(fd===0?6:fd-1));
+  while(mon<=last){
+    const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+    weeks.push({mon:new Date(mon),fri});
+    mon.setDate(mon.getDate()+7);
+  }
+  return weeks;
+}
+
+function isDesignerOnVacation(designer,dateStr){
+  return S.vacations.some(v=>v.designer===designer&&v.start<=dateStr&&v.end>=dateStr);
+}
+
+function renderExcel(cases){
   const types=S.settings.jobTypes;
   const designers=allDesigners(S.settings.designers);
   const todayStr=today();
+  const offset=S.excelWeekOffset;
+  const dates=getWeekDates(offset);
 
+  // Determine current month/year from the week
+  const refDate=new Date(dates[0]);
+  const curYear=refDate.getFullYear();
+  const curMonth=refDate.getMonth();
+  const monthLabel=`${curYear}年${curMonth+1}月`;
+
+  // Build month week tabs
+  const monthWeeks=getMonthWeeks(curYear,curMonth);
+  // Compute which week offset corresponds to each
+  const nowDate=new Date(todayStr);
+  const nowDay=nowDate.getDay();
+  const nowMon=new Date(nowDate); nowMon.setDate(nowDate.getDate()-(nowDay===0?6:nowDay-1));
+
+  const weekTabs=monthWeeks.map((w,i)=>{
+    const diffMs=w.mon-nowMon;
+    const wOffset=Math.round(diffMs/(7*24*3600*1000));
+    const isActive=wOffset===offset;
+    const wNum=i+1;
+    return `<button onclick="S.excelWeekOffset=${wOffset};render()" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;font-weight:${isActive?"700":"500"};cursor:pointer;font-family:inherit;background:${isActive?"var(--accent)":"#F0F0F8"};color:${isActive?"#fff":"var(--text2)"}">第${wNum}週</button>`;
+  }).join("");
+
+  // Date column headers
   const dateHeaders=dates.map(d=>{
     const isToday=d===todayStr;
-    const dd=new Date(d);
-    const label=`${d.slice(5)}<br><span style="font-weight:400;font-size:9px">${["日","一","二","三","四","五","六"][dd.getDay()]}</span>`;
-    return `<th class="excel-th-date${isToday?" today-col":""}">${label}</th>`;
+    const dt=new Date(d);
+    const label=`${dt.getMonth()+1}/${dt.getDate()} (${DAY_SHORT[dt.getDay()]})`;
+    return `<th class="excel-th-date${isToday?" today-col":""}" style="${isToday?"font-weight:800":""}">${label}</th>`;
   }).join("");
+
+  // Count cases per designer per day (for workload warning)
+  // keyed by designer+date
+  const dayCounts={};
+  S.cases.forEach(c=>{
+    // count by deadline date
+    if(c.deadline){
+      const k=`${c.designer}|${c.deadline}`;
+      dayCounts[k]=(dayCounts[k]||0)+1;
+    }
+  });
 
   const rows=designers.map(designer=>{
+    // Workload: count cases with deadline in this week
+    const weekCount=dates.reduce((sum,d)=>{
+      return sum+(dayCounts[`${designer}|${d}`]||0);
+    },0);
+
+    const designerCellStyle=weekCount>2?"background:#FFF3E0;color:#E65100":"";
+    const overloadBadge=weekCount>2?` <span style="background:#FF9800;color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;font-weight:700">⚠️${weekCount}</span>`:"";
+
     const cells=dates.map(date=>{
       const isToday=date===todayStr;
-      const dayCases=cases.filter(c=>c.designer===designer&&c.date===date);
-      const chips=dayCases.map(c=>{
+      const onVacation=isDesignerOnVacation(designer,date);
+
+      if(onVacation){
+        return `<td class="excel-cell${isToday?" today-col":""}" style="background:#FFF8E1;position:relative">
+          <div style="text-align:center;padding:8px 4px;color:#F9A825;font-size:11px;font-weight:700">🏖 休假</div>
+        </td>`;
+      }
+
+      // Cases by DEADLINE on this date
+      const dayCases=S.cases.filter(c=>c.designer===designer&&c.deadline===date&&c.status!=="已完成");
+      const completedCases=S.cases.filter(c=>c.designer===designer&&c.deadline===date&&c.status==="已完成");
+      const allDayCases=[...dayCases,...completedCases];
+
+      const chips=allDayCases.map(c=>{
         const tc=typeColor(c.jobType,types);
         const dlSt=deadlineStatus(c.deadline);
-        const urgentBorder=dlSt==="urgent"?"2px solid #E74C3C":dlSt==="warn"?"2px solid #D4AC0D":"none";
-        return `<div class="excel-chip" style="background:${tc}15;border-left-color:${tc};outline:${urgentBorder};outline-offset:-2px" onclick="openEdit('${c.id}')">
-          <div class="excel-chip-title">${c.jobType} · ${c.market}</div>
-          <div class="excel-chip-meta">${c.status}${c.deadline?" · "+deadlineLabel(c.deadline):""}</div>
+        const chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":c.status==="已完成"?"#EAFAF1":"#fff";
+        const chipBorder=dlSt==="urgent"?"#E74C3C":dlSt==="warn"?"#D4AC0D":c.status==="已完成"?"#27AE60":tc;
+        const noteHtml=c.note?`<div style="font-size:9px;color:#888;margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${c.note}</div>`:"";
+        // Status quick-change
+        const nextStatus=c.status==="進行中"?"已完成":c.status==="已完成"?"擱置":"進行中";
+        const statusIcon=c.status==="已完成"?"✅":c.status==="擱置"?"⏸":"▶";
+        return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
+          <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
+            <span style="font-size:10px;font-weight:700;color:${tc};flex:1;line-height:1.3">${c.jobType} · ${c.market}</span>
+            <button onclick="event.stopPropagation();quickStatus('${c.id}','${nextStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
+          </div>
+          ${noteHtml}
         </div>`;
       }).join("");
-      return `<td class="excel-cell${isToday?" today-col":""}">${chips}<button class="excel-add-btn" onclick="openNewForDesignerDate('${designer}','${date}')">＋</button></td>`;
+
+      return `<td class="excel-cell${isToday?" today-col":""}" style="vertical-align:top">
+        ${chips}
+        <button class="excel-add-btn" onclick="openNewForDesignerDate('${designer}','${date}')">＋</button>
+      </td>`;
     }).join("");
-    return `<tr><td class="excel-th-designer">${designer}</td>${cells}</tr>`;
+
+    return `<tr>
+      <td class="excel-th-designer" style="${designerCellStyle};vertical-align:middle">
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <span>${designer}${overloadBadge}</span>
+          <button onclick="openVacationModal('${designer}')" title="設定休假" style="background:#F0F0F8;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 4px;color:#888;font-family:inherit;margin-top:2px;white-space:nowrap">🏖</button>
+        </div>
+      </td>${cells}
+    </tr>`;
   }).join("");
 
-  return `<div class="excel-wrap"><table class="excel-table">
-    <thead><tr><th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888">設計師 ╲ 日期</th>${dateHeaders}</tr></thead>
-    <tbody>${rows}</tbody>
-  </table></div>`;
+  // Week navigation arrows
+  const prevWeek=`<button onclick="S.excelWeekOffset=${offset-1};render()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">‹</button>`;
+  const nextWeek=`<button onclick="S.excelWeekOffset=${offset+1};render()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">›</button>`;
+  const todayBtn=offset!==0?`<button onclick="S.excelWeekOffset=0;render()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:inherit;color:var(--accent)">本週</button>`:"";
+
+  const nav=`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:700;color:var(--text)">${monthLabel}</span>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">${weekTabs}</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+      ${prevWeek}
+      <span style="font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap">${getWeekLabel(dates)}</span>
+      ${nextWeek}
+      ${todayBtn}
+    </div>
+  </div>`;
+
+  return `<div class="excel-wrap">
+    ${nav}
+    <div style="overflow-x:auto">
+    <table class="excel-table">
+      <thead><tr>
+        <th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888">設計師 ╲ 截止日</th>
+        ${dateHeaders}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
 }
 
 // ── STATS VIEW ─────────────────────────────────────────────────
@@ -564,7 +709,7 @@ function renderModal(){
   if(!S.modal) return "";
   const isNew=S.modal==="new"||S.modal._preset;
   const c=isNew
-    ? { id:"",date:today(),deadline:"",market:S.settings.markets[0]||"TW",jobType:S.settings.jobTypes[0]||"V1",designer:(S.modal._preset?.designer||allDesigners(S.settings.designers)[0]||""),sales:"",status:"進行中",note:"",emailLink:"",emailNote:"", ...(S.modal._preset||{}) }
+    ? { id:"",date:today(),deadline:"",market:S.settings.markets[0]||"TW",jobType:S.settings.jobTypes[0]||"V1",designer:(S.modal._preset?.designer||allDesigners(S.settings.designers)[0]||""),sales:"",status:"進行中",note:"",emailLink:"", ...(S.modal._preset||{}), deadline: S.modal._preset?.deadline||"" }
     : S.modal;
 
   const types=S.settings.jobTypes;
@@ -576,18 +721,14 @@ function renderModal(){
     list.length?`<optgroup label="${g}">${list.map(d=>`<option${d===c.designer?" selected":""}>${d}</option>`).join("")}</optgroup>`:""
   ).join("");
 
-  const parseSection=`
-    <div class="email-section">
-      <label>📧 貼上信件內容（AI 自動辨識派案資訊）</label>
-      <textarea id="email-paste" placeholder="將信件內容貼上於此，系統會嘗試自動填入市場、案件種類、截止日等資訊...">${S.parseText}</textarea>
-      <button class="btn-parse" onclick="parseEmail()">🔍 自動辨識</button>
-      <div class="parse-status" id="parse-status">${S.parseStatus}</div>
-    </div>`;
+  const vacationWarn = isNew && c.designer && isDesignerOnVacation(c.designer, c.deadline||c.date)
+    ? `<div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#E65100">⚠️ <strong>${c.designer}</strong> 在此期間已設定休假，請確認是否仍要派案</div>`
+    : "";
 
   return `<div class="overlay" onclick="if(event.target===this)closeModal()">
     <div class="modal">
       <h3>${isNew?"＋ 新增派案":"✏️ 編輯案件"}</h3>
-      ${parseSection}
+      <div id="vac-warn">${vacationWarn}</div>
       <div class="form-row">
         <div class="fg-modal"><label>派案日期</label><input type="date" id="f-date" value="${c.date}"/></div>
         <div class="fg-modal"><label>截止日期</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
@@ -597,15 +738,13 @@ function renderModal(){
         <div class="fg-modal"><label>案件種類</label><select id="f-jobType">${types.map(j=>`<option${j===c.jobType?" selected":""}>${j}</option>`).join("")}</select></div>
       </div>
       <div class="form-row">
-        <div class="fg-modal"><label>設計師</label><select id="f-designer">${designerOpts}</select></div>
+        <div class="fg-modal"><label>設計師</label><select id="f-designer" onchange="checkVacationWarn()">${designerOpts}</select></div>
         <div class="fg-modal"><label>業務來源</label>
           <select id="f-sales-select" onchange="syncSalesInput()">${["",  ...sales].map(s=>`<option${s===c.sales?" selected":""}>${s}</option>`).join("")}</select>
-          <input type="text" id="f-sales" value="${c.sales||""}" placeholder="或直接輸入業務名稱" style="margin-top:5px"/>
         </div>
       </div>
       <div class="form-row">
         <div class="fg-modal"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
-        <div class="fg-modal"><label>信件連結</label><input type="text" id="f-emailLink" value="${c.emailLink||""}" placeholder="貼上信件 URL（選填）"/></div>
       </div>
       <div class="form-row single">
         <div class="fg-modal"><label>備註</label><textarea id="f-note" placeholder="專案說明、參考資訊...">${c.note||""}</textarea></div>
@@ -618,7 +757,39 @@ function renderModal(){
   </div>`;
 }
 
-// ── FILTER BAR ─────────────────────────────────────────────────
+// ── VACATION MODAL ─────────────────────────────────────────────
+function renderVacationModal(){
+  if(!S.vacationModal) return "";
+  const {designer}=S.vacationModal;
+  const existing=S.vacations.filter(v=>v.designer===designer);
+  const existingRows=existing.map((v,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#FFF8E1;border-radius:7px;margin-bottom:6px;font-size:12px">
+      <span>🏖</span>
+      <span>${v.start} ～ ${v.end}</span>
+      <button onclick="removeVacation('${designer}',${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#E74C3C;font-size:13px">×</button>
+    </div>`).join("")||`<div style="color:#bbb;font-size:12px;text-align:center;padding:8px">尚無休假記錄</div>`;
+  return `<div class="overlay" onclick="if(event.target===this)closeVacationModal()">
+    <div class="modal" style="max-width:380px">
+      <h3>🏖 ${designer} 的休假設定</h3>
+      <div style="margin-bottom:14px">${existingRows}</div>
+      <div style="background:#F8F8FF;border-radius:10px;padding:14px;border:1.5px solid #E0E0F5">
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px">新增休假區間</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">開始日期</label>
+            <input type="date" id="vac-start" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
+          </div>
+          <div><label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">結束日期</label>
+            <input type="date" id="vac-end" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
+          </div>
+        </div>
+        <button onclick="addVacation('${designer}')" style="margin-top:10px;width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">確認新增</button>
+      </div>
+      <div class="modal-btns" style="margin-top:14px">
+        <button class="btn-cancel" onclick="closeVacationModal()">關閉</button>
+      </div>
+    </div>
+  </div>`;
+}
 function renderFilter(){
   if(S.view==="stats"||S.view==="settings") return "";
   const f=S.filter;
@@ -679,6 +850,7 @@ function render(){
     ${renderFilter()}
     <div class="content">${viewHtml}</div>
     ${renderModal()}
+    ${renderVacationModal()}
   `;
 }
 
@@ -687,7 +859,7 @@ function setView(v){ S.view=v; render(); }
 function setFilter(k,v){ S.filter[k]=v; render(); }
 function clearFilter(){ S.filter={market:"",designer:"",jobType:"",status:"",sales:""}; render(); }
 function openNew(){ S.modal="new"; S.parseText=""; S.parseStatus=""; render(); }
-function openNewForDesignerDate(designer,date){ S.modal={_preset:{designer,date}}; S.parseText=""; S.parseStatus=""; render(); }
+function openNewForDesignerDate(designer,deadline){ S.modal={_preset:{designer,deadline}}; S.parseText=""; S.parseStatus=""; render(); }
 function closeModal(){ S.modal=null; S.parseText=""; S.parseStatus=""; render(); }
 
 function openEdit(id){
@@ -697,14 +869,24 @@ function openEdit(id){
 
 function syncSalesInput(){
   const sel=document.getElementById("f-sales-select");
-  const inp=document.getElementById("f-sales");
-  if(sel&&inp&&sel.value) inp.value=sel.value;
+  // f-sales input removed; sales value read from select only
+}
+
+function checkVacationWarn(){
+  const designer=document.getElementById("f-designer")?.value;
+  const deadline=document.getElementById("f-deadline")?.value||document.getElementById("f-date")?.value||"";
+  const warn=document.getElementById("vac-warn");
+  if(!warn) return;
+  if(designer && deadline && isDesignerOnVacation(designer,deadline)){
+    warn.innerHTML=`<div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#E65100">⚠️ <strong>${designer}</strong> 在此期間已設定休假，請確認是否仍要派案</div>`;
+  } else {
+    warn.innerHTML="";
+  }
 }
 
 function saveCase(id){
   const salesSel=document.getElementById("f-sales-select");
-  const salesInp=document.getElementById("f-sales");
-  const sales=(salesInp&&salesInp.value.trim())||(salesSel&&salesSel.value)||"";
+  const sales=(salesSel&&salesSel.value)||"";
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
@@ -715,7 +897,7 @@ function saveCase(id){
     sales,
     status:document.getElementById("f-status").value,
     note:document.getElementById("f-note").value,
-    emailLink:document.getElementById("f-emailLink").value,
+    emailLink:"",
   };
   if(id){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else   { S.cases=[c,...S.cases]; }
@@ -777,6 +959,33 @@ function parseEmail(){
   // Re-render modal area only (keep form state)
   const ps=document.getElementById("parse-status");
   if(ps) ps.textContent=S.parseStatus;
+}
+
+// ── VACATION ACTIONS ───────────────────────────────────────────
+function openVacationModal(designer){ S.vacationModal={designer}; render(); }
+function closeVacationModal(){ S.vacationModal=null; render(); }
+function addVacation(designer){
+  const start=document.getElementById("vac-start")?.value;
+  const end=document.getElementById("vac-end")?.value;
+  if(!start||!end){ alert("請選擇開始與結束日期"); return; }
+  if(end<start){ alert("結束日期不能早於開始日期"); return; }
+  S.vacations=[...S.vacations,{designer,start,end}];
+  saveVacations(S.vacations);
+  render();
+}
+function removeVacation(designer,idx){
+  const list=S.vacations.filter(v=>v.designer===designer);
+  list.splice(idx,1);
+  S.vacations=S.vacations.filter(v=>v.designer!==designer).concat(list);
+  saveVacations(S.vacations);
+  render();
+}
+
+// ── QUICK STATUS TOGGLE ────────────────────────────────────────
+function quickStatus(id,newStatus){
+  S.cases=S.cases.map(c=>c.id===id?{...c,status:newStatus}:c);
+  saveCases(S.cases);
+  render();
 }
 
 // ── SETTINGS ACTIONS ───────────────────────────────────────────
