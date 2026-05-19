@@ -471,10 +471,22 @@ function dlPill(dl){
 // ── LIST VIEW ──────────────────────────────────────────────────
 function renderList(cases){
   const types=S.settings.jobTypes;
-  const rows = cases.length===0
+  // Sort: deadline asc (no deadline last), then market asc
+  const sorted=[...cases].sort((a,b)=>{
+    if(!a.deadline&&!b.deadline) return a.market.localeCompare(b.market);
+    if(!a.deadline) return 1;
+    if(!b.deadline) return -1;
+    const dl=a.deadline.localeCompare(b.deadline);
+    if(dl!==0) return dl;
+    return a.market.localeCompare(b.market);
+  });
+  const rows = sorted.length===0
     ? `<tr><td colspan="9" class="empty">尚無派案記錄 — 點右上角「＋ 新增派案」開始</td></tr>`
-    : cases.map(c=>`
-      <tr>
+    : sorted.map(c=>{
+      const isDone=c.status==="已完成";
+      const rowBg=isDone?"background:#F5F5F5":"";
+      return `
+      <tr style="${rowBg}">
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
         <td>
           <div style="display:flex;flex-direction:column;gap:2px">
@@ -487,14 +499,25 @@ function renderList(cases){
         <td style="font-size:12px;font-weight:600">${arrLabel(c.designers)}</td>
         <td style="font-size:11px;color:#888">${c.sales||"—"}</td>
         <td>${statusPill(c.status)}</td>
-        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#888">${c.note||"—"}</td>
+        <td style="font-size:11px;color:#888">${c.note||"—"}</td>
         <td style="white-space:nowrap">
           ${c.emailLink?`<a href="${c.emailLink}" target="_blank" style="color:var(--accent);font-size:11px;margin-right:6px">📧</a>`:""}
           <button class="td-actions btn-edit" onclick="openEdit('${c.id}')">編輯</button>
           <button class="td-actions btn-del" onclick="deleteCase('${c.id}')">刪除</button>
         </td>
-      </tr>`).join("");
+      </tr>`;}).join("");
   return `<div class="table-wrap"><table>
+    <colgroup>
+      <col style="width:90px"/>
+      <col style="width:120px"/>
+      <col style="width:60px"/>
+      <col style="width:130px"/>
+      <col style="width:130px"/>
+      <col style="width:70px"/>
+      <col style="width:90px"/>
+      <col style="min-width:200px"/>
+      <col style="width:100px"/>
+    </colgroup>
     <thead><tr>
       <th>派案日</th><th>截止日</th><th>市場</th><th>案件種類</th><th>設計師</th><th>業務</th><th>狀態</th><th>備註</th><th></th>
     </tr></thead>
@@ -542,10 +565,22 @@ function renderKanban(cases){
   const cols=STATUSES.map(status=>{
     const s=STATUS_STYLE[status];
     const col=weekCases.filter(c=>c.status===status);
-    const cards=col.map(c=>{
+    // Sort by jobType order first, then alphabetically by first designer
+    const jobOrder=S.settings.jobTypes;
+    const sortedCol=[...col].sort((a,b)=>{
+      const ai=jobOrder.indexOf(toArr(a.jobTypes)[0]||"");
+      const bi=jobOrder.indexOf(toArr(b.jobTypes)[0]||"");
+      const aIdx=ai===-1?9999:ai;
+      const bIdx=bi===-1?9999:bi;
+      if(aIdx!==bIdx) return aIdx-bIdx;
+      return arrLabel(a.designers).localeCompare(arrLabel(b.designers));
+    });
+    const cards=sortedCol.map(c=>{
       const firstType=toArr(c.jobTypes)[0]||"";
       const tc=typeColor(firstType,types);
       const thumb=getThumb(c.id);
+      const isDone=c.status==="已完成";
+      const cardBg=isDone?"background:#F5F5F5":"background:var(--surface)";
       const thumbHtml=thumb
         ? `<div style="width:90px;min-width:90px;height:90px;border-radius:7px;overflow:hidden;background:#F0F0F0;flex-shrink:0;position:relative;cursor:pointer" onclick="event.stopPropagation();openThumbUpload('${c.id}')">
             <img src="${thumb}" style="width:100%;height:100%;object-fit:cover"/>
@@ -557,7 +592,7 @@ function renderKanban(cases){
             <span style="font-size:18px">🖼</span>
             <span style="font-size:9px;color:#aaa;font-weight:600">上傳縮圖</span>
           </div>`;
-      return `<div class="k-card" style="border-left-color:${s.border}" onclick="openEdit('${c.id}')">
+      return `<div class="k-card" style="border-left-color:${s.border};${cardBg}" onclick="openEdit('${c.id}')">
         <div style="display:flex;gap:10px">
           <div style="flex:1;min-width:0">
             <div class="k-card-top">
@@ -588,7 +623,6 @@ function renderTimeline(cases){
   if(!cases.length) return `<div class="empty">尚無派案記錄</div>`;
   const types=S.settings.jobTypes;
   const map={};
-  // Sort by deadline; cases without deadline go to end under key "none"
   const sorted=[...cases].sort((a,b)=>{
     if(!a.deadline&&!b.deadline) return 0;
     if(!a.deadline) return 1;
@@ -598,6 +632,16 @@ function renderTimeline(cases){
   sorted.forEach(c=>{
     const key=c.deadline||"none";
     (map[key]=map[key]||[]).push(c);
+  });
+  // Within each group: single designer sorted A-Z, multi-designer combos last
+  Object.keys(map).forEach(key=>{
+    map[key].sort((a,b)=>{
+      const aD=toArr(a.designers); const bD=toArr(b.designers);
+      const aMulti=aD.length>1; const bMulti=bD.length>1;
+      if(aMulti&&!bMulti) return 1;
+      if(!aMulti&&bMulti) return -1;
+      return arrLabel(a.designers).localeCompare(arrLabel(b.designers));
+    });
   });
   return `<div class="timeline">${Object.entries(map).map(([date,items])=>`
     <div class="tl-row">
@@ -612,7 +656,8 @@ function renderTimeline(cases){
         <div class="tl-cards">${items.map(c=>{
           const firstType=toArr(c.jobTypes)[0]||"";
           const tc=typeColor(firstType,types);
-          return `<div class="tl-card">
+          const isDone=c.status==="已完成";
+          return `<div class="tl-card" style="${isDone?"background:#F5F5F5":""}">
             <div class="tl-card-name">${arrLabel(c.designers)}${dotHtml(c.status)}</div>
             <div class="tl-badges">
               ${badge(c.market,"#EEEEFF","#4361EE")}
@@ -1384,11 +1429,19 @@ function quickStatus(id,newStatus){
 }
 
 // Per-designer status toggle (only updates designerStatus map)
+// Also syncs main status: if all designers = 已完成 → status=已完成; if any active → status=進行中
 function quickDesignerStatus(id,designer,newStatus){
   const c=S.cases.find(x=>x.id===id);
   if(!c) return;
   const designerStatus={...(c.designerStatus||{}), [designer]:newStatus};
-  const updated={...c,designerStatus};
+  // Derive main status from all designers' statuses
+  const allDesignersOfCase=toArr(c.designers);
+  const allStatuses=allDesignersOfCase.map(d=>designerStatus[d]||c.status);
+  let mainStatus=c.status;
+  if(allStatuses.every(s=>s==="已完成")) mainStatus="已完成";
+  else if(allStatuses.some(s=>s==="進行中")) mainStatus="進行中";
+  else mainStatus="擱置";
+  const updated={...c,designerStatus,status:mainStatus};
   S.cases=S.cases.map(x=>x.id===id?updated:x);
   saveCase_db(updated);
   render();
