@@ -219,14 +219,14 @@ const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── CONSTANTS ──────────────────────────────────────────────────
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DEFAULT_JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout"];
+const DEFAULT_JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout","care card"];
 const DEFAULT_MARKETS = ["AP","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
 const DEFAULT_DESIGNERS = {
   "2D": ["Faye","Alan","Avis","Carol","Roy","Jou"],
   "插畫": ["Mona","Cathy","Emilia","Echo","Heiwin"],
   "3D": []
 };
-const DEFAULT_SALES = ["Ann","Ben","Chris","Dana","Eric","Fiona","Other"];
+const DEFAULT_SALES = ["Ruby","Ivy","Claire","Huilan","Yuri","Travis","Ming","Lisa","Lisa MUS"];
 const STATUSES = ["進行中","已完成","擱置"];
 const STATUS_STYLE = {
   "進行中": {bg:"#E8F4FD",text:"#2980B9",dot:"#2980B9",border:"#2980B9"},
@@ -342,6 +342,7 @@ function caseToDb(c){
     designers:c.designers||[], sales:c.sales||null,
     status:c.status, note:c.note||null,
     email_link:c.emailLink||null,
+    designer_status:c.designerStatus||null,
   };
 }
 function dbToCase(r){
@@ -352,6 +353,7 @@ function dbToCase(r){
     designers:r.designers||[], sales:r.sales||"",
     status:r.status, note:r.note||"",
     emailLink:r.email_link||"",
+    designerStatus:r.designer_status||{},
   };
 }
 
@@ -515,6 +517,10 @@ function getNextWeekRange(){
 }
 function filterByKanbanWeek(cases){
   if(S.kanbanWeek==="all") return cases;
+  if(S.kanbanWeek==="today"){
+    const t=today();
+    return cases.filter(c=>c.deadline===t);
+  }
   const [start,end]=S.kanbanWeek==="this"?getThisWeekRange():getNextWeekRange();
   return cases.filter(c=>c.deadline&&c.deadline>=start&&c.deadline<=end);
 }
@@ -524,8 +530,8 @@ function renderKanban(cases){
   const weekCases=filterByKanbanWeek(cases);
 
   // Week filter tabs
-  const tabs=["all","this","next"].map(w=>{
-    const label=w==="all"?"全部":w==="this"?"本週":"下週";
+  const tabs=["all","today","this","next"].map(w=>{
+    const label=w==="all"?"全部":w==="today"?"今日":w==="this"?"本週":"下週";
     const active=S.kanbanWeek===w;
     return `<button onclick="S.kanbanWeek='${w}';render()" style="padding:5px 14px;border:none;border-radius:20px;font-size:11px;font-weight:${active?"700":"500"};cursor:pointer;font-family:inherit;background:${active?"var(--accent)":"#F0F0F8"};color:${active?"#fff":"var(--text2)"};">${label}</button>`;
   }).join("");
@@ -625,11 +631,16 @@ function renderFreeRows(dates){
   return S.freeRows.map(row=>{
     const cells=dates.map(date=>{
       const text=row.cells[date]||"";
+      const isStruck=row.cells[date+"_struck"]||false;
+      const strikeStyle=isStruck?"text-decoration:line-through;color:#aaa":"";
       return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;min-width:130px;background:#FFFEF5">
-        <div contenteditable="true"
-          onblur="saveFreeCell('${row.id}','${date}',this.innerText.trim())"
-          style="font-size:10px;color:#555;min-height:20px;outline:none;line-height:1.5;white-space:pre-wrap;word-break:break-word"
-        >${text}</div>
+        <div style="display:flex;align-items:flex-start;gap:3px">
+          <div contenteditable="true"
+            onblur="saveFreeCell('${row.id}','${date}',this.innerText.trim())"
+            style="font-size:10px;color:#555;min-height:20px;outline:none;line-height:1.5;white-space:pre-wrap;word-break:break-word;flex:1;${strikeStyle}"
+          >${text}</div>
+          ${text?`<button onclick="toggleFreeCellStrike('${row.id}','${date}')" title="刪除線" style="background:none;border:none;cursor:pointer;font-size:10px;padding:1px 2px;color:${isStruck?"#E74C3C":"#ccc"};flex-shrink:0;line-height:1">S̶</button>`:""}
+        </div>
       </td>`;
     }).join("");
     return `<tr>
@@ -724,9 +735,14 @@ function renderExcel(cases){
   // Date column headers
   const dateHeaders=dates.map(d=>{
     const isToday=d===todayStr;
+    const isPast=d<todayStr;
     const dt=new Date(d);
     const label=`${dt.getMonth()+1}/${dt.getDate()} (${DAY_SHORT[dt.getDay()]})`;
-    return `<th class="excel-th-date${isToday?" today-col":""}" style="${isToday?"font-weight:800":""}">${label}</th>`;
+    let thStyle="";
+    if(isToday) thStyle="background:#FEF9E7;color:#D4AC0D;font-weight:800";
+    else if(isPast) thStyle="background:#FFF0EE;color:#E74C3C";
+    else thStyle="background:#EAFAF1;color:#27AE60";
+    return `<th class="excel-th-date" style="${thStyle}">${label}</th>`;
   }).join("");
 
   // Count cases per designer per day (for workload warning)
@@ -742,54 +758,63 @@ function renderExcel(cases){
   });
 
   const rows=designers.map(designer=>{
-    // Workload: count cases with deadline in this week
-    const weekCount=dates.reduce((sum,d)=>{
-      return sum+(dayCounts[`${designer}|${d}`]||0);
+    // Workload: warn if any single day this week has >3 cases
+    const maxDayCount=dates.reduce((max,d)=>{
+      return Math.max(max, dayCounts[`${designer}|${d}`]||0);
     },0);
 
-    const designerCellStyle=weekCount>2?"background:#FFF3E0;color:#E65100":"";
-    const overloadBadge=weekCount>2?` <span style="background:#FF9800;color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;font-weight:700">⚠️${weekCount}</span>`:"";
+    const designerCellStyle=maxDayCount>3?"background:#FFF3E0;color:#E65100":"";
+    const overloadBadge=maxDayCount>3?` <span style="background:#FF9800;color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;font-weight:700">⚠️${maxDayCount}</span>`:"";
 
     const cells=dates.map(date=>{
       const isToday=date===todayStr;
       const onVacation=isDesignerOnVacation(designer,date);
 
       if(onVacation){
-        return `<td class="excel-cell${isToday?" today-col":""}" style="background:#FFF8E1;position:relative">
-          <div style="text-align:center;padding:8px 4px;color:#F9A825;font-size:11px;font-weight:700">🏖 休假</div>
+        return `<td class="excel-cell${isToday?" today-col":""}" style="background:#E3F2FD;position:relative">
+          <div style="text-align:center;padding:8px 4px;color:#1976D2;font-size:11px;font-weight:700">🏖 休假</div>
         </td>`;
       }
 
       // Cases by DEADLINE on this date
-      const dayCases=S.cases.filter(c=>toArr(c.designers).includes(designer)&&c.deadline===date&&c.status!=="已完成");
-      const completedCases=S.cases.filter(c=>toArr(c.designers).includes(designer)&&c.deadline===date&&c.status==="已完成");
-      const allDayCases=[...dayCases,...completedCases];
+      const dayCases=S.cases.filter(c=>toArr(c.designers).includes(designer)&&c.deadline===date);
+      // Per-designer status helper
+      function getDesignerStatus(c){ return (c.designerStatus&&c.designerStatus[designer])||c.status; }
 
-      const chips=allDayCases.map(c=>{
+      const chips=dayCases.map(c=>{
         const firstType=toArr(c.jobTypes)[0]||"";
         const tc=typeColor(firstType,types);
-        const dlSt=deadlineStatus(c.deadline);
-        const chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":c.status==="已完成"?"#EAFAF1":"#fff";
-        const chipBorder=dlSt==="urgent"?"#E74C3C":dlSt==="warn"?"#D4AC0D":c.status==="已完成"?"#27AE60":tc;
-        const isDone=c.status==="已完成";
-        const strikeStyle=isDone?"text-decoration:line-through;opacity:0.55":"";
+        const dStatus=getDesignerStatus(c);
+        const isDone=dStatus==="已完成";
+        const isHold=dStatus==="擱置";
+        // chip colours based on per-designer status
+        let chipBg, chipBorder;
+        if(isDone){ chipBg="#F0F0F0"; chipBorder="#BBBBBB"; }
+        else if(isHold){ chipBg="#FEF9E7"; chipBorder="#D4AC0D"; }
+        else {
+          const dlSt=deadlineStatus(c.deadline);
+          chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":"#fff";
+          chipBorder=dlSt==="urgent"?"#E74C3C":dlSt==="warn"?"#D4AC0D":tc;
+        }
+        const strikeStyle=isDone?"text-decoration:line-through;opacity:0.45":"";
+        const textColor=isDone?"#AAAAAA":""+tc;
         // Main text: note if set, else jobTypes · market
         const mainText=c.note||(toArr(c.jobTypes).join("/")+` · ${c.market}`);
-        // Sub line: jobTypes·market hint (when note shown) + deadlineTime
+        // Sub line
         const subParts=[];
         if(c.note) subParts.push(toArr(c.jobTypes).join("/")+` · ${c.market}`);
         if(c.deadlineTime) subParts.push(`⏰ ${c.deadlineTime}`);
-        const subHtml=subParts.length?`<div style="font-size:9px;color:#888;margin-top:1px;line-height:1.3;${isDone?"opacity:0.55":""}">${subParts.join(" · ")}</div>`:"";
+        const subHtml=subParts.length?`<div style="font-size:9px;color:${isDone?"#BBBBBB":"#888"};margin-top:1px;line-height:1.3;${strikeStyle}">${subParts.join(" · ")}</div>`:"";
         // Multi-designer indicator
         const otherDesigners=toArr(c.designers).filter(d=>d!==designer);
         const coDesignerHtml=otherDesigners.length?`<span style="font-size:9px;color:#aaa;margin-left:2px">+${otherDesigners.join(",")}</span>`:"";
-        // Status quick-change
-        const nextStatus=c.status==="進行中"?"已完成":c.status==="已完成"?"擱置":"進行中";
-        const statusIcon=c.status==="已完成"?"✅":c.status==="擱置"?"⏸":"▶";
+        // Per-designer status cycle
+        const nextDStatus=dStatus==="進行中"?"已完成":dStatus==="已完成"?"擱置":"進行中";
+        const statusIcon=dStatus==="已完成"?"✅":dStatus==="擱置"?"⏸":"▶";
         return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
-            <span style="font-size:10px;font-weight:700;color:${tc};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
-            <button onclick="event.stopPropagation();quickStatus('${c.id}','${nextStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
+            <span style="font-size:10px;font-weight:700;color:${textColor};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
+            <button onclick="event.stopPropagation();quickDesignerStatus('${c.id}','${designer}','${nextDStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
           </div>
           ${subHtml}
         </div>`;
@@ -960,7 +985,7 @@ function renderSettings(){
     </div>
     <div class="setting-card">
       <div class="setting-title">💼 業務名單</div>
-      <div class="tag-list">${tagList(s.sales,"removeSales")}</div>
+      <div class="tag-list">${s.sales.map((item,i)=>`<span class="tag-item"><span contenteditable="true" onblur="renameSales(${i},this.innerText.trim())" style="outline:none;min-width:20px;cursor:text">${item}</span><button class="tag-del" onclick="removeSales(${i})">×</button></span>`).join("")}</div>
       <div class="add-tag-row">
         <input class="add-tag-input" id="new-sales" placeholder="新增業務姓名"/>
         <button class="btn btn-primary btn-sm" onclick="addSales()">新增</button>
@@ -1191,7 +1216,27 @@ function closeMsDropdownsOnOutside(e){
     document.querySelectorAll(".ms-trigger").forEach(el=>el.classList.remove("open"));
   }
 }
+// ── SYNC MODAL FIELDS before re-render ────────────────────────
+function syncModalFields(){
+  if(!S.modal) return;
+  const fields={
+    date: document.getElementById("f-date")?.value,
+    deadline: document.getElementById("f-deadline")?.value||"",
+    deadlineTime: document.getElementById("f-deadline-time")?.value||"",
+    market: document.getElementById("f-market")?.value,
+    status: document.getElementById("f-status")?.value,
+    note: document.getElementById("f-note")?.value,
+    sales: document.getElementById("f-sales-select")?.value||"",
+  };
+  if(S.modal._preset){
+    Object.assign(S.modal._preset, fields);
+  } else {
+    Object.assign(S.modal, fields);
+  }
+}
+
 function toggleModalDesigner(name,checked){
+  syncModalFields();
   if(!S.modal||S.modal==="new") S.modal={_preset:{designers:[],jobTypes:[S.settings.jobTypes[0]||"V1"]}};
   const cur=toArr(S.modal.designers||S.modal._preset?.designers||[]);
   const updated=checked?[...new Set([...cur,name])]:cur.filter(d=>d!==name);
@@ -1200,6 +1245,7 @@ function toggleModalDesigner(name,checked){
   render();
 }
 function toggleModalJobType(name,checked){
+  syncModalFields();
   if(!S.modal||S.modal==="new") S.modal={_preset:{jobTypes:[],designers:[]}};
   const cur=toArr(S.modal.jobTypes||S.modal._preset?.jobTypes||[]);
   const updated=checked?[...new Set([...cur,name])]:cur.filter(j=>j!==name);
@@ -1337,6 +1383,17 @@ function quickStatus(id,newStatus){
   render();
 }
 
+// Per-designer status toggle (only updates designerStatus map)
+function quickDesignerStatus(id,designer,newStatus){
+  const c=S.cases.find(x=>x.id===id);
+  if(!c) return;
+  const designerStatus={...(c.designerStatus||{}), [designer]:newStatus};
+  const updated={...c,designerStatus};
+  S.cases=S.cases.map(x=>x.id===id?updated:x);
+  saveCase_db(updated);
+  render();
+}
+
 // ── SETTINGS ACTIONS ───────────────────────────────────────────
 function saveAndRender(){ saveSettings(S.settings); render(); }
 
@@ -1352,6 +1409,7 @@ function addDesignerGroup(){ const v=document.getElementById("new-designer-group
 
 function removeSales(i){ S.settings.sales.splice(i,1); saveAndRender(); }
 function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(v&&!S.settings.sales.includes(v)){ S.settings.sales.push(v); saveAndRender(); } }
+function renameSales(i,newName){ if(newName&&newName!==S.settings.sales[i]){ S.settings.sales[i]=newName; saveSettings(S.settings); } }
 
 // ── FREE ROW ACTIONS ───────────────────────────────────────────
 async function addFreeRow(){
@@ -1375,11 +1433,23 @@ async function saveFreeCell(rowId,date,text){
   S.freeRows=S.freeRows.map(r=>{
     if(r.id!==rowId) return r;
     const cells={...r.cells};
-    if(text) cells[date]=text; else delete cells[date];
+    if(text) cells[date]=text; else { delete cells[date]; delete cells[date+"_struck"]; }
     return {...r,cells};
   });
   const row=S.freeRows.find(r=>r.id===rowId);
   if(row) await saveFreeRowDb(row);
+}
+
+async function toggleFreeCellStrike(rowId,date){
+  S.freeRows=S.freeRows.map(r=>{
+    if(r.id!==rowId) return r;
+    const cells={...r.cells};
+    cells[date+"_struck"]=!cells[date+"_struck"];
+    return {...r,cells};
+  });
+  const row=S.freeRows.find(r=>r.id===rowId);
+  if(row) await saveFreeRowDb(row);
+  render();
 }
 
 // ── LOADING SCREEN ─────────────────────────────────────────────
