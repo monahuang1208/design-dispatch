@@ -433,6 +433,7 @@ let S = {
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   kanbanWeek: "all", // "all" | "this" | "next"
   excelWeekOffset: 0, // 0=current week, -1=prev, +1=next etc
+  excelSpan: 1, // 1=一週(5天) 2=兩週(10天)
   modal: null,
   vacationModal: null, // {designer} when setting vacation
   parseText: "",
@@ -704,17 +705,20 @@ function renderFreeRows(dates){
 // ── EXCEL VIEW (Weekly Calendar by Deadline) ───────────────────
 const DAY_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-function getWeekDates(offset){
-  // Returns Mon-Fri dates for the week with given offset from current week
+function getWeekDates(offset, span){
+  // Returns Mon-Fri dates for 1 or 2 weeks starting from the week at offset
+  span = span || 1;
   const now = new Date();
-  const day = now.getDay(); // 0=Sun
+  const day = now.getDay();
   const mon = new Date(now);
   mon.setDate(now.getDate() - (day===0?6:day-1) + offset*7);
   const dates=[];
-  for(let i=0;i<5;i++){
-    const d=new Date(mon);
-    d.setDate(mon.getDate()+i);
-    dates.push(d.toISOString().slice(0,10));
+  for(let w=0;w<span;w++){
+    for(let i=0;i<5;i++){
+      const d=new Date(mon);
+      d.setDate(mon.getDate()+w*7+i);
+      dates.push(d.toISOString().slice(0,10));
+    }
   }
   return dates;
 }
@@ -754,7 +758,8 @@ function renderExcel(cases){
   const designers=allDesigners(S.settings.designers);
   const todayStr=today();
   const offset=S.excelWeekOffset;
-  const dates=getWeekDates(offset);
+  const span=S.excelSpan||1;
+  const dates=getWeekDates(offset, span);
 
   // Determine current month/year from the week
   const refDate=new Date(dates[0]);
@@ -872,10 +877,10 @@ function renderExcel(cases){
     }).join("");
 
     return `<tr>
-      <td class="excel-th-designer" style="${designerCellStyle};vertical-align:middle">
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          <span>${designer}${overloadBadge}</span>
-          <button onclick="openVacationModal('${designer}')" title="設定休假" style="background:#F0F0F8;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 4px;color:#888;font-family:inherit;margin-top:2px;white-space:nowrap">🏖</button>
+      <td class="excel-th-designer" style="${designerCellStyle};vertical-align:middle;text-align:center">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-size:13px;font-weight:700">${designer}${overloadBadge}</span>
+          <button onclick="openVacationModal('${designer}')" title="設定休假" style="background:#F0F0F8;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 4px;color:#888;font-family:inherit;white-space:nowrap">🏖</button>
         </div>
       </td>${cells}
     </tr>`;
@@ -886,12 +891,23 @@ function renderExcel(cases){
   const nextWeek=`<button onclick="S.excelWeekOffset=${offset+1};render()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">›</button>`;
   const todayBtn=offset!==0?`<button onclick="S.excelWeekOffset=0;render()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:inherit;color:var(--accent)">本週</button>`:"";
 
+  // 1週/2週 span toggle
+  const spanTabs=[1,2].map(s=>{
+    const active=span===s;
+    return `<button onclick="S.excelSpan=${s};render()" style="padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:${active?"700":"500"};cursor:pointer;font-family:inherit;background:${active?"var(--navy)":"#F0F0F8"};color:${active?"#fff":"var(--text2)"}">${s}週</button>`;
+  }).join("");
+
+  const rangeLabel=span===1
+    ? getWeekLabel(dates)
+    : `${getWeekLabel(dates.slice(0,5))} + ${getWeekLabel(dates.slice(5,10))}`;
+
   const nav=`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap">
     <span style="font-size:13px;font-weight:700;color:var(--text)">${monthLabel}</span>
     <div style="display:flex;gap:4px;flex-wrap:wrap">${weekTabs}</div>
+    <div style="display:flex;gap:4px;margin-left:8px">${spanTabs}</div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
       ${prevWeek}
-      <span style="font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap">${getWeekLabel(dates)}</span>
+      <span style="font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap">${rangeLabel}</span>
       ${nextWeek}
       ${todayBtn}
     </div>
