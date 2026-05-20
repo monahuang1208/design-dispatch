@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>🎨 Design Dispatch v2</title>
+<title>🎨 Design Dispatch Mona</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -116,12 +116,12 @@ td{padding:9px 12px;vertical-align:middle}
 .excel-wrap{overflow-x:auto;background:var(--surface);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
 .excel-table{border-collapse:collapse;font-size:11px;min-width:100%}
 .excel-table th,.excel-table td{border:1px solid #E8E8F0;padding:0}
-.excel-th-corner{background:#F0F0F8;width:90px;min-width:90px;position:sticky;left:0;z-index:10}
-.excel-th-date{background:#F0F0F8;min-width:130px;max-width:160px;text-align:center;padding:6px 8px;font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;font-family:'DM Mono',monospace}
+.excel-th-corner{background:#F0F0F8;width:90px;min-width:90px;position:sticky;left:0;z-index:20}
+.excel-th-date{background:#F0F0F8;min-width:0;width:calc((100% - 90px)/5);text-align:center;padding:6px 8px;font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;font-family:'DM Mono',monospace;position:sticky;top:0;z-index:10}
 .excel-th-date.today-col{background:#EEF0FF;color:var(--accent)}
 .excel-th-designer{background:#F0F0F8;position:sticky;left:0;z-index:5;padding:7px 10px;font-weight:700;font-size:11px;color:var(--text);min-width:90px;white-space:nowrap;border-right:2px solid #D0D0E8}
-.excel-cell{vertical-align:top;padding:4px;min-width:130px;max-width:160px;background:var(--surface);position:relative}
-.excel-cell.today-col{background:#FAFAFF}
+.excel-cell{vertical-align:top;padding:4px;width:calc((100% - 90px)/5);background:var(--surface);position:relative}
+.excel-cell.today-col{background:#FFFBEA}
 .excel-chip{border-radius:5px;padding:3px 6px;margin-bottom:3px;cursor:pointer;transition:box-shadow .1s;border-left:3px solid transparent}
 .excel-chip:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .excel-chip-title{font-size:10px;font-weight:700;color:var(--text);line-height:1.3}
@@ -144,10 +144,10 @@ td{padding:9px 12px;vertical-align:middle}
 .d-bar-wrap{flex:1;background:#F0F0F0;border-radius:5px;height:10px;overflow:hidden}
 .d-bar{background:var(--accent);height:100%;border-radius:5px;transition:width .4s}
 .d-count{width:24px;font-size:11px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace}
-.type-grid{display:flex;flex-wrap:wrap;gap:7px}
-.type-chip{border-radius:7px;padding:7px 12px;display:flex;align-items:center;gap:7px}
-.type-chip-lbl{font-size:11px;font-weight:700}
-.type-chip-count{font-size:13px;font-weight:800;color:var(--text)}
+.type-grid{display:flex;flex-direction:column;gap:6px}
+.type-chip{border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:8px;min-width:60px;transition:width .4s}
+.type-chip-lbl{font-size:11px;font-weight:700;white-space:nowrap}
+.type-chip-count{font-size:12px;font-weight:800;white-space:nowrap}
 
 /* ── SETTINGS ── */
 .settings{display:flex;flex-direction:column;gap:20px;max-width:600px}
@@ -472,27 +472,46 @@ function dlPill(dl){
 // ── LIST VIEW ──────────────────────────────────────────────────
 function renderList(cases){
   const types=S.settings.jobTypes;
-  // Sort: deadline asc (no deadline last), then market asc
-  const sorted=[...cases].sort((a,b)=>{
+  const todayStr=today();
+  const sevenDaysAgo=new Date(todayStr); sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
+  const sevenDaysAgoStr=sevenDaysAgo.toISOString().slice(0,10);
+
+  // Filter: hide completed cases with deadline older than 7 days ago
+  const filtered=cases.filter(c=>{
+    if(!c.deadline) return true;
+    if(c.deadline>=sevenDaysAgoStr) return true;
+    // deadline < 7 days ago: only show if NOT completed
+    return c.status!=="已完成";
+  });
+
+  // Sort:未完成 first (deadline asc, no deadline last, then market asc), 已完成 after (same sub-sort)
+  function sortKey(a,b){
     if(!a.deadline&&!b.deadline) return a.market.localeCompare(b.market);
     if(!a.deadline) return 1;
     if(!b.deadline) return -1;
     const dl=a.deadline.localeCompare(b.deadline);
     if(dl!==0) return dl;
     return a.market.localeCompare(b.market);
-  });
+  }
+  const undone=filtered.filter(c=>c.status!=="已完成").sort(sortKey);
+  const done=filtered.filter(c=>c.status==="已完成").sort(sortKey);
+  const sorted=[...undone,...done];
+
   const rows = sorted.length===0
     ? `<tr><td colspan="9" class="empty">尚無派案記錄 — 點右上角「＋ 新增派案」開始</td></tr>`
     : sorted.map(c=>{
       const isDone=c.status==="已完成";
       const rowBg=isDone?"background:#F5F5F5":"";
+      // 逾期但已完成：不顯示逾期標示，只顯示截止日期
+      const isOverdue=c.deadline&&c.deadline<todayStr;
+      const showDlPill=!(isDone&&isOverdue);
       return `
       <tr style="${rowBg}">
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
         <td>
           <div style="display:flex;flex-direction:column;gap:2px">
             ${c.deadline?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:#888">${c.deadline}</span>`:""}
-            ${dlPill(c.deadline)}
+            ${showDlPill?dlPill(c.deadline):""}
           </div>
         </td>
         <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
@@ -602,7 +621,7 @@ function renderKanban(cases){
             </div>
             <div class="k-card-name">${arrLabel(c.designers)}</div>
             <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
-            ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
+            ${c.deadline&&!(c.status==="已完成"&&c.deadline<today())?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
             ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
           </div>
           ${thumbHtml}
@@ -672,21 +691,28 @@ function renderTimeline(cases){
 }
 
 // ── FREE ROWS (自由文字列) ────────────────────────────────────────
+// cells[date] 格式：[{text:"...", struck:false}, ...]
 function renderFreeRows(dates){
   if(!S.freeRows||!S.freeRows.length) return "";
   return S.freeRows.map(row=>{
     const cells=dates.map(date=>{
-      const text=row.cells[date]||"";
-      const isStruck=row.cells[date+"_struck"]||false;
-      const strikeStyle=isStruck?"text-decoration:line-through;color:#aaa":"";
-      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;min-width:130px;background:#FFFEF5">
-        <div style="display:flex;align-items:flex-start;gap:3px">
+      const rawLines=row.cells[date];
+      const lines=Array.isArray(rawLines)?rawLines:[];
+      const lineHtml=lines.map((ln,i)=>{
+        const struck=ln.struck||false;
+        return `<div style="display:flex;align-items:flex-start;gap:2px;margin-bottom:2px">
           <div contenteditable="true"
-            onblur="saveFreeCell('${row.id}','${date}',this.innerText.trim())"
-            style="font-size:10px;color:#555;min-height:20px;outline:none;line-height:1.5;white-space:pre-wrap;word-break:break-word;flex:1;${strikeStyle}"
-          >${text}</div>
-          ${text?`<button onclick="toggleFreeCellStrike('${row.id}','${date}')" title="刪除線" style="background:none;border:none;cursor:pointer;font-size:10px;padding:1px 2px;color:${isStruck?"#E74C3C":"#ccc"};flex-shrink:0;line-height:1">S̶</button>`:""}
-        </div>
+            onblur="saveFreeCell('${row.id}','${date}',${i},this.innerText.trim())"
+            style="font-size:10px;color:${struck?"#aaa":"#555"};min-height:16px;outline:none;line-height:1.5;white-space:pre-wrap;word-break:break-word;flex:1;${struck?"text-decoration:line-through":""}"
+          >${ln.text}</div>
+          <button onclick="toggleFreeCellStrike('${row.id}','${date}',${i})" title="刪除線"
+            style="background:none;border:none;cursor:pointer;font-size:10px;padding:1px 2px;color:${struck?"#E74C3C":"#ccc"};flex-shrink:0;line-height:1">S̶</button>
+        </div>`;
+      }).join("");
+      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;background:#FFFEF5">
+        ${lineHtml}
+        <button onclick="addFreeCellLine('${row.id}','${date}')"
+          style="background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:1px 2px;width:100%;text-align:left;font-family:inherit">＋</button>
       </td>`;
     }).join("");
     return `<tr>
@@ -790,8 +816,7 @@ function renderExcel(cases){
     const label=`${dt.getMonth()+1}/${dt.getDate()} (${DAY_SHORT[dt.getDay()]})`;
     let thStyle="";
     if(isToday) thStyle="background:#FEF9E7;color:#D4AC0D;font-weight:800";
-    else if(isPast) thStyle="background:#FFF0EE;color:#E74C3C";
-    else thStyle="background:#EAFAF1;color:#27AE60";
+    else thStyle="background:#F0F0F8;color:var(--text2)";
     return `<th class="excel-th-date" style="${thStyle}">${label}</th>`;
   }).join("");
 
@@ -840,7 +865,7 @@ function renderExcel(cases){
         // chip colours based on per-designer status
         let chipBg, chipBorder;
         if(isDone){ chipBg="#F0F0F0"; chipBorder="#BBBBBB"; }
-        else if(isHold){ chipBg="#FEF9E7"; chipBorder="#D4AC0D"; }
+        else if(isHold){ chipBg="#F5E87A"; chipBorder="#B8960C"; }
         else {
           const dlSt=deadlineStatus(c.deadline);
           chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":"#fff";
@@ -915,10 +940,10 @@ function renderExcel(cases){
 
   return `<div class="excel-wrap">
     ${nav}
-    <div style="overflow-x:auto">
-    <table class="excel-table">
-      <thead><tr>
-        <th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888">設計師 ╲ 截止日</th>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 160px)">
+    <table class="excel-table" style="width:100%;table-layout:fixed">
+      <thead style="position:sticky;top:0;z-index:15"><tr>
+        <th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888;position:sticky;left:0;top:0;z-index:25">設計師 ╲ 截止日</th>
         ${dateHeaders}
       </tr></thead>
       <tbody>${rows}${renderFreeRows(dates)}</tbody>
@@ -976,21 +1001,53 @@ function renderStats(){
       <span class="bar-lbl">${MONTH_NAMES[i]}</span>
     </div>`).join("");
 
+  // 建立每位設計師 × 案件種類的計數
+  const byDT={}; // byDT[designer][jobType] = count
+  designers.forEach(d=>{ byDT[d]={}; types.forEach(t=>byDT[d][t]=0); });
+  yearly.forEach(c=>{
+    toArr(c.designers).forEach(d=>{
+      if(byDT[d]===undefined) return;
+      toArr(c.jobTypes).forEach(t=>{ if(byDT[d][t]!==undefined) byDT[d][t]++; });
+    });
+  });
+
   const dRows=Object.entries(S.settings.designers).map(([group,list])=>list.length?`
     <div style="margin-bottom:12px">
       <div class="designer-group-lbl">${group}</div>
-      ${list.map(d=>`<div class="d-row">
-        <div class="d-name">${d}</div>
-        <div class="d-bar-wrap"><div class="d-bar" style="width:${byD[d]/maxD*100}%"></div></div>
-        <div class="d-count">${byD[d]}</div>
-      </div>`).join("")}
+      ${list.map(d=>{
+        const total=byD[d]||0;
+        // 分段：只顯示有案件的種類，依 types 順序
+        const segments=types
+          .filter(t=>byDT[d][t]>0)
+          .map(t=>{
+            const pct=byDT[d][t]/Math.max(total,1)*100;
+            const col=typeColor(t,types);
+            return `<div title="${t}: ${byDT[d][t]}" style="height:100%;width:${pct}%;background:${col};flex-shrink:0"></div>`;
+          }).join("");
+        const barWidth=total>0?`${Math.max(4,total/maxD*100)}%`:"4px";
+        const segBar=total>0
+          ? `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;width:${barWidth}">${segments}</div><div style="flex:1"></div>`
+          : `<div style="flex:1;background:#F0F0F0;height:10px;border-radius:5px;width:4px"></div>`;
+        return `<div class="d-row">
+          <div class="d-name">${d}</div>
+          ${segBar}
+          <div class="d-count">${total}</div>
+        </div>`;
+      }).join("")}
     </div>`:"").join("");
 
-  const typeChips=Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`
-    <div class="type-chip" style="background:${typeColor(t,types)}18">
-      <span class="type-chip-lbl" style="color:${typeColor(t,types)}">${t}</span>
-      <span class="type-chip-count">${v}</span>
-    </div>`).join("")||`<span style="color:#bbb;font-size:12px">今年尚無資料</span>`;
+  const sortedTypes=Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const maxT=Math.max(...sortedTypes.map(([,v])=>v),1);
+  const typeChips=sortedTypes.map(([t,v])=>{
+    const pct=Math.max(8, Math.round(v/maxT*100));
+    const col=typeColor(t,types);
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <div style="width:90px;text-align:right;font-size:11px;font-weight:700;color:${col};flex-shrink:0">${t}</div>
+      <div class="type-chip" style="background:${col};width:${pct}%;min-width:40px">
+        <span class="type-chip-count" style="color:#fff">${v}</span>
+      </div>
+    </div>`;
+  }).join("")||`<span style="color:#bbb;font-size:12px">今年尚無資料</span>`;
 
   return `<div class="stats">
     ${urgentBlock}
@@ -1179,7 +1236,7 @@ function renderVacationModal(){
   </div>`;
 }
 function renderFilter(){
-  if(S.view==="stats"||S.view==="settings") return "";
+  if(S.view==="stats"||S.view==="settings"||S.view==="excel") return "";
   const f=S.filter;
   const s=S.settings;
   const hasFilter=Object.values(f).some(Boolean);
@@ -1227,7 +1284,7 @@ function render(){
     <div class="header">
       <div class="logo">
         <span class="logo-title">🎨 Design Dispatch</span>
-        <span class="logo-sub">v2</span>
+        <span class="logo-sub">Mona</span>
       </div>
       <nav class="nav">${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="stats"&&urgentCount?` <span style="background:#E74C3C;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${urgentCount}</span>`:""}</button>`).join("")}</nav>
       <div class="hdr-actions">
@@ -1498,22 +1555,47 @@ async function saveFreeRowLabel(id,label){
   const row=S.freeRows.find(r=>r.id===id);
   if(row) await saveFreeRowDb(row);
 }
-async function saveFreeCell(rowId,date,text){
+// cells[date] 新格式：[{text:"...", struck:false}, ...]
+// 舊格式（字串）自動忽略，清空重來
+async function saveFreeCell(rowId, date, lineIdx, text){
   S.freeRows=S.freeRows.map(r=>{
     if(r.id!==rowId) return r;
     const cells={...r.cells};
-    if(text) cells[date]=text; else { delete cells[date]; delete cells[date+"_struck"]; }
+    const lines=Array.isArray(cells[date])?[...cells[date]]:[];
+    if(lineIdx<lines.length){
+      if(text) lines[lineIdx]={...lines[lineIdx],text};
+      else lines.splice(lineIdx,1);
+    } else if(text){
+      lines.push({text,struck:false});
+    }
+    cells[date]=lines;
     return {...r,cells};
   });
   const row=S.freeRows.find(r=>r.id===rowId);
   if(row) await saveFreeRowDb(row);
 }
 
-async function toggleFreeCellStrike(rowId,date){
+async function addFreeCellLine(rowId, date){
   S.freeRows=S.freeRows.map(r=>{
     if(r.id!==rowId) return r;
     const cells={...r.cells};
-    cells[date+"_struck"]=!cells[date+"_struck"];
+    const lines=Array.isArray(cells[date])?[...cells[date]]:[];
+    lines.push({text:"",struck:false});
+    cells[date]=lines;
+    return {...r,cells};
+  });
+  const row=S.freeRows.find(r=>r.id===rowId);
+  if(row) await saveFreeRowDb(row);
+  render();
+}
+
+async function toggleFreeCellStrike(rowId, date, lineIdx){
+  S.freeRows=S.freeRows.map(r=>{
+    if(r.id!==rowId) return r;
+    const cells={...r.cells};
+    const lines=Array.isArray(cells[date])?[...cells[date]]:[];
+    if(lines[lineIdx]) lines[lineIdx]={...lines[lineIdx],struck:!lines[lineIdx].struck};
+    cells[date]=lines;
     return {...r,cells};
   });
   const row=S.freeRows.find(r=>r.id===rowId);
