@@ -1193,9 +1193,9 @@ function renderStats(){
       <div class="designer-group-lbl">${group}</div>
       ${list.map(d=>{
         const total=byD[d]||0;
-        // 分段：只顯示有案件的種類，依 types 順序
+        // 分段：只顯示有案件的種類，依 types 順序，排除 Check Info / Note
         const segments=types
-          .filter(t=>byDT[d][t]>0)
+          .filter(t=>byDT[d][t]>0&&!EXCLUDED_FROM_DESIGNER_STATS.includes(t))
           .map(t=>{
             const pct=byDT[d][t]/Math.max(total,1)*100;
             const col=typeColor(t,types);
