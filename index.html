@@ -296,6 +296,15 @@ async function removeVacationDb(dbId){
   const {error}=await db.from("vacations").delete().eq("id",dbId);
   if(error) console.error("removeVacationDb",error);
 }
+async function updateVacationDb(dbId,fields){
+  const {error}=await db.from("vacations").update({
+    start_date:fields.start, end_date:fields.end,
+    vac_type:fields.vacType||"特休",
+    hours:fields.hours||null,
+    note:fields.note||"",
+  }).eq("id",dbId);
+  if(error) console.error("updateVacationDb",error);
+}
 
 // Settings
 async function loadSettings(){
@@ -600,6 +609,7 @@ let S = {
   statsStart: "", statsEnd: "",
   modal: null,
   vacationModal: null, // {designer} when setting vacation
+  editingVacIdx: null, // index of vacation being inline-edited
   parseText: "",
   parseStatus: "",
 };
@@ -1393,17 +1403,78 @@ function renderVacationModal(){
   const {designer}=S.vacationModal;
   const existing=S.vacations.filter(v=>v.designer===designer);
   const VAC_COLORS={"特休":"#4361EE","病假":"#F9844A","其他":"#43BCCD"};
-  const existingRows=existing.map((v,i)=>{
-    const col=VAC_COLORS[v.vacType||"特休"]||"#888";
-    const hoursLabel=v.hours?` · ${v.hours}h`:"";
-    const noteLabel=v.note?` · ${v.note}`:"";
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#FFF8E1;border-radius:7px;margin-bottom:6px;font-size:12px">
-      <span style="background:${col};color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${v.vacType||"特休"}</span>
-      <span>${v.start} ～ ${v.end}${hoursLabel}</span>
-      ${v.note?`<span style="color:#888;font-size:11px">${v.note}</span>`:""}
-      <button onclick="removeVacation('${designer}',${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#E74C3C;font-size:13px">×</button>
-    </div>`;
-  }).join("")||`<div style="color:#bbb;font-size:12px;text-align:center;padding:8px">尚無休假記錄</div>`;
+
+  const existingRows=existing.length===0
+    ? `<div style="color:#bbb;font-size:12px;text-align:center;padding:8px">尚無休假記錄</div>`
+    : existing.map((v,i)=>{
+      const col=VAC_COLORS[v.vacType||"特休"]||"#888";
+      const isEditing=S.editingVacIdx===i;
+
+      if(isEditing){
+        // Inline edit form
+        const hoursVal=v.hours?String(v.hours):"";
+        const isCustomHours=hoursVal&&hoursVal!=="4"&&hoursVal!=="2";
+        return `<div style="background:#F0F4FF;border:1.5px solid var(--accent);border-radius:9px;padding:12px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px">✏️ 編輯休假</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <label style="font-size:10px;font-weight:700;color:#888;display:block;margin-bottom:3px">假別</label>
+              <select id="edit-vac-type-${i}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none">
+                <option value="特休" ${(v.vacType||"特休")==="特休"?"selected":""}>🌴 特休</option>
+                <option value="病假" ${v.vacType==="病假"?"selected":""}>🤒 病假</option>
+                <option value="其他" ${v.vacType==="其他"?"selected":""}>📋 其他</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:#888;display:block;margin-bottom:3px">時數</label>
+              <select id="edit-vac-hours-sel-${i}" onchange="toggleEditVacHours(${i})" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none">
+                <option value="" ${!hoursVal?"selected":""}>整天</option>
+                <option value="4" ${hoursVal==="4"?"selected":""}>半天（4h）</option>
+                <option value="2" ${hoursVal==="2"?"selected":""}>2 小時</option>
+                <option value="custom" ${isCustomHours?"selected":""}>自訂小時數</option>
+              </select>
+              <input type="number" id="edit-vac-hours-custom-${i}" min="0.5" max="8" step="0.5"
+                placeholder="小時數" value="${isCustomHours?hoursVal:""}"
+                style="display:${isCustomHours?"block":"none"};width:100%;margin-top:4px;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none"/>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <label style="font-size:10px;font-weight:700;color:#888;display:block;margin-bottom:3px">開始日期</label>
+              <input type="date" id="edit-vac-start-${i}" value="${v.start}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none"/>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:#888;display:block;margin-bottom:3px">結束日期</label>
+              <input type="date" id="edit-vac-end-${i}" value="${v.end}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none"/>
+            </div>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:10px;font-weight:700;color:#888;display:block;margin-bottom:3px">備註</label>
+            <input type="text" id="edit-vac-note-${i}" value="${v.note||""}" placeholder="選填" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none"/>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="saveEditVacation('${designer}',${i})"
+              style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:7px;padding:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">儲存</button>
+            <button onclick="S.editingVacIdx=null;render()"
+              style="background:#F0F0F0;color:#666;border:none;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit">取消</button>
+            <button onclick="removeVacation('${designer}',${i})"
+              style="background:#FFF0EE;color:#E74C3C;border:none;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer;font-family:inherit">刪除</button>
+          </div>
+        </div>`;
+      }
+
+      // Normal display row
+      const hoursLabel=v.hours?` · ${v.hours}h`:"";
+      return `<div onclick="S.editingVacIdx=${i};render()"
+        style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#FFF8E1;border-radius:7px;margin-bottom:6px;font-size:12px;cursor:pointer;transition:background .15s"
+        onmouseover="this.style.background='#FFF0CC'" onmouseout="this.style.background='#FFF8E1'">
+        <span style="background:${col};color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;flex-shrink:0">${v.vacType||"特休"}</span>
+        <span style="flex:1">${v.start} ～ ${v.end}${hoursLabel}</span>
+        ${v.note?`<span style="color:#aaa;font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.note}</span>`:""}
+        <span style="color:#ccc;font-size:11px;flex-shrink:0">✏️</span>
+      </div>`;
+    }).join("");
+
   return `<div class="overlay" onclick="if(event.target===this)closeVacationModal()">
     <div class="modal" style="max-width:420px">
       <h3>🏖 ${designer} 的休假設定</h3>
@@ -1412,21 +1483,22 @@ function renderVacationModal(){
         <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px">新增休假</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div><label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">假別</label>
-            <select id="vac-type" onchange="toggleVacHours()" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
+            <select id="vac-type" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
               <option value="特休">🌴 特休</option>
               <option value="病假">🤒 病假</option>
               <option value="其他">📋 其他</option>
             </select>
           </div>
-          <div id="vac-hours-wrap">
-            <label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">時數/天數</label>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">時數</label>
             <select id="vac-hours-sel" onchange="syncVacHours()" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
               <option value="">整天</option>
               <option value="4">半天（4h）</option>
               <option value="2">2 小時</option>
               <option value="custom">自訂小時數</option>
             </select>
-            <input type="number" id="vac-hours-custom" min="0.5" max="8" step="0.5" placeholder="小時數" style="display:none;width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
+            <input type="number" id="vac-hours-custom" min="0.5" max="8" step="0.5" placeholder="小時數"
+              style="display:none;width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -1451,9 +1523,14 @@ function renderVacationModal(){
 }
 function toggleVacHours(){
   const t=document.getElementById("vac-type")?.value;
-  // 特休 → hours不重要（整天），病假/其他 → 顯示時數選項
   const wrap=document.getElementById("vac-hours-wrap");
   if(wrap) wrap.style.opacity=t==="特休"?"0.4":"1";
+}
+function toggleEditVacHours(i){
+  const sel=document.getElementById(`edit-vac-hours-sel-${i}`);
+  const custom=document.getElementById(`edit-vac-hours-custom-${i}`);
+  if(!sel||!custom) return;
+  custom.style.display=sel.value==="custom"?"block":"none";
 }
 function syncVacHours(){
   const sel=document.getElementById("vac-hours-sel");
@@ -1707,8 +1784,30 @@ function parseEmail(){
 }
 
 // ── VACATION ACTIONS ───────────────────────────────────────────
-function openVacationModal(designer){ S.vacationModal={designer}; render(); }
-function closeVacationModal(){ S.vacationModal=null; render(); }
+function openVacationModal(designer){ S.vacationModal={designer}; S.editingVacIdx=null; render(); }
+function closeVacationModal(){ S.vacationModal=null; S.editingVacIdx=null; render(); }
+
+async function saveEditVacation(designer,idx){
+  const list=S.vacations.filter(v=>v.designer===designer);
+  const target=list[idx];
+  if(!target) return;
+  const start=document.getElementById(`edit-vac-start-${idx}`)?.value;
+  const end=document.getElementById(`edit-vac-end-${idx}`)?.value;
+  const vacType=document.getElementById(`edit-vac-type-${idx}`)?.value||"特休";
+  const hoursSel=document.getElementById(`edit-vac-hours-sel-${idx}`)?.value||"";
+  const hoursCustom=document.getElementById(`edit-vac-hours-custom-${idx}`)?.value||"";
+  const note=document.getElementById(`edit-vac-note-${idx}`)?.value.trim()||"";
+  if(!start||!end){ alert("請選擇日期"); return; }
+  if(end<start){ alert("結束日期不能早於開始日期"); return; }
+  let hours=null;
+  if(hoursSel==="custom"&&hoursCustom) hours=parseFloat(hoursCustom);
+  else if(hoursSel&&hoursSel!=="") hours=parseFloat(hoursSel);
+  const updated={...target, start, end, vacType, hours, note};
+  await updateVacationDb(target._dbId, updated);
+  S.vacations=S.vacations.map(v=>v===target?updated:v);
+  S.editingVacIdx=null;
+  render();
+}
 async function addVacation(designer){
   const start=document.getElementById("vac-start")?.value;
   const end=document.getElementById("vac-end")?.value;
