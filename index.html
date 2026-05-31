@@ -83,9 +83,9 @@ td{padding:9px 12px;vertical-align:middle}
 .status-pill{display:inline-flex;align-items:center;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;flex-shrink:0}
 
-/* ── KANBAN ── */
+/* ── KANBAN / REVIEW ── */
 .kanban{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
-.k-col{min-width:250px;flex:1;background:#F5F5FC;border-radius:10px;padding:12px}
+.k-col{min-width:260px;flex:1;background:#F5F5FC;border-radius:10px;padding:12px}
 .k-col-hdr{display:flex;align-items:center;margin-bottom:10px;gap:6px}
 .k-col-title{font-weight:700;font-size:12px}
 .k-col-count{margin-left:auto;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:800;font-family:'DM Mono',monospace}
@@ -97,20 +97,11 @@ td{padding:9px 12px;vertical-align:middle}
 .k-card-note{font-size:10px;color:var(--text3);margin-top:5px;font-style:italic;line-height:1.4}
 .k-card-del{background:none;border:none;cursor:pointer;color:#CCC;font-size:14px;line-height:1;padding:2px;flex-shrink:0}
 .k-card-del:hover{color:var(--red)}
-
-/* ── TIMELINE ── */
-.timeline{max-width:700px;margin:0 auto}
-.tl-row{display:flex;gap:18px;margin-bottom:18px}
-.tl-date{text-align:right;min-width:80px;padding-top:3px}
-.tl-date-main{font-size:12px;font-weight:700;color:var(--text);font-family:'DM Mono',monospace}
-.tl-date-year{font-size:10px;color:var(--text3)}
-.tl-body{position:relative;padding-left:18px;flex:1}
-.tl-line{position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--border)}
-.tl-dot{position:absolute;left:-4px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 0 0 2px var(--accent)}
-.tl-cards{display:flex;flex-wrap:wrap;gap:7px}
-.tl-card{background:var(--surface);border-radius:9px;padding:9px 12px;box-shadow:0 2px 8px rgba(0,0,0,.07);min-width:150px}
-.tl-card-name{font-weight:700;font-size:12px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:5px}
-.tl-badges{display:flex;gap:3px;flex-wrap:wrap}
+/* Review icons */
+.review-badge{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700}
+.review-good{background:#EAFAF1;color:#27AE60}
+.review-chaos{background:#FEF9E7;color:#D4AC0D}
+.review-check{background:#FFF0EE;color:#E74C3C}
 
 /* ── EXCEL VIEW ── */
 .excel-wrap{overflow-x:auto;background:var(--surface);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
@@ -288,12 +279,18 @@ async function deleteCaseDb(id){
 async function loadVacations(){
   const {data,error}=await db.from("vacations").select("*");
   if(error){ console.error("loadVacations",error); return []; }
-  return (data||[]).map(r=>({_dbId:r.id, designer:r.designer, start:r.start_date, end:r.end_date}));
+  return (data||[]).map(r=>({
+    _dbId:r.id, designer:r.designer, start:r.start_date, end:r.end_date,
+    vacType:r.vac_type||"特休", hours:r.hours||null, note:r.note||""
+  }));
 }
-async function addVacationDb(designer,start,end){
-  const {data,error}=await db.from("vacations").insert({designer,start_date:start,end_date:end}).select().single();
+async function addVacationDb(designer,start,end,vacType,hours,note){
+  const {data,error}=await db.from("vacations").insert({
+    designer,start_date:start,end_date:end,
+    vac_type:vacType||"特休", hours:hours||null, note:note||""
+  }).select().single();
   if(error){ console.error("addVacationDb",error); return null; }
-  return {_dbId:data.id, designer, start, end};
+  return {_dbId:data.id, designer, start, end, vacType:vacType||"特休", hours:hours||null, note:note||""};
 }
 async function removeVacationDb(dbId){
   const {error}=await db.from("vacations").delete().eq("id",dbId);
@@ -349,6 +346,7 @@ function caseToDb(c){
     status:c.status, note:c.note||null,
     email_link:c.emailLink||null,
     designer_status:c.designerStatus||null,
+    review:c.review||null,
   };
 }
 function dbToCase(r){
@@ -360,6 +358,7 @@ function dbToCase(r){
     status:r.status, note:r.note||"",
     emailLink:r.email_link||"",
     designerStatus:r.designer_status||{},
+    review:r.review||"",
   };
 }
 
@@ -594,9 +593,11 @@ let S = {
   freeRows: [],
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
-  kanbanWeek: "all", // "all" | "this" | "next"
+  reviewFilter: {market:"",designer:"",jobType:""},
   excelWeekOffset: 0, // 0=current week, -1=prev, +1=next etc
   excelSpan: 1, // 1=一週(5天) 2=兩週(10天)
+  statsTimeRange: "all", // "all" | "custom"
+  statsStart: "", statsEnd: "",
   modal: null,
   vacationModal: null, // {designer} when setting vacation
   parseText: "",
@@ -668,6 +669,7 @@ function renderList(cases){
       // 逾期但已完成：不顯示逾期標示，只顯示截止日期
       const isOverdue=c.deadline&&c.deadline<todayStr;
       const showDlPill=!(isDone&&isOverdue);
+      const reviewBadge=c.review?`<span class="review-badge review-${c.review==="良好"?"good":c.review==="混亂"?"chaos":"check"}">${c.review==="良好"?"✅":c.review==="混亂"?"⚠️":"🔴"} ${c.review}</span>`:"";
       return `
       <tr style="${rowBg}">
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
@@ -683,6 +685,7 @@ function renderList(cases){
         <td style="font-size:11px;color:#888">${c.sales||"—"}</td>
         <td>${statusPill(c.status)}</td>
         <td style="font-size:11px;color:#888">${c.note||"—"}</td>
+        <td>${reviewBadge}</td>
         <td style="white-space:nowrap">
           ${c.emailLink?`<a href="${c.emailLink}" target="_blank" style="color:var(--accent);font-size:11px;margin-right:6px">📧</a>`:""}
           <button class="td-actions btn-edit" onclick="openEdit('${c.id}')">編輯</button>
@@ -698,160 +701,17 @@ function renderList(cases){
       <col style="width:130px"/>
       <col style="width:70px"/>
       <col style="width:90px"/>
-      <col style="min-width:200px"/>
+      <col style="min-width:160px"/>
+      <col style="width:70px"/>
       <col style="width:100px"/>
     </colgroup>
     <thead><tr>
-      <th>派案日</th><th>截止日</th><th>市場</th><th>案件種類</th><th>設計師</th><th>業務</th><th>狀態</th><th>備註</th><th></th>
+      <th>派案日</th><th>截止日</th><th>市場</th><th>案件種類</th><th>設計師</th><th>業務</th><th>狀態</th><th>備註</th><th>回顧</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
 }
 
-// ── KANBAN VIEW ────────────────────────────────────────────────
-function getThisWeekRange(){
-  const now=new Date(); const day=now.getDay();
-  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1));
-  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-  return [mon.toISOString().slice(0,10), sun.toISOString().slice(0,10)];
-}
-function getNextWeekRange(){
-  const [mon]=getThisWeekRange();
-  const nm=new Date(mon); nm.setDate(nm.getDate()+7);
-  const ns=new Date(nm); ns.setDate(nm.getDate()+6);
-  return [nm.toISOString().slice(0,10), ns.toISOString().slice(0,10)];
-}
-function filterByKanbanWeek(cases){
-  if(S.kanbanWeek==="all") return cases;
-  if(S.kanbanWeek==="today"){
-    const t=today();
-    return cases.filter(c=>c.deadline===t);
-  }
-  const [start,end]=S.kanbanWeek==="this"?getThisWeekRange():getNextWeekRange();
-  return cases.filter(c=>c.deadline&&c.deadline>=start&&c.deadline<=end);
-}
-
-function renderKanban(cases){
-  const types=S.settings.jobTypes;
-  const weekCases=filterByKanbanWeek(cases);
-
-  // Week filter tabs
-  const tabs=["all","today","this","next"].map(w=>{
-    const label=w==="all"?"全部":w==="today"?"今日":w==="this"?"本週":"下週";
-    const active=S.kanbanWeek===w;
-    return `<button onclick="S.kanbanWeek='${w}';render()" style="padding:5px 14px;border:none;border-radius:20px;font-size:11px;font-weight:${active?"700":"500"};cursor:pointer;font-family:inherit;background:${active?"var(--accent)":"#F0F0F8"};color:${active?"#fff":"var(--text2)"};">${label}</button>`;
-  }).join("");
-  const weekBar=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
-    <span style="font-size:11px;color:var(--text3);font-weight:700;margin-right:4px">顯示範圍</span>${tabs}
-  </div>`;
-
-  const cols=STATUSES.map(status=>{
-    const s=STATUS_STYLE[status];
-    const col=weekCases.filter(c=>c.status===status);
-    // Sort by jobType order first, then alphabetically by first designer
-    const jobOrder=S.settings.jobTypes;
-    const sortedCol=[...col].sort((a,b)=>{
-      const ai=jobOrder.indexOf(toArr(a.jobTypes)[0]||"");
-      const bi=jobOrder.indexOf(toArr(b.jobTypes)[0]||"");
-      const aIdx=ai===-1?9999:ai;
-      const bIdx=bi===-1?9999:bi;
-      if(aIdx!==bIdx) return aIdx-bIdx;
-      return arrLabel(a.designers).localeCompare(arrLabel(b.designers));
-    });
-    const cards=sortedCol.map(c=>{
-      const firstType=toArr(c.jobTypes)[0]||"";
-      const tc=typeColor(firstType,types);
-      const thumb=getThumb(c.id);
-      const isDone=c.status==="已完成";
-      const cardBg=isDone?"background:#F5F5F5":"background:var(--surface)";
-      const thumbHtml=thumb
-        ? `<div style="width:90px;min-width:90px;height:90px;border-radius:7px;overflow:hidden;background:#F0F0F0;flex-shrink:0;position:relative;cursor:pointer" onclick="event.stopPropagation();openThumbUpload('${c.id}')">
-            <img src="${thumb}" style="width:100%;height:100%;object-fit:cover"/>
-            <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .15s;display:flex;align-items:center;justify-content:center;opacity:0" class="thumb-overlay" onmouseenter="this.style.opacity=1;this.style.background='rgba(0,0,0,.35)'" onmouseleave="this.style.opacity=0;this.style.background='rgba(0,0,0,0)'">
-              <span style="color:#fff;font-size:10px;font-weight:700">更換</span>
-            </div>
-          </div>`
-        : `<div style="width:90px;min-width:90px;height:90px;border-radius:7px;background:#F5F5FB;border:1.5px dashed #D0D0E8;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();openThumbUpload('${c.id}')">
-            <span style="font-size:18px">🖼</span>
-            <span style="font-size:9px;color:#aaa;font-weight:600">上傳縮圖</span>
-          </div>`;
-      return `<div class="k-card" style="border-left-color:${s.border};${cardBg}" onclick="openEdit('${c.id}')">
-        <div style="display:flex;gap:10px">
-          <div style="flex:1;min-width:0">
-            <div class="k-card-top">
-              <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
-              <button class="k-card-del" onclick="event.stopPropagation();deleteCase('${c.id}')">✕</button>
-            </div>
-            <div class="k-card-name">${arrLabel(c.designers)}</div>
-            <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
-            ${c.deadline&&!(c.status==="已完成"&&c.deadline<today())?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
-            ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
-          </div>
-          ${thumbHtml}
-        </div>
-      </div>`;
-    }).join("");
-    return `<div class="k-col">
-      <div class="k-col-hdr">
-        ${dotHtml(status)}<span class="k-col-title" style="color:${s.text}">${status}</span>
-        <span class="k-col-count" style="background:${s.bg};color:${s.text}">${col.length}</span>
-      </div>${cards||`<div style="text-align:center;padding:20px;color:#ccc;font-size:12px">無案件</div>`}
-    </div>`;
-  }).join("");
-  return `<div>${weekBar}<div class="kanban">${cols}</div></div>`;
-}
-
-// ── TIMELINE VIEW ──────────────────────────────────────────────
-function renderTimeline(cases){
-  if(!cases.length) return `<div class="empty">尚無派案記錄</div>`;
-  const types=S.settings.jobTypes;
-  const map={};
-  const sorted=[...cases].sort((a,b)=>{
-    if(!a.deadline&&!b.deadline) return 0;
-    if(!a.deadline) return 1;
-    if(!b.deadline) return -1;
-    return a.deadline.localeCompare(b.deadline);
-  });
-  sorted.forEach(c=>{
-    const key=c.deadline||"none";
-    (map[key]=map[key]||[]).push(c);
-  });
-  // Within each group: single designer sorted A-Z, multi-designer combos last
-  Object.keys(map).forEach(key=>{
-    map[key].sort((a,b)=>{
-      const aD=toArr(a.designers); const bD=toArr(b.designers);
-      const aMulti=aD.length>1; const bMulti=bD.length>1;
-      if(aMulti&&!bMulti) return 1;
-      if(!aMulti&&bMulti) return -1;
-      return arrLabel(a.designers).localeCompare(arrLabel(b.designers));
-    });
-  });
-  return `<div class="timeline">${Object.entries(map).map(([date,items])=>`
-    <div class="tl-row">
-      <div class="tl-date">
-        ${date==="none"
-          ? `<div class="tl-date-main" style="color:#bbb">無截止</div>`
-          : `<div class="tl-date-main">${date.slice(5)}</div><div class="tl-date-year">${date.slice(0,4)}</div>`
-        }
-      </div>
-      <div class="tl-body">
-        <div class="tl-line"></div><div class="tl-dot" style="${date==="none"?"background:#ccc;box-shadow:none":""}"></div>
-        <div class="tl-cards">${items.map(c=>{
-          const firstType=toArr(c.jobTypes)[0]||"";
-          const tc=typeColor(firstType,types);
-          const isDone=c.status==="已完成";
-          return `<div class="tl-card" style="${isDone?"background:#F5F5F5":""}">
-            <div class="tl-card-name">${arrLabel(c.designers)}${dotHtml(c.status)}</div>
-            <div class="tl-badges">
-              ${badge(c.market,"#EEEEFF","#4361EE")}
-              ${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}
-            </div>
-            ${c.deadline?`<div style="margin-top:4px">${dlPill(c.deadline)}</div>`:""}
-          </div>`;
-        }).join("")}</div>
-      </div>
-    </div>`).join("")}</div>`;
-}
 
 // ── FREE ROWS (自由文字列) ────────────────────────────────────────
 // cells[date] 格式：[{text:"...", struck:false}, ...]
@@ -939,7 +799,12 @@ function getMonthWeeks(year,month){
 }
 
 function isDesignerOnVacation(designer,dateStr){
-  return S.vacations.some(v=>v.designer===designer&&v.start<=dateStr&&v.end>=dateStr);
+  // 只有特休才阻擋派案顯示
+  return S.vacations.some(v=>v.designer===designer&&v.start<=dateStr&&v.end>=dateStr&&(v.vacType||"特休")==="特休");
+}
+function isDesignerHasAnyVacation(designer,dateStr){
+  // 任何假別都顯示標記（用於總覽表非特休小標示）
+  return S.vacations.filter(v=>v.designer===designer&&v.start<=dateStr&&v.end>=dateStr);
 }
 
 function renderExcel(cases){
@@ -984,11 +849,14 @@ function renderExcel(cases){
   }).join("");
 
   // Count cases per designer per day (for workload warning)
-  // keyed by designer+date — support multi-designer
+  // keyed by designer+date — support multi-designer, exclude 已完成
   const dayCounts={};
   S.cases.forEach(c=>{
     if(c.deadline){
+      // Get per-designer status to check if done
       toArr(c.designers).forEach(d=>{
+        const dStatus=(c.designerStatus&&c.designerStatus[d])||c.status;
+        if(dStatus==="已完成") return; // 已完成不計入警示
         const k=`${d}|${c.deadline}`;
         dayCounts[k]=(dayCounts[k]||0)+1;
       });
@@ -1010,9 +878,18 @@ function renderExcel(cases){
 
       if(onVacation){
         return `<td class="excel-cell${isToday?" today-col":""}" style="background:#E3F2FD;position:relative">
-          <div style="text-align:center;padding:8px 4px;color:#1976D2;font-size:11px;font-weight:700">🏖 休假</div>
+          <div style="text-align:center;padding:8px 4px;color:#1976D2;font-size:11px;font-weight:700">🏖 特休</div>
         </td>`;
       }
+
+      // 病假/其他假 → 顯示小標記但不阻擋派案
+      const otherVacs=isDesignerHasAnyVacation(designer,date).filter(v=>(v.vacType||"特休")!=="特休");
+      const otherVacBadge=otherVacs.length
+        ? otherVacs.map(v=>{
+            const col=v.vacType==="病假"?"#F9844A":"#43BCCD";
+            return `<div style="background:${col}22;border:1px solid ${col};border-radius:4px;padding:2px 5px;font-size:9px;color:${col};font-weight:700;margin-bottom:2px">${v.vacType==="病假"?"🤒":"📋"} ${v.vacType}${v.hours?` ${v.hours}h`:""}</div>`;
+          }).join("")
+        : "";
 
       // Cases by DEADLINE on this date
       const dayCases=S.cases.filter(c=>toArr(c.designers).includes(designer)&&c.deadline===date);
@@ -1062,6 +939,7 @@ function renderExcel(cases){
       }).join("");
 
       return `<td class="excel-cell${isToday?" today-col":""}" style="vertical-align:top">
+        ${otherVacBadge}
         ${chips}
         <button class="excel-add-btn" onclick="openNewForDesignerDate('${designer}','${date}')">＋</button>
       </td>`;
@@ -1124,17 +1002,25 @@ function renderExcel(cases){
 // ── STATS VIEW ─────────────────────────────────────────────────
 function renderStats(){
   const year=new Date().getFullYear();
-  const yearly=S.cases.filter(c=>c.date.startsWith(String(year)));
-  // 統計頁面：排除擱置狀態
-  const yearlyForStats=yearly.filter(c=>c.status!=="擱置");
+  const todayStr=today();
   const types=S.settings.jobTypes;
   const designers=allDesigners(S.settings.designers);
-  // 不計入派案量的案件種類
   const EXCLUDED_FROM_DESIGNER_STATS=["Check Info","Note"];
+
+  // Time range logic
+  const isCustom=S.statsTimeRange==="custom";
+  const statsStart=isCustom&&S.statsStart?S.statsStart:`${year}-01-01`;
+  const statsEnd=isCustom&&S.statsEnd?S.statsEnd:`${year}-12-31`;
+
+  const rangeLabel = isCustom&&S.statsStart&&S.statsEnd
+    ? `${S.statsStart} ～ ${S.statsEnd}`
+    : `${year} 年全年`;
+
+  const allCases=S.cases.filter(c=>c.date>=statsStart&&c.date<=statsEnd);
+  const yearlyForStats=allCases.filter(c=>c.status!=="擱置");
 
   const byD={}; designers.forEach(d=>byD[d]=0);
   yearlyForStats.forEach(c=>{
-    // 若案件所有種類都是排除類型，則不計入
     const countableTypes=toArr(c.jobTypes).filter(t=>!EXCLUDED_FROM_DESIGNER_STATS.includes(t));
     if(countableTypes.length===0) return;
     toArr(c.designers).forEach(d=>{ if(byD[d]!==undefined) byD[d]++; });
@@ -1148,26 +1034,45 @@ function renderStats(){
   const maxM=Math.max(...byM,1);
   const maxD=Math.max(...Object.values(byD),1);
 
-  // Urgent cases（排除已完成及擱置）
-  const urgent=S.cases.filter(c=>c.status!=="已完成"&&c.status!=="擱置"&&deadlineStatus(c.deadline)==="urgent");
-  const warn=S.cases.filter(c=>c.status!=="已完成"&&c.status!=="擱置"&&deadlineStatus(c.deadline)==="warn");
+  // Vacation stats per designer for the time range
+  const VAC_TYPES=["特休","病假","其他"];
+  const VAC_COLORS={"特休":"#4361EE","病假":"#F9844A","其他":"#43BCCD"};
+  // compute vacation days per designer per type within range
+  const vacByDesigner={};
+  designers.forEach(d=>{ vacByDesigner[d]={"特休":0,"病假":0,"其他":0}; });
+  S.vacations.forEach(v=>{
+    if(!vacByDesigner[v.designer]) return;
+    // Count overlap days between vacation [start,end] and [statsStart,statsEnd]
+    const vs=v.start>statsStart?v.start:statsStart;
+    const ve=v.end<statsEnd?v.end:statsEnd;
+    if(ve<vs) return;
+    let days=0;
+    if(v.hours){
+      days=parseFloat(v.hours)/8; // convert hours to days
+    } else {
+      const msPerDay=1000*60*60*24;
+      days=Math.ceil((new Date(ve)-new Date(vs))/msPerDay)+1;
+    }
+    const vt=v.vacType||"特休";
+    if(vacByDesigner[v.designer][vt]!==undefined){
+      vacByDesigner[v.designer][vt]+=days;
+    }
+  });
+  const maxVac=Math.max(...designers.map(d=>VAC_TYPES.reduce((s,t)=>s+(vacByDesigner[d][t]||0),0)),1);
+  const hasVac=designers.some(d=>VAC_TYPES.some(t=>(vacByDesigner[d][t]||0)>0));
 
-  const urgentBlock=(urgent.length||warn.length)?`
-    <div class="stat-card">
-      <div class="stat-title">⚠️ 需注意截止日</div>
-      ${urgent.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:8px 10px;background:#FFF0EE;border-radius:8px;font-size:12px">
-        <span style="color:#E74C3C;font-weight:700">🔴 逾期/今截</span>
-        <span style="font-weight:700">${arrLabel(c.designers)}</span>
-        <span style="color:#888">${toArr(c.jobTypes).join("/")} · ${c.market}</span>
-        <span style="margin-left:auto;color:#888;font-size:11px">${c.deadline}</span>
-      </div>`).join("")}
-      ${warn.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:8px 10px;background:#FEF9E7;border-radius:8px;font-size:12px">
-        <span style="color:#D4AC0D;font-weight:700">🟡 快到期</span>
-        <span style="font-weight:700">${arrLabel(c.designers)}</span>
-        <span style="color:#888">${toArr(c.jobTypes).join("/")} · ${c.market}</span>
-        <span style="margin-left:auto;color:#888;font-size:11px">${deadlineLabel(c.deadline)}</span>
-      </div>`).join("")}
-    </div>`:"";
+  // Time range selector
+  const rangeSelector=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:#F8F8FF;border-radius:10px;border:1.5px solid #E0E0F5">
+    <span style="font-size:11px;font-weight:700;color:#888">統計範圍：</span>
+    <button onclick="S.statsTimeRange='all';render()" style="padding:5px 14px;border:none;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;background:${!isCustom?"var(--accent)":"#F0F0F8"};color:${!isCustom?"#fff":"var(--text2)"}">全部（${year}年）</button>
+    <button onclick="S.statsTimeRange='custom';render()" style="padding:5px 14px;border:none;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;background:${isCustom?"var(--accent)":"#F0F0F8"};color:${isCustom?"#fff":"var(--text2)"}">自訂區間</button>
+    ${isCustom?`
+    <input type="date" value="${S.statsStart}" onchange="S.statsStart=this.value;render()" style="padding:4px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit"/>
+    <span style="font-size:11px;color:#888">～</span>
+    <input type="date" value="${S.statsEnd}" onchange="S.statsEnd=this.value;render()" style="padding:4px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit"/>
+    `:""}
+    <span style="font-size:11px;color:var(--accent);font-weight:600;margin-left:4px">📊 ${rangeLabel}</span>
+  </div>`;
 
   const monthBars=byM.map((v,i)=>`
     <div class="bar-col">
@@ -1177,7 +1082,7 @@ function renderStats(){
     </div>`).join("");
 
   // 建立每位設計師 × 案件種類的計數
-  const byDT={}; // byDT[designer][jobType] = count
+  const byDT={};
   designers.forEach(d=>{ byDT[d]={}; types.forEach(t=>byDT[d][t]=0); });
   yearlyForStats.forEach(c=>{
     const countableTypes=toArr(c.jobTypes).filter(t=>!EXCLUDED_FROM_DESIGNER_STATS.includes(t));
@@ -1193,7 +1098,6 @@ function renderStats(){
       <div class="designer-group-lbl">${group}</div>
       ${list.map(d=>{
         const total=byD[d]||0;
-        // 分段：只顯示有案件的種類，依 types 順序，排除 Check Info / Note
         const segments=types
           .filter(t=>byDT[d][t]>0&&!EXCLUDED_FROM_DESIGNER_STATS.includes(t))
           .map(t=>{
@@ -1224,13 +1128,107 @@ function renderStats(){
         <span class="type-chip-count" style="color:#fff">${v}</span>
       </div>
     </div>`;
-  }).join("")||`<span style="color:#bbb;font-size:12px">今年尚無資料</span>`;
+  }).join("")||`<span style="color:#bbb;font-size:12px">尚無資料</span>`;
+
+  // Vacation stats bar chart
+  const vacLegend=VAC_TYPES.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#555"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${VAC_COLORS[t]}"></span>${t}</span>`).join("");
+  const vacRows=designers.map(d=>{
+    const totals=VAC_TYPES.map(t=>vacByDesigner[d][t]||0);
+    const total=totals.reduce((a,b)=>a+b,0);
+    if(total===0) return "";
+    const segments=VAC_TYPES.map((t,i)=>{
+      const pct=totals[i]/maxVac*100;
+      if(!totals[i]) return "";
+      return `<div title="${t}: ${totals[i]%1===0?totals[i]:totals[i].toFixed(1)}天" style="height:100%;width:${pct}%;background:${VAC_COLORS[t]};flex-shrink:0;transition:width .4s"></div>`;
+    }).join("");
+    const totalLabel=totals.map((v,i)=>v>0?`${VAC_TYPES[i]}:${v%1===0?v:v.toFixed(1)}d`:"").filter(Boolean).join(" ");
+    return `<div class="d-row">
+      <div class="d-name">${d}</div>
+      <div style="flex:1;background:#F0F0F0;border-radius:5px;height:10px;overflow:hidden;display:flex">${segments}</div>
+      <div style="min-width:90px;font-size:10px;color:#888;margin-left:6px">${totalLabel}</div>
+    </div>`;
+  }).filter(Boolean).join("");
+
+  const vacBlock=`<div class="stat-card">
+    <div class="stat-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🏖 設計師休假統計</span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${vacLegend}</div>
+    </div>
+    ${hasVac?vacRows:`<div style="color:#bbb;font-size:12px;text-align:center;padding:12px">此期間尚無休假記錄</div>`}
+  </div>`;
 
   return `<div class="stats">
-    ${urgentBlock}
-    <div class="stat-card"><div class="stat-title">📅 ${year} 年月份派案量</div><div class="bar-chart">${monthBars}</div></div>
-    <div class="stat-card"><div class="stat-title">👤 設計師派案量（${year}）</div>${dRows}</div>
-    <div class="stat-card"><div class="stat-title">📋 案件種類分佈（${year}）</div><div class="type-grid">${typeChips}</div></div>
+    ${rangeSelector}
+    <div class="stat-card"><div class="stat-title">📅 月份派案量（${rangeLabel}）</div><div class="bar-chart">${monthBars}</div></div>
+    <div class="stat-card"><div class="stat-title">👤 設計師派案量（${rangeLabel}）</div>${dRows}</div>
+    ${vacBlock}
+    <div class="stat-card"><div class="stat-title">📋 案件種類分佈（${rangeLabel}）</div><div class="type-grid">${typeChips}</div></div>
+  </div>`;
+}
+
+// ── REVIEW VIEW ────────────────────────────────────────────────
+const REVIEW_COLS=[
+  {val:"良好",icon:"✅",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},
+  {val:"混亂",icon:"⚠️",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},
+  {val:"檢討",icon:"🔴",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},
+];
+function renderReview(){
+  const f=S.reviewFilter;
+  const types=S.settings.jobTypes;
+  const markets=S.settings.markets;
+  const designers=allDesigners(S.settings.designers);
+
+  // Filter bar
+  function sel(key,opts,label){
+    return `<div class="fg"><label>${label}</label><select onchange="S.reviewFilter['${key}']=this.value;render()">
+      <option value="">全部</option>
+      ${opts.map(o=>`<option${o===f[key]?" selected":""}>${o}</option>`).join("")}
+    </select></div>`;
+  }
+  const filterBar=`<div class="filter-bar" style="margin-bottom:14px">
+    ${sel("market",markets,"市場")}
+    ${sel("designer",designers,"設計師")}
+    ${sel("jobType",types,"種類")}
+    ${(f.market||f.designer||f.jobType)?`<button class="btn-clear-filter" onclick="S.reviewFilter={market:'',designer:'',jobType:''};render()">✕ 清除</button>`:""}
+  </div>`;
+
+  const reviewedCases=S.cases.filter(c=>{
+    if(!c.review) return false;
+    if(f.market&&c.market!==f.market) return false;
+    if(f.designer&&!toArr(c.designers).includes(f.designer)) return false;
+    if(f.jobType&&!toArr(c.jobTypes).includes(f.jobType)) return false;
+    return true;
+  });
+
+  const cols=REVIEW_COLS.map(col=>{
+    const colCases=reviewedCases.filter(c=>c.review===col.val);
+    const cards=colCases.map(c=>`
+      <div class="k-card" style="border-left-color:${col.border}" onclick="openEdit('${c.id}')">
+        <div class="k-card-top">
+          <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
+          <span class="review-badge review-${col.val==="良好"?"good":col.val==="混亂"?"chaos":"check"}">${col.icon}</span>
+        </div>
+        <div class="k-card-name">${arrLabel(c.designers)}</div>
+        <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
+        ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
+        ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
+      </div>`).join("");
+    return `<div class="k-col">
+      <div class="k-col-hdr">
+        <span style="font-size:16px">${col.icon}</span>
+        <span class="k-col-title" style="color:${col.text}">${col.val}</span>
+        <span class="k-col-count" style="background:${col.bg};color:${col.text}">${colCases.length}</span>
+      </div>
+      ${cards||`<div style="text-align:center;padding:20px;color:#ccc;font-size:12px">無案件</div>`}
+    </div>`;
+  }).join("");
+
+  const totalReviewed=reviewedCases.length;
+  return `<div>
+    ${filterBar}
+    ${totalReviewed===0&&!f.market&&!f.designer&&!f.jobType
+      ?`<div class="empty" style="padding:60px">尚無回顧記錄 — 在編輯案件中標記「回顧」後會顯示在此</div>`
+      :`<div class="kanban">${cols}</div>`}
   </div>`;
 }
 
@@ -1366,6 +1364,16 @@ function renderModal(){
       </div>
       <div class="form-row">
         <div class="fg-modal"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>案件回顧 <span style="font-weight:400;color:#aaa">（選填）</span></label>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            ${[{val:"良好",icon:"✅",cls:"good"},{val:"混亂",icon:"⚠️",cls:"chaos"},{val:"檢討",icon:"🔴",cls:"check"},{val:"",icon:"—",cls:"none"}].map(r=>`
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex:1">
+              <input type="radio" name="f-review" value="${r.val}" ${(c.review||"")===(r.val)?"checked":""} style="display:none" onchange=""/>
+              <div onclick="selectReview('${r.val}')" style="padding:6px 0;width:100%;text-align:center;border-radius:7px;border:1.5px solid ${(c.review||"")===(r.val)?"var(--accent)":"#E8E8F0"};background:${(c.review||"")===(r.val)?"#EEF0FF":"#FAFAFA"};font-size:13px;cursor:pointer;transition:all .15s">${r.icon}</div>
+              <span style="font-size:9px;color:${(c.review||"")===(r.val)?"var(--accent)":"#aaa"};font-weight:700">${r.val||"無"}</span>
+            </label>`).join("")}
+          </div>
+        </div>
       </div>
       <div class="form-row single">
         <div class="fg-modal"><label>備註</label><textarea id="f-note" placeholder="專案說明、參考資訊...">${c.note||""}</textarea></div>
@@ -1384,19 +1392,44 @@ function renderVacationModal(){
   if(!S.vacationModal) return "";
   const {designer}=S.vacationModal;
   const existing=S.vacations.filter(v=>v.designer===designer);
-  const existingRows=existing.map((v,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#FFF8E1;border-radius:7px;margin-bottom:6px;font-size:12px">
-      <span>🏖</span>
-      <span>${v.start} ～ ${v.end}</span>
+  const VAC_COLORS={"特休":"#4361EE","病假":"#F9844A","其他":"#43BCCD"};
+  const existingRows=existing.map((v,i)=>{
+    const col=VAC_COLORS[v.vacType||"特休"]||"#888";
+    const hoursLabel=v.hours?` · ${v.hours}h`:"";
+    const noteLabel=v.note?` · ${v.note}`:"";
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#FFF8E1;border-radius:7px;margin-bottom:6px;font-size:12px">
+      <span style="background:${col};color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${v.vacType||"特休"}</span>
+      <span>${v.start} ～ ${v.end}${hoursLabel}</span>
+      ${v.note?`<span style="color:#888;font-size:11px">${v.note}</span>`:""}
       <button onclick="removeVacation('${designer}',${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#E74C3C;font-size:13px">×</button>
-    </div>`).join("")||`<div style="color:#bbb;font-size:12px;text-align:center;padding:8px">尚無休假記錄</div>`;
+    </div>`;
+  }).join("")||`<div style="color:#bbb;font-size:12px;text-align:center;padding:8px">尚無休假記錄</div>`;
   return `<div class="overlay" onclick="if(event.target===this)closeVacationModal()">
-    <div class="modal" style="max-width:380px">
+    <div class="modal" style="max-width:420px">
       <h3>🏖 ${designer} 的休假設定</h3>
       <div style="margin-bottom:14px">${existingRows}</div>
       <div style="background:#F8F8FF;border-radius:10px;padding:14px;border:1.5px solid #E0E0F5">
-        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px">新增休假區間</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px">新增休假</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div><label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">假別</label>
+            <select id="vac-type" onchange="toggleVacHours()" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
+              <option value="特休">🌴 特休</option>
+              <option value="病假">🤒 病假</option>
+              <option value="其他">📋 其他</option>
+            </select>
+          </div>
+          <div id="vac-hours-wrap">
+            <label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">時數/天數</label>
+            <select id="vac-hours-sel" onchange="syncVacHours()" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
+              <option value="">整天</option>
+              <option value="4">半天（4h）</option>
+              <option value="2">2 小時</option>
+              <option value="custom">自訂小時數</option>
+            </select>
+            <input type="number" id="vac-hours-custom" min="0.5" max="8" step="0.5" placeholder="小時數" style="display:none;width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div><label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">開始日期</label>
             <input type="date" id="vac-start" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
           </div>
@@ -1404,7 +1437,11 @@ function renderVacationModal(){
             <input type="date" id="vac-end" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
           </div>
         </div>
-        <button onclick="addVacation('${designer}')" style="margin-top:10px;width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">確認新增</button>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">備註（選填）</label>
+          <input type="text" id="vac-note" placeholder="如：請假原因、就醫等" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
+        </div>
+        <button onclick="addVacation('${designer}')" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">確認新增</button>
       </div>
       <div class="modal-btns" style="margin-top:14px">
         <button class="btn-cancel" onclick="closeVacationModal()">關閉</button>
@@ -1412,8 +1449,20 @@ function renderVacationModal(){
     </div>
   </div>`;
 }
+function toggleVacHours(){
+  const t=document.getElementById("vac-type")?.value;
+  // 特休 → hours不重要（整天），病假/其他 → 顯示時數選項
+  const wrap=document.getElementById("vac-hours-wrap");
+  if(wrap) wrap.style.opacity=t==="特休"?"0.4":"1";
+}
+function syncVacHours(){
+  const sel=document.getElementById("vac-hours-sel");
+  const custom=document.getElementById("vac-hours-custom");
+  if(!sel||!custom) return;
+  custom.style.display=sel.value==="custom"?"block":"none";
+}
 function renderFilter(){
-  if(S.view==="stats"||S.view==="settings"||S.view==="excel") return "";
+  if(S.view==="stats"||S.view==="settings"||S.view==="excel"||S.view==="review") return "";
   const f=S.filter;
   const s=S.settings;
   const hasFilter=Object.values(f).some(Boolean);
@@ -1439,23 +1488,21 @@ function render(){
   const cases=filtered();
   const VIEWS=[
     {key:"list",label:"☰ 列表"},
-    {key:"kanban",label:"⬛ 看板"},
-    {key:"timeline",label:"📅 時間軸"},
     {key:"excel",label:"📊 總覽表"},
     {key:"stats",label:"📈 統計"},
+    {key:"review",label:"🔍 回顧"},
     {key:"settings",label:"⚙️ 設定"},
   ];
 
   let viewHtml="";
-  if(S.view==="list")       viewHtml=renderList(cases);
-  else if(S.view==="kanban")     viewHtml=renderKanban(cases);
-  else if(S.view==="timeline")   viewHtml=renderTimeline(cases);
-  else if(S.view==="excel")      viewHtml=renderExcel(cases);
-  else if(S.view==="stats")      viewHtml=renderStats();
-  else                           viewHtml=renderSettings();
+  if(S.view==="list")         viewHtml=renderList(cases);
+  else if(S.view==="excel")   viewHtml=renderExcel(cases);
+  else if(S.view==="stats")   viewHtml=renderStats();
+  else if(S.view==="review")  viewHtml=renderReview();
+  else                        viewHtml=renderSettings();
 
-  // Urgent badge for stats（排除已完成及擱置）
-  const urgentCount=S.cases.filter(c=>c.status!=="已完成"&&c.status!=="擱置"&&deadlineStatus(c.deadline)==="urgent").length;
+  // Review badge count
+  const reviewCount=S.cases.filter(c=>c.review).length;
 
   document.getElementById("app").innerHTML=`
     <div class="header">
@@ -1463,7 +1510,7 @@ function render(){
         <span class="logo-title">🎨 Design Dispatch</span>
         <span class="logo-sub">Mona</span>
       </div>
-      <nav class="nav">${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="stats"&&urgentCount?` <span style="background:#E74C3C;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${urgentCount}</span>`:""}</button>`).join("")}</nav>
+      <nav class="nav">${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}</nav>
       <div class="hdr-actions">
         <button class="btn btn-ghost" onclick="exportCSV(filtered())">⬇ CSV</button>
         <button class="btn btn-ghost" onclick="openExcelExportModal()">📊 Excel</button>
@@ -1515,6 +1562,7 @@ function closeMsDropdownsOnOutside(e){
 // ── SYNC MODAL FIELDS before re-render ────────────────────────
 function syncModalFields(){
   if(!S.modal) return;
+  const reviewEl=document.querySelector("input[name='f-review']:checked");
   const fields={
     date: document.getElementById("f-date")?.value,
     deadline: document.getElementById("f-deadline")?.value||"",
@@ -1523,6 +1571,7 @@ function syncModalFields(){
     status: document.getElementById("f-status")?.value,
     note: document.getElementById("f-note")?.value,
     sales: document.getElementById("f-sales-select")?.value||"",
+    review: reviewEl?reviewEl.value:(S.modal._preset?.review||S.modal.review||""),
   };
   if(S.modal._preset){
     Object.assign(S.modal._preset, fields);
@@ -1559,12 +1608,20 @@ function checkVacationWarn(){
   // handled inline in renderModal
 }
 
+function selectReview(val){
+  syncModalFields();
+  if(S.modal&&S.modal._preset) S.modal._preset.review=val;
+  else if(S.modal) S.modal.review=val;
+  render();
+}
+
 function saveCase(id){
   const salesSel=document.getElementById("f-sales-select");
   const sales=(salesSel&&salesSel.value)||"";
   const isNew=!id||S.modal._preset;
   const curDesigners = isNew ? toArr(S.modal._preset?.designers) : toArr(S.modal.designers);
   const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
+  const curReview    = isNew ? (S.modal._preset?.review||"")     : (S.modal.review||"");
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
@@ -1577,6 +1634,7 @@ function saveCase(id){
     status:document.getElementById("f-status").value,
     note:document.getElementById("f-note").value,
     emailLink:"",
+    review:curReview,
   };
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
@@ -1654,9 +1712,16 @@ function closeVacationModal(){ S.vacationModal=null; render(); }
 async function addVacation(designer){
   const start=document.getElementById("vac-start")?.value;
   const end=document.getElementById("vac-end")?.value;
+  const vacType=document.getElementById("vac-type")?.value||"特休";
+  const hoursSel=document.getElementById("vac-hours-sel")?.value||"";
+  const hoursCustom=document.getElementById("vac-hours-custom")?.value||"";
+  const note=document.getElementById("vac-note")?.value.trim()||"";
+  let hours=null;
+  if(hoursSel==="custom"&&hoursCustom) hours=parseFloat(hoursCustom);
+  else if(hoursSel&&hoursSel!=="") hours=parseFloat(hoursSel);
   if(!start||!end){ alert("請選擇開始與結束日期"); return; }
   if(end<start){ alert("結束日期不能早於開始日期"); return; }
-  const row=await addVacationDb(designer,start,end);
+  const row=await addVacationDb(designer,start,end,vacType,hours,note);
   if(row) S.vacations=[...S.vacations,row];
   render();
 }
