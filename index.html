@@ -356,6 +356,8 @@ function caseToDb(c){
     email_link:c.emailLink||null,
     designer_status:c.designerStatus||null,
     review:c.review||null,
+    notion_project:c.notionProject||null,
+    notion_page_id:c.notionPageId||null,
   };
 }
 function dbToCase(r){
@@ -368,6 +370,8 @@ function dbToCase(r){
     emailLink:r.email_link||"",
     designerStatus:r.designer_status||{},
     review:r.review||"",
+    notionProject:r.notion_project||"",
+    notionPageId:r.notion_page_id||"",
   };
 }
 
@@ -1388,6 +1392,19 @@ function renderModal(){
       <div class="form-row single">
         <div class="fg-modal"><label>備註</label><textarea id="f-note" placeholder="專案說明、參考資訊...">${c.note||""}</textarea></div>
       </div>
+      <div class="form-row single">
+        <div class="fg-modal">
+          <label>📎 Notion 專案 <span style="font-weight:400;color:#aaa">（選填，同名自動歸入同一專案）</span></label>
+          <input type="text" id="f-notion-project" list="notion-project-list"
+            placeholder="例：SBJ Holiday 2027 I&amp;II"
+            value="${c.notionProject||""}"
+            style="width:100%"/>
+          <datalist id="notion-project-list">
+            ${[...new Set(S.cases.map(x=>x.notionProject).filter(Boolean))].map(p=>`<option value="${p}"/>`).join("")}
+          </datalist>
+          ${c.notionPageId?`<div style="margin-top:4px;font-size:10px;color:#27AE60">✅ 已連結 Notion 頁面</div>`:`<div style="margin-top:4px;font-size:10px;color:#aaa">填寫後，下次同步時自動建立或更新 Notion 專案</div>`}
+        </div>
+      </div>
       <div class="modal-btns">
         ${!isNew?`<button class="btn-danger" style="margin-right:auto;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;background:#FFF0EE;color:var(--red);border:1.5px solid #FFCDD2" onclick="deleteCaseFromModal('${c.id}')">🗑 刪除案件</button>`:""}
         <button class="btn-cancel" onclick="closeModal()">取消</button>
@@ -1649,6 +1666,7 @@ function syncModalFields(){
     note: document.getElementById("f-note")?.value,
     sales: document.getElementById("f-sales-select")?.value||"",
     review: reviewEl?reviewEl.value:(S.modal._preset?.review||S.modal.review||""),
+    notionProject: document.getElementById("f-notion-project")?.value||"",
   };
   if(S.modal._preset){
     Object.assign(S.modal._preset, fields);
@@ -1712,6 +1730,8 @@ function saveCase(id){
     note:document.getElementById("f-note").value,
     emailLink:"",
     review:curReview,
+    notionProject:document.getElementById("f-notion-project")?.value.trim()||"",
+    notionPageId: isNew ? "" : (S.modal.notionPageId||""),
   };
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
