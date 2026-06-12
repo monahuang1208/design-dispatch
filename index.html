@@ -1726,6 +1726,7 @@ function saveCase(id){
   const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
   const curReview    = isNew ? (S.modal._preset?.review||"")     : (S.modal.review||"");
   const prevNotionProject = isNew ? "" : (S.modal.notionProject||"");
+      const prevDeadline = isNew ? "" : (S.modal.deadline||"");
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
@@ -1742,7 +1743,8 @@ function saveCase(id){
     notionProject:document.getElementById("f-notion-project")?.value.trim()||"",
     notionPageId: isNew ? "" : (S.modal.notionPageId||""),
   };
-  const shouldSyncNotion = c.notionProject && (isNew || c.notionProject !== prevNotionProject);
+  const deadlineChanged = !isNew && c.deadline !== prevDeadline;
+      const shouldSyncNotion = c.notionProject && (isNew || c.notionProject !== prevNotionProject || deadlineChanged);
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
   saveCase_db(c, shouldSyncNotion);
