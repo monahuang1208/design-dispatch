@@ -265,11 +265,11 @@ async function loadCases(){
   if(error){ console.error("loadCases",error); return []; }
   return (data||[]).map(dbToCase);
 }
-async function saveCase_db(c){
+async function saveCase_db(c, syncToNotion=true){
   const row=caseToDb(c);
   const {error}=await db.from("cases").upsert(row,{onConflict:"id"});
   if(error) console.error("saveCase_db",error);
-  if(c.notionProject){
+  if(c.notionProject && syncToNotion){
     fetch("https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/sync-to-notion",{
       method:"POST",
       headers:{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw"},
@@ -1004,7 +1004,6 @@ function renderExcel(cases){
       ${todayBtn}
     </div>
   </div>`;
-
   return `<div class="excel-wrap">
     ${nav}
     <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 160px)">
@@ -1726,6 +1725,7 @@ function saveCase(id){
   const curDesigners = isNew ? toArr(S.modal._preset?.designers) : toArr(S.modal.designers);
   const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
   const curReview    = isNew ? (S.modal._preset?.review||"")     : (S.modal.review||"");
+  const prevNotionProject = isNew ? "" : (S.modal.notionProject||"");
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
@@ -1742,9 +1742,10 @@ function saveCase(id){
     notionProject:document.getElementById("f-notion-project")?.value.trim()||"",
     notionPageId: isNew ? "" : (S.modal.notionPageId||""),
   };
+  const shouldSyncNotion = c.notionProject && (isNew || c.notionProject !== prevNotionProject);
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
-  saveCase_db(c);
+  saveCase_db(c, shouldSyncNotion);
   S.modal=null; S.parseText=""; S.parseStatus="";
   render();
 }
