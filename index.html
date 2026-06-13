@@ -273,7 +273,7 @@ async function saveCase_db(c, syncToNotion=true){
     fetch("https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/sync-to-notion",{
       method:"POST",
       headers:{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw"},
-      body:JSON.stringify({id:c.id,notionProject:c.notionProject,notionPageId:c.notionPageId||"",date:c.date,jobTypes:c.jobTypes,note:c.note,designers:c.designers,sales:c.sales,deadline:c.deadline})
+      body:JSON.stringify({id:c.id,notionProject:c.notionProject,notionPageId:c.notionPageId||"",date:c.date,jobTypes:c.jobTypes,note:c.note,designers:c.designers,sales:c.sales,deadline:c.deadline,market:c.market})
     }).then(r=>r.json()).then(d=>{
       if(d.pageId&&d.pageId!==c.notionPageId){const idx=S.cases.findIndex(x=>x.id===c.id);if(idx>=0)S.cases[idx].notionPageId=d.pageId;}
     }).catch(e=>console.error("notion sync error",e));
