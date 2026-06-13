@@ -1,630 +1,623 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Design Project Timeline</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Timeline</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --text: #e2e8f0;
+    --text-dim: #8892a4;
+    --today: #f87171;
+    --label-w: 200px;
+    --header-h: 44px;
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f7f7f5;
-      color: #1a1a1a;
-      font-size: 13px;
-    }
+    --c-note:         #60a5fa;
+    --c-jpg:          #34d399;
+    --c-v1:           #a78bfa;
+    --c-presentation: #fb923c;
+    --c-m1:           #f472b6;
+    --c-other:        #94a3b8;
 
-    /* ── Header ── */
-    .header {
-      background: #fff;
-      border-bottom: 1px solid #e5e5e5;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .header h1 { font-size: 16px; font-weight: 600; flex: 1; }
-    .btn-today {
-      background: #2383e2;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 14px;
-      font-size: 13px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .btn-today:hover { background: #1a6fc4; }
-    .zoom-btns { display: flex; gap: 4px; }
-    .zoom-btns button {
-      background: #f0f0ee;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 4px 10px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .zoom-btns button:hover { background: #e5e5e3; }
-    .zoom-btns button.active { background: #2383e2; color: #fff; border-color: #2383e2; }
-    .last-updated { font-size: 11px; color: #999; }
+    --s-active: #22c55e;
+    --s-done:   #64748b;
+    --s-hold:   #eab308;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px;
+    overflow: hidden; height: 100vh; display: flex; flex-direction: column;
+  }
 
-    /* ── Legend ── */
-    .legend {
-      background: #fff;
-      border-bottom: 1px solid #e5e5e5;
-      padding: 8px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .legend-label { font-size: 11px; color: #888; margin-right: 4px; }
-    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; }
-    .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  /* ── Top bar ── */
+  #topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #topbar h1 { font-size: 15px; font-weight: 600; margin-right: 8px; }
+  .btn {
+    padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text); cursor: pointer; font-size: 12px;
+    transition: background .15s;
+  }
+  .btn:hover { background: var(--border); }
+  .btn.active { background: #3b4fd8; border-color: #6475e8; }
+  .sep { width: 1px; height: 20px; background: var(--border); }
+  .zoom-label { color: var(--text-dim); font-size: 12px; }
+  #status-msg { margin-left: auto; font-size: 12px; color: var(--text-dim); }
 
-    /* ── Main layout ── */
-    .gantt-wrapper {
-      display: flex;
-      overflow: hidden;
-      height: calc(100vh - 89px);
-    }
+  /* ── Legend ── */
+  #legend {
+    display: flex; align-items: center; gap: 12px;
+    padding: 6px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
 
-    /* ── Left label column ── */
-    .label-col {
-      width: 220px;
-      min-width: 220px;
-      border-right: 1px solid #e5e5e5;
-      background: #fff;
-      overflow-y: auto;
-      overflow-x: hidden;
-      z-index: 10;
-    }
-    .label-header {
-      height: 48px;
-      border-bottom: 1px solid #e5e5e5;
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      font-size: 11px;
-      color: #888;
-      font-weight: 500;
-      background: #fafaf9;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-    }
-    .label-row {
-      height: 36px;
-      display: flex;
-      align-items: center;
-      padding: 0 8px 0 12px;
-      border-bottom: 1px solid #f0f0ee;
-      gap: 4px;
-      cursor: default;
-    }
-    .label-row.child-row { padding-left: 28px; background: #fafaf9; }
-    .label-row:hover { background: #f5f5f3; }
-    .toggle-btn {
-      width: 16px; height: 16px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      border-radius: 3px;
-      flex-shrink: 0;
-      color: #888;
-      font-size: 10px;
-      transition: transform 0.15s;
-    }
-    .toggle-btn:hover { background: #e8e8e6; }
-    .toggle-btn.open { transform: rotate(90deg); }
-    .label-spacer { width: 16px; flex-shrink: 0; }
-    .label-name {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1;
-      font-size: 13px;
-    }
-    .label-row.child-row .label-name { font-size: 12px; color: #555; }
+  /* ── Timeline wrapper ── */
+  #timeline-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
-    /* ── Right chart area ── */
-    .chart-area {
-      flex: 1;
-      overflow: auto;
-      position: relative;
-    }
-    .chart-inner {
-      position: relative;
-      min-height: 100%;
-    }
+  /* ── Header ── */
+  #header-scroll { overflow: hidden; flex-shrink: 0; }
+  #header-inner { display: flex; }
+  #header-label {
+    width: var(--label-w); min-width: var(--label-w);
+    background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    height: var(--header-h); display: flex; align-items: center; padding: 0 12px;
+    font-size: 11px; color: var(--text-dim); flex-shrink: 0;
+  }
+  #header-dates { flex: 1; height: var(--header-h); position: relative; overflow: hidden; }
+  #header-dates-canvas { position: absolute; top: 0; left: 0; height: 100%; }
 
-    /* ── Date header ── */
-    .date-header {
-      height: 48px;
-      background: #fafaf9;
-      border-bottom: 1px solid #e5e5e5;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-    }
-    .month-labels {
-      height: 22px;
-      position: relative;
-      border-bottom: 1px solid #eee;
-    }
-    .month-label {
-      position: absolute;
-      top: 0;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #555;
-      border-right: 1px solid #eee;
-    }
-    .day-labels {
-      height: 26px;
-      position: relative;
-    }
-    .day-label {
-      position: absolute;
-      top: 0;
-      height: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: #aaa;
-      border-right: 1px solid #f0f0ee;
-    }
-    .day-label.today-label { color: #e03e3e; font-weight: 700; }
+  /* ── Body ── */
+  #body-scroll { flex: 1; overflow: auto; display: flex; }
+  #label-col {
+    width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    position: sticky; left: 0; z-index: 10;
+  }
+  .row-label {
+    display: flex; align-items: center; padding: 0 8px;
+    border-bottom: 1px solid var(--border); gap: 4px;
+    transition: background .1s;
+  }
+  .row-label:hover { background: var(--surface2); }
+  .reorder-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .reorder-btn {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 9px; line-height: 1; padding: 1px 3px;
+  }
+  .reorder-btn:hover { color: var(--text); }
+  .proj-name {
+    font-size: 12px; font-weight: 500; flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .notion-link { font-size: 10px; color: #6475e8; text-decoration: none; flex-shrink: 0; }
+  .notion-link:hover { text-decoration: underline; }
 
-    /* ── Rows ── */
-    .row-container { position: relative; }
-    .chart-row {
-      height: 36px;
-      border-bottom: 1px solid #f0f0ee;
-      position: relative;
-    }
-    .chart-row.child-row { background: #fafaf9; }
+  /* ── Gantt area ── */
+  #gantt-col { flex: 1; position: relative; }
+  .gantt-row { border-bottom: 1px solid var(--border); position: relative; }
+  .gantt-row:nth-child(even) { background: rgba(255,255,255,.015); }
+  .today-line {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--today); z-index: 5; pointer-events: none; opacity: .7;
+  }
+  .grid-line {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--border); opacity: .35; pointer-events: none;
+  }
 
-    /* ── Today line ── */
-    .today-line {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: #e03e3e;
-      z-index: 8;
-      pointer-events: none;
-    }
-    .today-line::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -4px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #e03e3e;
-    }
+  /* ── Segments ── */
+  .segment {
+    position: absolute; height: 22px; border-radius: 4px;
+    cursor: pointer; display: flex; align-items: center; padding: 0 6px;
+    font-size: 11px; font-weight: 500; color: rgba(255,255,255,.92);
+    transition: filter .15s, transform .1s; overflow: hidden; white-space: nowrap;
+    border: 1px solid rgba(0,0,0,.2); box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    user-select: none;
+  }
+  .segment:hover { filter: brightness(1.2); transform: scaleY(1.08); z-index: 20; }
+  .segment-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; flex-shrink: 0; pointer-events: none; }
 
-    /* ── Bars ── */
-    .bar {
-      position: absolute;
-      top: 6px;
-      height: 24px;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      font-size: 11px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      cursor: pointer;
-      transition: filter 0.1s;
-      min-width: 4px;
-    }
-    .bar:hover { filter: brightness(0.92); }
-    .bar.child-bar {
-      top: 9px;
-      height: 18px;
-      border-radius: 4px;
-      font-size: 10px;
-    }
+  .seg-note         { background: var(--c-note); }
+  .seg-jpg          { background: var(--c-jpg); }
+  .seg-v1           { background: var(--c-v1); }
+  .seg-presentation { background: var(--c-presentation); }
+  .seg-m1           { background: var(--c-m1); }
+  .seg-other        { background: var(--c-other); }
 
-    /* ── Status colors ── */
-    .status-待確認  { background: #f5e642; color: #5a4e00; }
-    .status-進行中  { background: #6abf69; color: #fff; }
-    .status-已完成  { background: #b0bec5; color: #fff; }
-    .status-暫停    { background: #ffb74d; color: #fff; }
-    .status-取消    { background: #ef9a9a; color: #fff; }
-    .status-default { background: #90caf9; color: #fff; }
+  /* ── Status popup ── */
+  #popup {
+    position: fixed; z-index: 100; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6); min-width: 210px;
+    display: none;
+  }
+  #popup.visible { display: block; }
+  #popup-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  #popup-dates { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; }
+  #popup h3 { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+  .status-btn {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 7px 10px; border-radius: 6px; border: 1px solid transparent;
+    background: var(--surface); color: var(--text); cursor: pointer;
+    font-size: 12px; margin-bottom: 4px; transition: background .1s;
+  }
+  .status-btn:hover { background: var(--border); }
+  .status-btn.current { background: rgba(100,117,232,.2); border-color: rgba(100,117,232,.4); }
+  .s-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  #popup-close {
+    margin-top: 6px; width: 100%; padding: 5px; border-radius: 6px;
+    border: 1px solid var(--border); background: none; color: var(--text-dim); cursor: pointer; font-size: 11px;
+  }
+  #popup-close:hover { background: var(--surface); }
 
-    /* ── Loading / Error ── */
-    .status-msg {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      color: #888;
-    }
-    .status-msg .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid #ddd;
-      border-top-color: #2383e2;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 12px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Tooltip ── */
-    .tooltip {
-      position: fixed;
-      background: #1a1a1a;
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 7px;
-      font-size: 12px;
-      pointer-events: none;
-      z-index: 200;
-      max-width: 280px;
-      line-height: 1.6;
-      display: none;
-    }
-  </style>
+  /* ── Loading ── */
+  #loading {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+    flex-direction: column; gap: 12px;
+  }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: #6475e8; border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { color: var(--text-dim); font-size: 13px; }
+</style>
 </head>
 <body>
 
-<div class="header">
-  <h1>📅 Design Project Timeline</h1>
-  <span class="last-updated" id="lastUpdated"></span>
-  <div class="zoom-btns">
-    <button onclick="setZoom('week')" id="zoom-week">週</button>
-    <button onclick="setZoom('biweek')" id="zoom-biweek" class="active">雙週</button>
-    <button onclick="setZoom('month')" id="zoom-month">月</button>
-  </div>
-  <button class="btn-today" onclick="scrollToToday()">今日</button>
+<div id="loading">
+  <div class="spinner"></div>
+  <p>載入派案資料…</p>
 </div>
 
-<div class="legend" id="legend"></div>
+<div id="topbar">
+  <h1>📅 Project Timeline</h1>
+  <div class="sep"></div>
+  <span class="zoom-label">縮放：</span>
+  <button class="btn" id="z-week" onclick="setZoom('week')">週</button>
+  <button class="btn active" id="z-biweek" onclick="setZoom('biweek')">雙週</button>
+  <button class="btn" id="z-month" onclick="setZoom('month')">月</button>
+  <div class="sep"></div>
+  <button class="btn" onclick="scrollToToday()">📍 今天</button>
+  <button class="btn" onclick="loadData()">↻ 重新整理</button>
+  <span id="status-msg"></span>
+</div>
 
-<div class="gantt-wrapper">
-  <div class="label-col" id="labelCol">
-    <div class="label-header">專案名稱</div>
-    <div id="labelRows"></div>
-  </div>
-  <div class="chart-area" id="chartArea">
-    <div class="chart-inner" id="chartInner">
-      <div class="date-header" id="dateHeader"></div>
-      <div id="chartRows"></div>
+<div id="legend">
+  <span style="font-size:11px;color:var(--text-dim);margin-right:2px;">案件種類：</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-note)"></div>Note</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
+  <div class="sep"></div>
+  <span style="font-size:11px;color:var(--text-dim);margin-right:2px;">狀態圓點：</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-active);border-radius:50%"></div>進行中</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-done);border-radius:50%"></div>完成</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-hold);border-radius:50%"></div>擱置</div>
+</div>
+
+<div id="timeline-wrap">
+  <div id="header-scroll">
+    <div id="header-inner">
+      <div id="header-label">專案</div>
+      <div id="header-dates">
+        <div id="header-dates-canvas"></div>
+      </div>
     </div>
   </div>
+  <div id="body-scroll" onscroll="syncHeaderScroll(this)">
+    <div id="label-col"></div>
+    <div id="gantt-col"></div>
+  </div>
 </div>
 
-<div class="tooltip" id="tooltip"></div>
-<div class="status-msg" id="statusMsg">
-  <div class="spinner"></div>
-  載入中…
+<div id="popup">
+  <div id="popup-title"></div>
+  <div id="popup-dates"></div>
+  <h3>變更狀態</h3>
+  <div id="popup-status-btns"></div>
+  <button id="popup-close" onclick="closePopup()">關閉</button>
 </div>
 
 <script>
-// ── Config ────────────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/get-timeline';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
+const SUPABASE_URL = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
+const NOTION_FN  = 'https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/get-timeline';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let allItems = [];
-let rootItems = [];
-let expanded = new Set();
-let zoomDayWidth = 38; // px per day (biweek default)
-let zoomMode = 'biweek';
-let rangeStart, rangeEnd, totalDays;
+const STATUS_LIST   = ['進行中', '完成', '擱置'];
+const STATUS_COLORS = { '進行中':'var(--s-active)', '完成':'var(--s-done)', '已完成':'var(--s-done)', '擱置':'var(--s-hold)' };
+const JOB_CLASS     = { 'Note':'seg-note', 'JPG':'seg-jpg', 'V1':'seg-v1', 'Presentation':'seg-presentation', 'M1':'seg-m1' };
 
-const STATUS_COLORS = {
-  '待確認': 'status-待確認',
-  '進行中': 'status-進行中',
-  '已完成': 'status-已完成',
-  '暫停':   'status-暫停',
-  '取消':   'status-取消',
-};
+let zoomDays    = 14;
+let dayPx       = 60;
+let allCases    = [];
+let notionMap   = {};    // project name → notion page url
+let projectOrder = [];
+let customOrder  = null;
 
-// ── Fetch data ─────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// DATA
+// ────────────────────────────────────────────────
 async function loadData() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('status-msg').textContent = '';
   try {
-    const res = await fetch(SUPABASE_URL, {
-      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { items } = await res.json();
-    allItems = items;
-    buildHierarchy();
-    render();
-    document.getElementById('statusMsg').style.display = 'none';
-    document.getElementById('lastUpdated').textContent =
-      '更新：' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
-    document.getElementById('statusMsg').innerHTML =
-      `<div style="color:#e03e3e">載入失敗：${e.message}</div>`;
+    const [casesRes, notionRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/cases?select=*&order=date.asc`, {
+        headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
+      }),
+      fetch(NOTION_FN, {
+        headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
+      }).catch(() => null)
+    ]);
+
+    allCases = await casesRes.json();
+    if (!Array.isArray(allCases)) throw new Error('資料格式錯誤');
+
+    notionMap = {};
+    if (notionRes && notionRes.ok) {
+      try {
+        const { items } = await notionRes.json();
+        for (const item of (items || [])) {
+          if (item.name && item.url) notionMap[item.name] = item.url;
+        }
+      } catch(_) {}
+    }
+
+    try { customOrder = JSON.parse(localStorage.getItem('tl-order') || 'null'); } catch(_) {}
+
+    buildTimeline();
+    document.getElementById('status-msg').textContent = `共 ${allCases.length} 筆派案`;
+  } catch(e) {
+    document.getElementById('status-msg').textContent = '載入失敗：' + e.message;
+    console.error(e);
   }
+  document.getElementById('loading').style.display = 'none';
 }
 
-// ── Build tree ─────────────────────────────────────────────────────────────────
-function buildHierarchy() {
-  const map = {};
-  allItems.forEach(item => { map[item.id] = { ...item, children: [] }; });
+// ────────────────────────────────────────────────
+// BUILD
+// ────────────────────────────────────────────────
+function buildTimeline() {
+  // Group by notion_project
+  const groups = {};
+  for (const c of allCases) {
+    const proj = c.notion_project || '（未指定專案）';
+    if (!groups[proj]) groups[proj] = [];
+    groups[proj].push(c);
+  }
 
-  rootItems = [];
-  allItems.forEach(item => {
-    if (item.parentId && map[item.parentId]) {
-      map[item.parentId].children.push(map[item.id]);
-    } else if (!item.parentId) {
-      rootItems.push(map[item.id]);
-    }
+  // Default order: earliest dispatch date first
+  const defaultOrder = Object.keys(groups).sort((a, b) => {
+    const aMin = Math.min(...groups[a].map(c => dateMs(c.date)));
+    const bMin = Math.min(...groups[b].map(c => dateMs(c.date)));
+    return aMin - bMin;
   });
 
-  // Sort roots by start date descending (newest first)
-  rootItems.sort((a, b) => (b.start || '').localeCompare(a.start || ''));
-}
+  if (customOrder) {
+    const kept = customOrder.filter(p => defaultOrder.includes(p));
+    const added = defaultOrder.filter(p => !kept.includes(p));
+    projectOrder = [...kept, ...added];
+  } else {
+    projectOrder = defaultOrder;
+  }
 
-// ── Compute date range ─────────────────────────────────────────────────────────
-function computeRange() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Overall date range
+  const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
+  if (!allMs.length) return;
+  const minDate = new Date(Math.min(...allMs));
+  const maxDate = new Date(Math.max(...allMs));
+  minDate.setDate(minDate.getDate() - 3);
+  maxDate.setDate(maxDate.getDate() + 7);
+  const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
 
-  let minDate = new Date(today);
-  let maxDate = new Date(today);
-  maxDate.setDate(maxDate.getDate() + 30);
+  // dayPx from zoom
+  const visW = Math.max(600, window.innerWidth - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--label-w') || 200));
+  dayPx = Math.max(18, visW / zoomDays);
+  const totalWidth = totalDays * dayPx;
 
-  allItems.forEach(item => {
-    if (item.start) {
-      const d = new Date(item.start);
-      if (d < minDate) minDate = d;
+  renderHeader(minDate, totalDays, totalWidth);
+
+  const labelCol = document.getElementById('label-col');
+  const ganttCol = document.getElementById('gantt-col');
+  labelCol.innerHTML = '';
+  ganttCol.innerHTML = '';
+
+  // Today line
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayX = daysBetween(minDate, today) * dayPx;
+  if (todayX >= 0 && todayX <= totalWidth) {
+    const tl = el('div', 'today-line');
+    tl.style.left = todayX + 'px';
+    ganttCol.appendChild(tl);
+  }
+
+  // Weekly grid lines (Monday)
+  let gd = new Date(minDate);
+  for (let i = 0; i < totalDays; i++) {
+    if (gd.getDay() === 1) {
+      const gl = el('div', 'grid-line');
+      gl.style.left = (i * dayPx) + 'px';
+      ganttCol.appendChild(gl);
     }
-    if (item.end) {
-      const d = new Date(item.end);
-      if (d > maxDate) maxDate = d;
+    gd.setDate(gd.getDate() + 1);
+  }
+
+  // Rows
+  for (const proj of projectOrder) {
+    const cases = groups[proj] || [];
+    const lanes  = assignLanes(cases);
+    const nLanes = Math.max(1, lanes.length);
+    const rowH   = Math.max(44, nLanes * 28 + 10);
+
+    // Label cell
+    const label = el('div', 'row-label');
+    label.style.height = rowH + 'px';
+    label.title = proj;
+
+    const rbtns = el('div', 'reorder-btns');
+    const btnUp = el('button', 'reorder-btn'); btnUp.textContent = '▲'; btnUp.title = '上移';
+    btnUp.onclick = (e) => { e.stopPropagation(); moveProject(proj, -1); };
+    const btnDn = el('button', 'reorder-btn'); btnDn.textContent = '▼'; btnDn.title = '下移';
+    btnDn.onclick = (e) => { e.stopPropagation(); moveProject(proj, 1); };
+    rbtns.append(btnUp, btnDn);
+
+    const pname = el('span', 'proj-name');
+    pname.textContent = proj;
+
+    label.append(rbtns, pname);
+
+    const nurl = notionMap[proj];
+    if (nurl) {
+      const a = el('a', 'notion-link');
+      a.href = nurl; a.target = '_blank'; a.textContent = '↗'; a.title = 'Notion';
+      a.onclick = e => e.stopPropagation();
+      label.appendChild(a);
     }
-  });
+    labelCol.appendChild(label);
 
-  // Add padding
-  minDate.setDate(minDate.getDate() - 7);
-  maxDate.setDate(maxDate.getDate() + 14);
+    // Gantt row
+    const row = el('div', 'gantt-row');
+    row.style.height = rowH + 'px';
+    for (let li = 0; li < lanes.length; li++) {
+      for (const c of lanes[li]) {
+        const seg = buildSegment(c, minDate, li, nLanes, rowH);
+        if (seg) row.appendChild(seg);
+      }
+    }
+    ganttCol.appendChild(row);
+  }
 
-  rangeStart = minDate;
-  rangeEnd = maxDate;
-  totalDays = Math.ceil((rangeEnd - rangeStart) / 86400000) + 1;
-}
+  ganttCol.style.width  = totalWidth + 'px';
+  ganttCol.style.minWidth = totalWidth + 'px';
 
-// ── Date helpers ───────────────────────────────────────────────────────────────
-function dayOffset(dateStr) {
-  const d = new Date(dateStr);
-  d.setHours(0, 0, 0, 0);
-  return Math.round((d - rangeStart) / 86400000);
-}
-
-function todayOffset() {
-  const t = new Date();
-  t.setHours(0, 0, 0, 0);
-  return Math.round((t - rangeStart) / 86400000);
-}
-
-function fmt(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return `${d.getMonth()+1}/${d.getDate()}`;
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-function render() {
-  computeRange();
-  renderDateHeader();
-  renderRows();
-  renderLegend();
   setTimeout(scrollToToday, 50);
 }
 
-function renderDateHeader() {
-  const header = document.getElementById('dateHeader');
-  const totalWidth = totalDays * zoomDayWidth;
+function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
+  if (!c.date) return null;
+  const start = daysBetween(minDate, new Date(c.date + 'T00:00:00'));
+  const endDate = c.deadline ? c.deadline : c.date;
+  const span  = Math.max(1, daysBetween(new Date(c.date + 'T00:00:00'), new Date(endDate + 'T00:00:00')) + 1);
 
-  // Month row
-  let monthHtml = '';
-  let cur = new Date(rangeStart);
-  while (cur <= rangeEnd) {
-    const monthStart = dayOffset(cur.toISOString().split('T')[0]);
-    const label = `${cur.getFullYear()}年${cur.getMonth()+1}月`;
-    const nextMonth = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
-    const monthEnd = Math.min(dayOffset(nextMonth.toISOString().split('T')[0]), totalDays);
-    const w = (monthEnd - monthStart) * zoomDayWidth;
-    monthHtml += `<div class="month-label" style="left:${monthStart*zoomDayWidth}px;width:${w}px">${label}</div>`;
-    cur = nextMonth;
+  const x = start * dayPx;
+  const w = Math.max(dayPx * 0.75, span * dayPx - 3);
+
+  const SEG_H = 22;
+  const laneH = numLanes > 1 ? (rowH - 8) / numLanes : rowH;
+  const top   = 4 + laneIdx * laneH + (laneH - SEG_H) / 2;
+
+  const jobType = (Array.isArray(c.job_types) && c.job_types[0]) || 'Other';
+  const cls = JOB_CLASS[jobType] || 'seg-other';
+  const sColor = STATUS_COLORS[c.status] || 'var(--s-active)';
+
+  const seg = el('div', `segment ${cls}`);
+  seg.style.cssText = `left:${x}px;width:${w}px;top:${top}px;`;
+  seg.title = [
+    c.notion_project, jobType,
+    `${c.date} → ${endDate}`,
+    `狀態：${c.status || '—'}`,
+    c.note ? `備註：${c.note}` : ''
+  ].filter(Boolean).join('\n');
+
+  const dot = el('div', 'status-dot');
+  dot.style.background = sColor;
+  const lbl = el('span', 'segment-label');
+  lbl.textContent = w > 50 ? jobType : '';
+  seg.append(dot, lbl);
+
+  seg.addEventListener('click', (e) => { e.stopPropagation(); openPopup(c, seg, dot); });
+  return seg;
+}
+
+// ────────────────────────────────────────────────
+// LANE ASSIGNMENT
+// ────────────────────────────────────────────────
+function assignLanes(cases) {
+  const lanes    = [];
+  const laneEnds = [];
+  const sorted   = [...cases].sort((a, b) => dateMs(a.date) - dateMs(b.date));
+  for (const c of sorted) {
+    const s = dateMs(c.date);
+    const e = dateMs(c.deadline || c.date);
+    let placed = false;
+    for (let i = 0; i < lanes.length; i++) {
+      if (laneEnds[i] < s) {
+        lanes[i].push(c); laneEnds[i] = e; placed = true; break;
+      }
+    }
+    if (!placed) { lanes.push([c]); laneEnds.push(e); }
   }
+  return lanes.length ? lanes : [[]];
+}
 
-  // Day row
-  let dayHtml = '';
-  const today = new Date(); today.setHours(0,0,0,0);
+// ────────────────────────────────────────────────
+// HEADER
+// ────────────────────────────────────────────────
+function renderHeader(minDate, totalDays, totalWidth) {
+  const canvas = document.getElementById('header-dates-canvas');
+  canvas.style.width = totalWidth + 'px';
+  canvas.innerHTML = '';
+  let d = new Date(minDate);
+  let lastMonth = -1;
   for (let i = 0; i < totalDays; i++) {
-    const d = new Date(rangeStart);
-    d.setDate(d.getDate() + i);
-    const isToday = d.getTime() === today.getTime();
-    const dow = ['日','一','二','三','四','五','六'][d.getDay()];
-    const showLabel = zoomDayWidth >= 28 || d.getDay() === 1 || isToday;
-    const cls = isToday ? 'day-label today-label' : 'day-label';
-    dayHtml += `<div class="${cls}" style="left:${i*zoomDayWidth}px;width:${zoomDayWidth}px">
-      ${showLabel ? `${d.getDate()}<br><span style="font-size:9px">${dow}</span>` : ''}
-    </div>`;
+    const x = i * dayPx;
+    if (d.getMonth() !== lastMonth) {
+      lastMonth = d.getMonth();
+      const ml = el('div');
+      ml.style.cssText = `position:absolute;left:${x+3}px;top:2px;font-size:10px;color:var(--text-dim);font-weight:600;white-space:nowrap;pointer-events:none;`;
+      ml.textContent = d.toLocaleDateString('zh-TW', { year:'numeric', month:'long' });
+      canvas.appendChild(ml);
+    }
+    const dow = d.getDay();
+    const showDay = dayPx >= 38 || dow === 1 || dow === 0;
+    if (showDay) {
+      const isToday = sameDay(d, new Date());
+      const dl = el('div');
+      dl.style.cssText = `position:absolute;left:${x}px;bottom:4px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
+      dl.style.color = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#7c8de8' : 'var(--text-dim)');
+      dl.style.fontWeight = isToday ? '700' : '400';
+      dl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+      canvas.appendChild(dl);
+    }
+    d.setDate(d.getDate() + 1);
   }
-
-  header.innerHTML = `
-    <div class="month-labels" style="width:${totalWidth}px">${monthHtml}</div>
-    <div class="day-labels" style="width:${totalWidth}px">${dayHtml}</div>
-  `;
 }
 
-function renderRows() {
-  const labelRows = document.getElementById('labelRows');
-  const chartRows = document.getElementById('chartRows');
-  const totalWidth = totalDays * zoomDayWidth;
+// ────────────────────────────────────────────────
+// POPUP
+// ────────────────────────────────────────────────
+function openPopup(c, segEl, dotEl) {
+  document.getElementById('popup-title').textContent =
+    `${c.notion_project || '—'}  ·  ${(c.job_types||[]).join(', ') || '—'}`;
+  document.getElementById('popup-dates').textContent =
+    `${c.date}  →  ${c.deadline || c.date}`;
 
-  // Today line HTML (shared across all rows via absolute positioning on chartInner)
-  const todayX = todayOffset() * zoomDayWidth;
-  document.getElementById('chartInner').style.width = totalWidth + 'px';
-
-  let labelHtml = '';
-  let chartHtml = `<div class="today-line" style="left:${todayX}px;top:48px"></div>`;
-
-  function addRow(item, isChild) {
-    const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expanded.has(item.id);
-
-    // Label
-    if (isChild) {
-      labelHtml += `<div class="label-row child-row" data-id="${item.id}">
-        <span class="label-spacer"></span>
-        <span class="label-name" title="${item.name}">${item.name}</span>
-      </div>`;
-    } else {
-      const toggleIcon = hasChildren
-        ? `<span class="toggle-btn ${isExpanded ? 'open' : ''}" onclick="toggleExpand('${item.id}')">▶</span>`
-        : `<span class="label-spacer"></span>`;
-      labelHtml += `<div class="label-row" data-id="${item.id}">
-        ${toggleIcon}
-        <span class="label-name" title="${item.name}">${item.name}</span>
-      </div>`;
-    }
-
-    // Chart row
-    const rowCls = isChild ? 'chart-row child-row' : 'chart-row';
-    let barHtml = '';
-
-    if (item.start) {
-      const startX = dayOffset(item.start) * zoomDayWidth;
-      const endX = (dayOffset(item.end || item.start) + 1) * zoomDayWidth;
-      const barW = Math.max(endX - startX, 4);
-      const colorCls = STATUS_COLORS[item.status] || 'status-default';
-      const barCls = isChild ? `bar child-bar ${colorCls}` : `bar ${colorCls}`;
-      const label = barW > 40 ? item.name : '';
-      barHtml = `<div class="${barCls}" style="left:${startX}px;width:${barW}px"
-        data-id="${item.id}"
-        onmouseenter="showTooltip(event,'${item.id}')"
-        onmouseleave="hideTooltip()"
-        onclick="openNotion('${item.url}')"
-      >${label}</div>`;
-    }
-
-    chartHtml += `<div class="${rowCls}" style="width:${totalWidth}px" data-id="${item.id}">${barHtml}</div>`;
-
-    // Children (if expanded)
-    if (hasChildren && isExpanded) {
-      item.children
-        .slice()
-        .sort((a, b) => (a.start || '').localeCompare(b.start || ''))
-        .forEach(child => addRow(child, true));
-    }
+  const btns = document.getElementById('popup-status-btns');
+  btns.innerHTML = '';
+  for (const s of STATUS_LIST) {
+    const btn = el('button', 'status-btn' + (c.status === s ? ' current' : ''));
+    const sd  = el('div', 's-dot');
+    sd.style.background = STATUS_COLORS[s];
+    btn.append(sd, document.createTextNode(s));
+    btn.onclick = () => updateStatus(c, s, segEl, dotEl);
+    btns.appendChild(btn);
   }
 
-  rootItems.forEach(item => addRow(item, false));
-
-  labelRows.innerHTML = labelHtml;
-  chartRows.innerHTML = chartHtml;
-
-  // Sync scroll between label and chart
-  const labelCol = document.getElementById('labelCol');
-  const chartArea = document.getElementById('chartArea');
-  labelCol.scrollTop = chartArea.scrollTop;
+  const rect = segEl.getBoundingClientRect();
+  const popup = document.getElementById('popup');
+  popup.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+  popup.style.top  = Math.min(rect.bottom + 6, window.innerHeight - 200) + 'px';
+  popup.classList.add('visible');
 }
 
-function renderLegend() {
-  const statuses = [...new Set(allItems.map(i => i.status).filter(Boolean))];
-  const legendEl = document.getElementById('legend');
-  let html = '<span class="legend-label">案件狀態：</span>';
-  statuses.forEach(s => {
-    const cls = STATUS_COLORS[s] || 'status-default';
-    // Get bg color from a temp element
-    html += `<span class="legend-item"><span class="legend-dot ${cls}"></span>${s}</span>`;
+function closePopup() { document.getElementById('popup').classList.remove('visible'); }
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('popup').contains(e.target)) closePopup();
+});
+
+async function updateStatus(c, newStatus, segEl, dotEl) {
+  closePopup();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/cases?id=eq.${c.id}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
+      'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ status: newStatus })
   });
-  legendEl.innerHTML = html;
+  if (res.ok) {
+    c.status = newStatus;
+    if (dotEl) dotEl.style.background = STATUS_COLORS[newStatus] || 'var(--s-active)';
+    showMsg(`✓ 狀態已更新為「${newStatus}」`);
+  } else {
+    showMsg('✗ 更新失敗');
+  }
 }
 
-// ── Interactions ──────────────────────────────────────────────────────────────
-function toggleExpand(id) {
-  if (expanded.has(id)) expanded.delete(id);
-  else expanded.add(id);
-  renderRows();
-  // Re-sync scroll
-  const chartArea = document.getElementById('chartArea');
-  document.getElementById('labelCol').scrollTop = chartArea.scrollTop;
+// ────────────────────────────────────────────────
+// ZOOM / SCROLL / ORDER
+// ────────────────────────────────────────────────
+function setZoom(mode) {
+  zoomDays = mode === 'week' ? 7 : mode === 'month' ? 30 : 14;
+  document.querySelectorAll('.btn[id^="z-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('z-' + (mode === 'biweek' ? 'biweek' : mode)).classList.add('active');
+  buildTimeline();
 }
 
 function scrollToToday() {
-  const chartArea = document.getElementById('chartArea');
-  const todayX = todayOffset() * zoomDayWidth;
-  const offset = todayX - chartArea.clientWidth * 0.25;
-  chartArea.scrollLeft = Math.max(0, offset);
+  const bs  = document.getElementById('body-scroll');
+  const gc  = document.getElementById('gantt-col');
+  const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
+  if (!allMs.length) return;
+  const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const todayX  = daysBetween(minDate, today) * dayPx;
+  const visW    = bs.clientWidth;
+  bs.scrollLeft = Math.max(0, todayX - visW / 3);
+  document.getElementById('header-scroll').scrollLeft = bs.scrollLeft;
 }
 
-function setZoom(mode) {
-  zoomMode = mode;
-  const widths = { week: 56, biweek: 38, month: 22 };
-  zoomDayWidth = widths[mode];
-  ['week','biweek','month'].forEach(m => {
-    document.getElementById('zoom-'+m).classList.toggle('active', m === mode);
-  });
-  render();
+function syncHeaderScroll(el) {
+  document.getElementById('header-scroll').scrollLeft = el.scrollLeft;
 }
 
-function openNotion(url) {
-  if (url) window.open(url, '_blank');
+function moveProject(name, dir) {
+  const idx = projectOrder.indexOf(name);
+  if (idx < 0) return;
+  const ni = idx + dir;
+  if (ni < 0 || ni >= projectOrder.length) return;
+  [projectOrder[idx], projectOrder[ni]] = [projectOrder[ni], projectOrder[idx]];
+  customOrder = [...projectOrder];
+  localStorage.setItem('tl-order', JSON.stringify(customOrder));
+  buildTimeline();
 }
 
-// ── Tooltip ───────────────────────────────────────────────────────────────────
-const itemMap = {};
-function buildItemMap() { allItems.forEach(i => { itemMap[i.id] = i; }); }
-
-function showTooltip(e, id) {
-  if (!itemMap[id]) buildItemMap();
-  const item = itemMap[id];
-  if (!item) return;
-  const tip = document.getElementById('tooltip');
-  tip.innerHTML = `
-    <strong>${item.name}</strong><br>
-    📅 ${fmt(item.start)} — ${fmt(item.end)}<br>
-    ${item.status ? `🏷 ${item.status}` : ''}
-  `;
-  tip.style.display = 'block';
-  moveTooltip(e);
+// ────────────────────────────────────────────────
+// UTILS
+// ────────────────────────────────────────────────
+function dateMs(str) {
+  if (!str) return 0;
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d).getTime();
+}
+function daysBetween(a, b) {
+  const am = a instanceof Date ? a.setHours(0,0,0,0) || a.getTime() : dateMs(a);
+  const bm = b instanceof Date ? (new Date(b)).setHours(0,0,0,0) : dateMs(b);
+  return Math.round((bm - am) / 86400000);
+}
+function sameDay(a, b) {
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+function showMsg(txt) {
+  const m = document.getElementById('status-msg');
+  m.textContent = txt;
+  setTimeout(() => { m.textContent = `共 ${allCases.length} 筆派案`; }, 2500);
 }
 
-function moveTooltip(e) {
-  const tip = document.getElementById('tooltip');
-  tip.style.left = (e.clientX + 14) + 'px';
-  tip.style.top  = (e.clientY - 10) + 'px';
-}
-
-function hideTooltip() {
-  document.getElementById('tooltip').style.display = 'none';
-}
-
-document.addEventListener('mousemove', (e) => {
-  if (document.getElementById('tooltip').style.display !== 'none') moveTooltip(e);
-});
-
-// ── Scroll sync ───────────────────────────────────────────────────────────────
-document.getElementById('chartArea').addEventListener('scroll', function() {
-  document.getElementById('labelCol').scrollTop = this.scrollTop;
-});
-
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────
 loadData();
+window.addEventListener('resize', () => buildTimeline());
 </script>
 </body>
 </html>
