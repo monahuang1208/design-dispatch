@@ -13,9 +13,10 @@
     --text: #e2e8f0;
     --text-dim: #8892a4;
     --today: #f87171;
-    --label-w: 200px;
+    --label-w: 220px;
     --header-h: 44px;
 
+    /* Job type colors */
     --c-note:         #60a5fa;
     --c-jpg:          #34d399;
     --c-v1:           #a78bfa;
@@ -23,9 +24,13 @@
     --c-m1:           #f472b6;
     --c-other:        #94a3b8;
 
-    --s-active: #22c55e;
-    --s-done:   #64748b;
-    --s-hold:   #eab308;
+    /* Progress colors */
+    --p-待開始: #475569;
+    --p-草稿:   #60a5fa;
+    --p-討論:   #f59e0b;
+    --p-合成:   #a78bfa;
+    --p-完成:   #22c55e;
+    --p-其他:   #64748b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -36,98 +41,112 @@
 
   /* ── Top bar ── */
   #topbar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
-  #topbar h1 { font-size: 15px; font-weight: 600; margin-right: 8px; }
+  #topbar h1 { font-size: 14px; font-weight: 600; margin-right: 4px; }
   .btn {
-    padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+    padding: 4px 11px; border-radius: 6px; border: 1px solid var(--border);
     background: var(--surface2); color: var(--text); cursor: pointer; font-size: 12px;
-    transition: background .15s;
+    transition: background .15s; white-space: nowrap;
   }
   .btn:hover { background: var(--border); }
   .btn.active { background: #3b4fd8; border-color: #6475e8; }
-  .sep { width: 1px; height: 20px; background: var(--border); }
-  .zoom-label { color: var(--text-dim); font-size: 12px; }
-  #status-msg { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+  .sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+  .zoom-label { color: var(--text-dim); font-size: 11px; }
+  #status-msg { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+  #auth-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: rgba(100,117,232,.15); border: 1px solid rgba(100,117,232,.3); color: #a0aee8; }
 
   /* ── Legend ── */
   #legend {
-    display: flex; align-items: center; gap: 12px;
-    padding: 6px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
-    flex-shrink: 0; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 5px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
-  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .legend-group { display: flex; align-items: center; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .legend-sep { width: 1px; height: 14px; background: var(--border); }
 
   /* ── Timeline wrapper ── */
-  #timeline-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  #timeline-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 
   /* ── Header ── */
   #header-scroll { overflow: hidden; flex-shrink: 0; }
   #header-inner { display: flex; }
   #header-label {
-    width: var(--label-w); min-width: var(--label-w);
+    width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
     background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    height: var(--header-h); display: flex; align-items: center; padding: 0 12px;
-    font-size: 11px; color: var(--text-dim); flex-shrink: 0;
+    height: var(--header-h); display: flex; align-items: center; padding: 0 10px;
+    font-size: 11px; color: var(--text-dim);
   }
   #header-dates { flex: 1; height: var(--header-h); position: relative; overflow: hidden; }
-  #header-dates-canvas { position: absolute; top: 0; left: 0; height: 100%; }
+  #header-dates-inner { position: absolute; top: 0; left: 0; height: 100%; }
 
   /* ── Body ── */
-  #body-scroll { flex: 1; overflow: auto; display: flex; }
+  #body-scroll { flex: 1; overflow: auto; display: flex; min-height: 0; }
+
   #label-col {
     width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
     background: var(--surface); border-right: 1px solid var(--border);
     position: sticky; left: 0; z-index: 10;
   }
   .row-label {
-    display: flex; align-items: center; padding: 0 8px;
-    border-bottom: 1px solid var(--border); gap: 4px;
-    transition: background .1s;
+    display: flex; align-items: center; padding: 0 6px; gap: 4px;
+    border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s;
   }
   .row-label:hover { background: var(--surface2); }
-  .reorder-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .reorder-btns { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
   .reorder-btn {
     background: none; border: none; color: var(--text-dim); cursor: pointer;
-    font-size: 9px; line-height: 1; padding: 1px 3px;
+    font-size: 8px; line-height: 1.2; padding: 1px 3px;
   }
   .reorder-btn:hover { color: var(--text); }
   .proj-name {
-    font-size: 12px; font-weight: 500; flex: 1; min-width: 0;
+    font-size: 11px; font-weight: 500; flex: 1; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .notion-link { font-size: 10px; color: #6475e8; text-decoration: none; flex-shrink: 0; }
-  .notion-link:hover { text-decoration: underline; }
+  .notion-link { font-size: 10px; color: #6475e8; text-decoration: none; flex-shrink: 0; opacity: .8; }
+  .notion-link:hover { opacity: 1; }
+  .progress-badge {
+    flex-shrink: 0; font-size: 9px; padding: 1px 5px; border-radius: 8px;
+    cursor: pointer; white-space: nowrap; font-weight: 600; border: 1px solid transparent;
+    transition: filter .15s;
+  }
+  .progress-badge:hover { filter: brightness(1.2); }
 
-  /* ── Gantt area ── */
+  /* ── Gantt ── */
   #gantt-col { flex: 1; position: relative; }
   .gantt-row { border-bottom: 1px solid var(--border); position: relative; }
-  .gantt-row:nth-child(even) { background: rgba(255,255,255,.015); }
+  .gantt-row:nth-child(even) { background: rgba(255,255,255,.013); }
+
   .today-line {
     position: absolute; top: 0; bottom: 0; width: 2px;
-    background: var(--today); z-index: 5; pointer-events: none; opacity: .7;
+    background: var(--today); z-index: 5; pointer-events: none; opacity: .65;
   }
   .grid-line {
     position: absolute; top: 0; bottom: 0; width: 1px;
-    background: var(--border); opacity: .35; pointer-events: none;
+    background: var(--border); opacity: .3; pointer-events: none;
   }
 
-  /* ── Segments ── */
+  /* Spine bar (project date range background) */
+  .spine {
+    position: absolute; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,.07); pointer-events: none; z-index: 1;
+  }
+
+  /* Segments */
   .segment {
     position: absolute; height: 22px; border-radius: 4px;
     cursor: pointer; display: flex; align-items: center; padding: 0 6px;
     font-size: 11px; font-weight: 500; color: rgba(255,255,255,.92);
-    transition: filter .15s, transform .1s; overflow: hidden; white-space: nowrap;
-    border: 1px solid rgba(0,0,0,.2); box-shadow: 0 1px 3px rgba(0,0,0,.3);
-    user-select: none;
+    overflow: hidden; white-space: nowrap; z-index: 2;
+    border: 1px solid rgba(0,0,0,.18); box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transition: filter .12s, transform .1s; user-select: none;
   }
-  .segment:hover { filter: brightness(1.2); transform: scaleY(1.08); z-index: 20; }
-  .segment-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; flex-shrink: 0; pointer-events: none; }
-
+  .segment:hover { filter: brightness(1.18); transform: scaleY(1.06); z-index: 20; }
+  .seg-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
   .seg-note         { background: var(--c-note); }
   .seg-jpg          { background: var(--c-jpg); }
   .seg-v1           { background: var(--c-v1); }
@@ -135,37 +154,69 @@
   .seg-m1           { background: var(--c-m1); }
   .seg-other        { background: var(--c-other); }
 
-  /* ── Status popup ── */
-  #popup {
-    position: fixed; z-index: 100; background: var(--surface2);
+  /* ── Popups ── */
+  .popup {
+    position: fixed; z-index: 200; background: var(--surface2);
     border: 1px solid var(--border); border-radius: 10px; padding: 14px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.6); min-width: 210px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6); min-width: 220px; max-width: 300px;
     display: none;
   }
-  #popup.visible { display: block; }
-  #popup-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-  #popup-dates { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; }
-  #popup h3 { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
-  .status-btn {
+  .popup.visible { display: block; }
+  .popup-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .popup-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.5; }
+  .popup-section { font-size: 10px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .option-btn {
     display: flex; align-items: center; gap: 8px; width: 100%;
     padding: 7px 10px; border-radius: 6px; border: 1px solid transparent;
     background: var(--surface); color: var(--text); cursor: pointer;
-    font-size: 12px; margin-bottom: 4px; transition: background .1s;
+    font-size: 12px; margin-bottom: 4px; transition: background .1s; text-align: left;
   }
-  .status-btn:hover { background: var(--border); }
-  .status-btn.current { background: rgba(100,117,232,.2); border-color: rgba(100,117,232,.4); }
-  .s-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  #popup-close {
-    margin-top: 6px; width: 100%; padding: 5px; border-radius: 6px;
+  .option-btn:hover { background: var(--border); }
+  .option-btn.active { border-color: rgba(100,117,232,.5); background: rgba(100,117,232,.18); }
+  .opt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  #custom-label-row { display: none; margin-top: 4px; }
+  #custom-label-input {
+    width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 12px;
+  }
+  .popup-close {
+    margin-top: 8px; width: 100%; padding: 5px; border-radius: 6px;
     border: 1px solid var(--border); background: none; color: var(--text-dim); cursor: pointer; font-size: 11px;
   }
-  #popup-close:hover { background: var(--surface); }
+  .popup-close:hover { background: var(--surface); color: var(--text); }
+
+  /* Password modal */
+  #auth-modal {
+    position: fixed; inset: 0; z-index: 300; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  }
+  #auth-modal.visible { display: flex; }
+  #auth-box {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; width: 280px; box-shadow: 0 16px 48px rgba(0,0,0,.6);
+  }
+  #auth-box h2 { font-size: 15px; margin-bottom: 6px; }
+  #auth-box p { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+  #auth-input {
+    width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 14px;
+    margin-bottom: 10px; letter-spacing: .15em;
+  }
+  #auth-input:focus { outline: none; border-color: #6475e8; }
+  #auth-err { font-size: 11px; color: #f87171; margin-bottom: 8px; display: none; }
+  #auth-submit {
+    width: 100%; padding: 8px; border-radius: 7px; border: none;
+    background: #3b4fd8; color: #fff; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  #auth-submit:hover { background: #4c5fe8; }
+  #auth-cancel { background: none; border: none; color: var(--text-dim); font-size: 11px; cursor: pointer; margin-top: 8px; width: 100%; }
 
   /* ── Loading ── */
   #loading {
     position: fixed; inset: 0; background: var(--bg);
-    display: flex; align-items: center; justify-content: center; z-index: 200;
-    flex-direction: column; gap: 12px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 400; flex-direction: column; gap: 12px;
   }
   .spinner {
     width: 32px; height: 32px; border: 3px solid var(--border);
@@ -177,130 +228,235 @@
 </head>
 <body>
 
-<div id="loading">
-  <div class="spinner"></div>
-  <p>載入派案資料…</p>
+<div id="loading"><div class="spinner"></div><p>載入資料中…</p></div>
+
+<!-- Auth modal -->
+<div id="auth-modal">
+  <div id="auth-box">
+    <h2>🔒 編輯進度</h2>
+    <p>請輸入密碼以修改專案進度</p>
+    <input id="auth-input" type="password" placeholder="密碼" autocomplete="off">
+    <div id="auth-err">密碼錯誤，請再試一次</div>
+    <button id="auth-submit">確認</button>
+    <button id="auth-cancel" onclick="closeAuthModal()">取消</button>
+  </div>
+</div>
+
+<!-- Info popup (segment click) -->
+<div id="info-popup" class="popup">
+  <div id="info-title" class="popup-title"></div>
+  <div id="info-sub" class="popup-sub"></div>
+  <button class="popup-close" onclick="closePopup('info-popup')">關閉</button>
+</div>
+
+<!-- Progress popup (project label click) -->
+<div id="progress-popup" class="popup">
+  <div id="progress-proj-name" class="popup-title"></div>
+  <div style="margin-bottom:10px"></div>
+  <div class="popup-section">選擇進度</div>
+  <div id="progress-options"></div>
+  <div id="custom-label-row">
+    <input id="custom-label-input" type="text" placeholder="自訂標籤…" maxlength="20">
+  </div>
+  <button class="popup-close" onclick="closePopup('progress-popup')">關閉</button>
 </div>
 
 <div id="topbar">
   <h1>📅 Project Timeline</h1>
   <div class="sep"></div>
   <span class="zoom-label">縮放：</span>
-  <button class="btn" id="z-week" onclick="setZoom('week')">週</button>
+  <button class="btn" id="z-week"   onclick="setZoom('week')">週</button>
   <button class="btn active" id="z-biweek" onclick="setZoom('biweek')">雙週</button>
-  <button class="btn" id="z-month" onclick="setZoom('month')">月</button>
+  <button class="btn" id="z-month"  onclick="setZoom('month')">月</button>
   <div class="sep"></div>
   <button class="btn" onclick="scrollToToday()">📍 今天</button>
   <button class="btn" onclick="loadData()">↻ 重新整理</button>
+  <div class="sep"></div>
+  <span id="auth-status">👁 閱覽模式</span>
+  <button class="btn" id="edit-toggle" onclick="toggleEditMode()">編輯進度</button>
   <span id="status-msg"></span>
 </div>
 
 <div id="legend">
-  <span style="font-size:11px;color:var(--text-dim);margin-right:2px;">案件種類：</span>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-note)"></div>Note</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
-  <div class="sep"></div>
-  <span style="font-size:11px;color:var(--text-dim);margin-right:2px;">狀態圓點：</span>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-active);border-radius:50%"></div>進行中</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-done);border-radius:50%"></div>完成</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-hold);border-radius:50%"></div>擱置</div>
+  <span class="legend-item" style="color:var(--text-dim);font-size:11px;margin-right:2px">段落顏色 = 案件種類：</span>
+  <div class="legend-group">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-note)"></div>Note</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
+  </div>
+  <div class="legend-sep"></div>
+  <span class="legend-item" style="color:var(--text-dim);font-size:11px;margin-right:2px">專案進度：</span>
+  <div class="legend-group">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p-待開始);border-radius:50%"></div>待開始</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p-草稿);border-radius:50%"></div>草稿</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p-討論);border-radius:50%"></div>討論</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p-合成);border-radius:50%"></div>合成</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p-完成);border-radius:50%"></div>完成</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p-其他);border-radius:50%"></div>其他</div>
+  </div>
 </div>
 
 <div id="timeline-wrap">
   <div id="header-scroll">
     <div id="header-inner">
-      <div id="header-label">專案</div>
-      <div id="header-dates">
-        <div id="header-dates-canvas"></div>
-      </div>
+      <div id="header-label">專案 / 進度</div>
+      <div id="header-dates"><div id="header-dates-inner"></div></div>
     </div>
   </div>
-  <div id="body-scroll" onscroll="syncHeaderScroll(this)">
+  <div id="body-scroll" onscroll="syncScroll(this)">
     <div id="label-col"></div>
     <div id="gantt-col"></div>
   </div>
 </div>
 
-<div id="popup">
-  <div id="popup-title"></div>
-  <div id="popup-dates"></div>
-  <h3>變更狀態</h3>
-  <div id="popup-status-btns"></div>
-  <button id="popup-close" onclick="closePopup()">關閉</button>
-</div>
-
 <script>
-const SUPABASE_URL = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
-const NOTION_FN  = 'https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/get-timeline';
+// ── Config ──────────────────────────────────────
+const SUPABASE   = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
+const ANON_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
+const NOTION_FN  = `${SUPABASE}/functions/v1/get-timeline`;
+const EDIT_PWD   = '1208';
+const START_DATE = '2026-06-08';
 
-const STATUS_LIST   = ['進行中', '完成', '擱置'];
-const STATUS_COLORS = { '進行中':'var(--s-active)', '完成':'var(--s-done)', '已完成':'var(--s-done)', '擱置':'var(--s-hold)' };
-const JOB_CLASS     = { 'Note':'seg-note', 'JPG':'seg-jpg', 'V1':'seg-v1', 'Presentation':'seg-presentation', 'M1':'seg-m1' };
+const JOB_CLASS = { Note:'seg-note', JPG:'seg-jpg', V1:'seg-v1', Presentation:'seg-presentation', M1:'seg-m1' };
 
-let zoomDays    = 14;
-let dayPx       = 60;
-let allCases    = [];
-let notionMap   = {};    // project name → notion page url
-let projectOrder = [];
-let customOrder  = null;
+const PROGRESS_OPTS = [
+  { key:'待開始', color:'#475569' },
+  { key:'草稿',   color:'#60a5fa' },
+  { key:'討論',   color:'#f59e0b' },
+  { key:'合成',   color:'#a78bfa' },
+  { key:'完成',   color:'#22c55e' },
+  { key:'其他',   color:'#64748b', custom: true },
+];
+const progressColor = (key) => {
+  const o = PROGRESS_OPTS.find(p => p.key === key);
+  return o ? o.color : '#475569';
+};
 
-// ────────────────────────────────────────────────
-// DATA
-// ────────────────────────────────────────────────
+// ── State ────────────────────────────────────────
+let allCases      = [];
+let notionMap     = {};      // project_name → notion url
+let progressMap   = {};      // project_name → { progress, custom_label }
+let projectOrder  = [];
+let customOrder   = null;
+let zoomDays      = 14;
+let dayPx         = 60;
+let isAuthed      = sessionStorage.getItem('tl-auth') === '1';
+let editMode      = isAuthed;
+let pendingAction = null;    // fn to call after auth
+
+// ── Auth ─────────────────────────────────────────
+function updateAuthUI() {
+  const s = document.getElementById('auth-status');
+  const b = document.getElementById('edit-toggle');
+  if (editMode) {
+    s.textContent = '✏️ 編輯模式';
+    s.style.background = 'rgba(34,197,94,.12)';
+    s.style.borderColor = 'rgba(34,197,94,.3)';
+    s.style.color = '#86efac';
+    b.textContent = '退出編輯';
+    b.classList.add('active');
+  } else {
+    s.textContent = '👁 閱覽模式';
+    s.style.background = 'rgba(100,117,232,.15)';
+    s.style.borderColor = 'rgba(100,117,232,.3)';
+    s.style.color = '#a0aee8';
+    b.textContent = '編輯進度';
+    b.classList.remove('active');
+  }
+}
+function toggleEditMode() {
+  if (editMode) { editMode = false; updateAuthUI(); return; }
+  if (isAuthed) { editMode = true; updateAuthUI(); return; }
+  openAuthModal(() => { editMode = true; updateAuthUI(); });
+}
+function openAuthModal(onSuccess) {
+  pendingAction = onSuccess;
+  document.getElementById('auth-input').value = '';
+  document.getElementById('auth-err').style.display = 'none';
+  document.getElementById('auth-modal').classList.add('visible');
+  setTimeout(() => document.getElementById('auth-input').focus(), 100);
+}
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('visible');
+  pendingAction = null;
+}
+document.getElementById('auth-submit').onclick = () => {
+  const v = document.getElementById('auth-input').value;
+  if (v === EDIT_PWD) {
+    isAuthed = true;
+    sessionStorage.setItem('tl-auth', '1');
+    closeAuthModal();
+    if (pendingAction) pendingAction();
+  } else {
+    document.getElementById('auth-err').style.display = 'block';
+    document.getElementById('auth-input').value = '';
+    document.getElementById('auth-input').focus();
+  }
+};
+document.getElementById('auth-input').onkeydown = (e) => {
+  if (e.key === 'Enter') document.getElementById('auth-submit').click();
+};
+document.getElementById('auth-modal').onclick = (e) => {
+  if (e.target === document.getElementById('auth-modal')) closeAuthModal();
+};
+updateAuthUI();
+
+// ── Data loading ─────────────────────────────────
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
   document.getElementById('status-msg').textContent = '';
   try {
-    const [casesRes, notionRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/cases?select=*&order=date.asc`, {
-        headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
-      }),
-      fetch(NOTION_FN, {
-        headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
-      }).catch(() => null)
+    const h = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
+
+    const [casesRes, progressRes, notionRes] = await Promise.all([
+      fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, { headers: h }),
+      fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, { headers: h }),
+      fetch(NOTION_FN, { headers: h }).catch(() => null),
     ]);
 
     allCases = await casesRes.json();
-    if (!Array.isArray(allCases)) throw new Error('資料格式錯誤');
+    if (!Array.isArray(allCases)) allCases = [];
+
+    const progressRows = await progressRes.json();
+    progressMap = {};
+    for (const r of (progressRows || [])) {
+      progressMap[r.project_name] = { progress: r.progress, custom_label: r.custom_label };
+    }
 
     notionMap = {};
-    if (notionRes && notionRes.ok) {
+    if (notionRes?.ok) {
       try {
         const { items } = await notionRes.json();
-        for (const item of (items || [])) {
-          if (item.name && item.url) notionMap[item.name] = item.url;
-        }
+        for (const it of (items || [])) if (it.name && it.url) notionMap[it.name] = it.url;
       } catch(_) {}
     }
 
     try { customOrder = JSON.parse(localStorage.getItem('tl-order') || 'null'); } catch(_) {}
 
     buildTimeline();
-    document.getElementById('status-msg').textContent = `共 ${allCases.length} 筆派案`;
+    document.getElementById('status-msg').textContent = `${allCases.length} 筆派案 · ${Object.keys(groupByProject()).length} 個專案`;
   } catch(e) {
     document.getElementById('status-msg').textContent = '載入失敗：' + e.message;
-    console.error(e);
   }
   document.getElementById('loading').style.display = 'none';
 }
 
-// ────────────────────────────────────────────────
-// BUILD
-// ────────────────────────────────────────────────
-function buildTimeline() {
-  // Group by notion_project
-  const groups = {};
+// ── Grouping ─────────────────────────────────────
+function groupByProject() {
+  const g = {};
   for (const c of allCases) {
-    const proj = c.notion_project || '（未指定專案）';
-    if (!groups[proj]) groups[proj] = [];
-    groups[proj].push(c);
+    const p = c.notion_project;
+    if (!g[p]) g[p] = [];
+    g[p].push(c);
   }
+  return g;
+}
 
-  // Default order: earliest dispatch date first
+// ── Build timeline ───────────────────────────────
+function buildTimeline() {
+  const groups = groupByProject();
   const defaultOrder = Object.keys(groups).sort((a, b) => {
     const aMin = Math.min(...groups[a].map(c => dateMs(c.date)));
     const bMin = Math.min(...groups[b].map(c => dateMs(c.date)));
@@ -315,18 +471,14 @@ function buildTimeline() {
     projectOrder = defaultOrder;
   }
 
-  // Overall date range
   const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
   if (!allMs.length) return;
-  const minDate = new Date(Math.min(...allMs));
-  const maxDate = new Date(Math.max(...allMs));
-  minDate.setDate(minDate.getDate() - 3);
-  maxDate.setDate(maxDate.getDate() + 7);
+  const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
+  const maxDate = new Date(Math.max(...allMs)); maxDate.setDate(maxDate.getDate() + 10);
   const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
 
-  // dayPx from zoom
-  const visW = Math.max(600, window.innerWidth - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--label-w') || 200));
-  dayPx = Math.max(18, visW / zoomDays);
+  const visW = Math.max(600, window.innerWidth - 220);
+  dayPx = Math.max(16, visW / zoomDays);
   const totalWidth = totalDays * dayPx;
 
   renderHeader(minDate, totalDays, totalWidth);
@@ -335,22 +487,21 @@ function buildTimeline() {
   const ganttCol = document.getElementById('gantt-col');
   labelCol.innerHTML = '';
   ganttCol.innerHTML = '';
+  ganttCol.style.width = ganttCol.style.minWidth = totalWidth + 'px';
 
   // Today line
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayX = daysBetween(minDate, today) * dayPx;
-  if (todayX >= 0 && todayX <= totalWidth) {
-    const tl = el('div', 'today-line');
-    tl.style.left = todayX + 'px';
+  const tx = daysBetween(minDate, today) * dayPx;
+  if (tx >= 0 && tx <= totalWidth) {
+    const tl = mk('div', 'today-line'); tl.style.left = tx + 'px';
     ganttCol.appendChild(tl);
   }
 
-  // Weekly grid lines (Monday)
+  // Weekly grid lines
   let gd = new Date(minDate);
   for (let i = 0; i < totalDays; i++) {
     if (gd.getDay() === 1) {
-      const gl = el('div', 'grid-line');
-      gl.style.left = (i * dayPx) + 'px';
+      const gl = mk('div', 'grid-line'); gl.style.left = (i * dayPx) + 'px';
       ganttCol.appendChild(gl);
     }
     gd.setDate(gd.getDate() + 1);
@@ -361,60 +512,84 @@ function buildTimeline() {
     const cases = groups[proj] || [];
     const lanes  = assignLanes(cases);
     const nLanes = Math.max(1, lanes.length);
-    const rowH   = Math.max(44, nLanes * 28 + 10);
+    const rowH   = Math.max(46, nLanes * 28 + 10);
+    const prog   = progressMap[proj] || { progress: '待開始', custom_label: null };
+    const pColor = progressColor(prog.progress);
+    const pLabel = prog.progress === '其他' && prog.custom_label ? prog.custom_label : prog.progress;
 
-    // Label cell
-    const label = el('div', 'row-label');
+    // --- Label ---
+    const label = mk('div', 'row-label');
     label.style.height = rowH + 'px';
     label.title = proj;
 
-    const rbtns = el('div', 'reorder-btns');
-    const btnUp = el('button', 'reorder-btn'); btnUp.textContent = '▲'; btnUp.title = '上移';
-    btnUp.onclick = (e) => { e.stopPropagation(); moveProject(proj, -1); };
-    const btnDn = el('button', 'reorder-btn'); btnDn.textContent = '▼'; btnDn.title = '下移';
-    btnDn.onclick = (e) => { e.stopPropagation(); moveProject(proj, 1); };
-    rbtns.append(btnUp, btnDn);
+    // Reorder buttons
+    const rbtns = mk('div', 'reorder-btns');
+    const up = mk('button', 'reorder-btn'); up.textContent = '▲';
+    up.onclick = (e) => { e.stopPropagation(); moveProject(proj, -1); };
+    const dn = mk('button', 'reorder-btn'); dn.textContent = '▼';
+    dn.onclick = (e) => { e.stopPropagation(); moveProject(proj, 1); };
+    rbtns.append(up, dn);
 
-    const pname = el('span', 'proj-name');
+    const pname = mk('span', 'proj-name');
     pname.textContent = proj;
 
-    label.append(rbtns, pname);
+    // Progress badge
+    const badge = mk('span', 'progress-badge');
+    badge.textContent = pLabel;
+    badge.style.background = pColor + '28';
+    badge.style.borderColor = pColor + '80';
+    badge.style.color = pColor;
+    badge.onclick = (e) => { e.stopPropagation(); handleProgressClick(proj, badge, e); };
 
-    const nurl = notionMap[proj];
-    if (nurl) {
-      const a = el('a', 'notion-link');
-      a.href = nurl; a.target = '_blank'; a.textContent = '↗'; a.title = 'Notion';
+    label.append(rbtns, pname, badge);
+
+    // Notion link
+    if (notionMap[proj]) {
+      const a = mk('a', 'notion-link');
+      a.href = notionMap[proj]; a.target = '_blank'; a.textContent = '↗';
       a.onclick = e => e.stopPropagation();
       label.appendChild(a);
     }
+
     labelCol.appendChild(label);
 
-    // Gantt row
-    const row = el('div', 'gantt-row');
+    // --- Gantt row ---
+    const row = mk('div', 'gantt-row');
     row.style.height = rowH + 'px';
+
+    // Spine bar
+    const spineStart = Math.min(...cases.map(c => dateMs(c.date)));
+    const spineEnd   = Math.max(...cases.map(c => dateMs(c.deadline || c.date)));
+    const sx = daysBetween(minDate, new Date(spineStart)) * dayPx;
+    const sw = (daysBetween(new Date(spineStart), new Date(spineEnd)) + 1) * dayPx;
+    const spine = mk('div', 'spine');
+    spine.style.left   = sx + 'px';
+    spine.style.width  = sw + 'px';
+    spine.style.top    = (rowH / 2 - 2) + 'px';
+    spine.style.background = pColor + '30';
+    row.appendChild(spine);
+
+    // Segments
     for (let li = 0; li < lanes.length; li++) {
       for (const c of lanes[li]) {
         const seg = buildSegment(c, minDate, li, nLanes, rowH);
         if (seg) row.appendChild(seg);
       }
     }
+
     ganttCol.appendChild(row);
   }
-
-  ganttCol.style.width  = totalWidth + 'px';
-  ganttCol.style.minWidth = totalWidth + 'px';
 
   setTimeout(scrollToToday, 50);
 }
 
+// ── Segment ──────────────────────────────────────
 function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
   if (!c.date) return null;
-  const start = daysBetween(minDate, new Date(c.date + 'T00:00:00'));
-  const endDate = c.deadline ? c.deadline : c.date;
-  const span  = Math.max(1, daysBetween(new Date(c.date + 'T00:00:00'), new Date(endDate + 'T00:00:00')) + 1);
-
-  const x = start * dayPx;
-  const w = Math.max(dayPx * 0.75, span * dayPx - 3);
+  const x    = daysBetween(minDate, new Date(c.date + 'T00:00:00')) * dayPx;
+  const endD = c.deadline || c.date;
+  const span = Math.max(1, daysBetween(new Date(c.date), new Date(endD)) + 1);
+  const w    = Math.max(dayPx * .7, span * dayPx - 3);
 
   const SEG_H = 22;
   const laneH = numLanes > 1 ? (rowH - 8) / numLanes : rowH;
@@ -422,72 +597,147 @@ function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
 
   const jobType = (Array.isArray(c.job_types) && c.job_types[0]) || 'Other';
   const cls = JOB_CLASS[jobType] || 'seg-other';
-  const sColor = STATUS_COLORS[c.status] || 'var(--s-active)';
 
-  const seg = el('div', `segment ${cls}`);
+  const seg = mk('div', `segment ${cls}`);
   seg.style.cssText = `left:${x}px;width:${w}px;top:${top}px;`;
-  seg.title = [
-    c.notion_project, jobType,
-    `${c.date} → ${endDate}`,
-    `狀態：${c.status || '—'}`,
-    c.note ? `備註：${c.note}` : ''
-  ].filter(Boolean).join('\n');
 
-  const dot = el('div', 'status-dot');
-  dot.style.background = sColor;
-  const lbl = el('span', 'segment-label');
-  lbl.textContent = w > 50 ? jobType : '';
-  seg.append(dot, lbl);
+  const lbl = mk('span', 'seg-label');
+  lbl.textContent = w > 45 ? jobType : '';
+  seg.appendChild(lbl);
 
-  seg.addEventListener('click', (e) => { e.stopPropagation(); openPopup(c, seg, dot); });
+  seg.onclick = (e) => { e.stopPropagation(); showSegmentInfo(c, seg); };
   return seg;
 }
 
-// ────────────────────────────────────────────────
-// LANE ASSIGNMENT
-// ────────────────────────────────────────────────
+// ── Segment info popup ───────────────────────────
+function showSegmentInfo(c, segEl) {
+  const jobType   = (Array.isArray(c.job_types) ? c.job_types : []).join(', ') || '—';
+  const designers = (Array.isArray(c.designers) ? c.designers : []).join(', ') || '—';
+
+  document.getElementById('info-title').textContent = `${c.notion_project}`;
+  document.getElementById('info-sub').innerHTML =
+    `<b>${jobType}</b><br>` +
+    `📅 ${c.date} → ${c.deadline || c.date}<br>` +
+    `🎨 設計師：${designers}<br>` +
+    `📋 派案狀態：${c.status || '—'}` +
+    (c.note ? `<br>📝 ${c.note}` : '');
+
+  positionPopup('info-popup', segEl);
+}
+
+// ── Progress popup ────────────────────────────────
+function handleProgressClick(proj, badgeEl, e) {
+  if (!editMode) {
+    // Show hint
+    openAuthModal(() => { editMode = true; updateAuthUI(); openProgressPopup(proj, badgeEl); });
+    return;
+  }
+  openProgressPopup(proj, badgeEl);
+}
+
+function openProgressPopup(proj, badgeEl) {
+  const current = (progressMap[proj] || {}).progress || '待開始';
+  const currentCustom = (progressMap[proj] || {}).custom_label || '';
+
+  document.getElementById('progress-proj-name').textContent = proj;
+
+  const container = document.getElementById('progress-options');
+  container.innerHTML = '';
+  for (const opt of PROGRESS_OPTS) {
+    const btn = mk('button', 'option-btn' + (current === opt.key ? ' active' : ''));
+    const dot = mk('div', 'opt-dot'); dot.style.background = opt.color;
+    btn.append(dot, document.createTextNode(opt.key));
+    btn.onclick = () => selectProgress(proj, opt.key, badgeEl);
+    container.appendChild(btn);
+  }
+
+  const customRow = document.getElementById('custom-label-row');
+  const customInput = document.getElementById('custom-label-input');
+  customRow.style.display = current === '其他' ? 'block' : 'none';
+  customInput.value = currentCustom;
+  customInput.onchange = () => saveCustomLabel(proj, customInput.value, badgeEl);
+
+  positionPopup('progress-popup', badgeEl);
+}
+
+async function selectProgress(proj, newProg, badgeEl) {
+  const isCustom = newProg === '其他';
+  const customRow = document.getElementById('custom-label-row');
+  customRow.style.display = isCustom ? 'block' : 'none';
+
+  // Update active button
+  document.querySelectorAll('#progress-options .option-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === newProg);
+  });
+
+  const customLabel = isCustom ? document.getElementById('custom-label-input').value : null;
+  await saveProgress(proj, newProg, customLabel, badgeEl);
+}
+
+async function saveCustomLabel(proj, label, badgeEl) {
+  await saveProgress(proj, '其他', label, badgeEl);
+}
+
+async function saveProgress(proj, progress, customLabel, badgeEl) {
+  try {
+    const body = { project_name: proj, progress, custom_label: customLabel || null, updated_at: new Date().toISOString() };
+    const res  = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
+      method: 'POST',
+      headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(body)
+    });
+    if (res.ok || res.status === 204 || res.status === 201) {
+      progressMap[proj] = { progress, custom_label: customLabel || null };
+      const color = progressColor(progress);
+      const label = progress === '其他' && customLabel ? customLabel : progress;
+      badgeEl.textContent = label;
+      badgeEl.style.background = color + '28';
+      badgeEl.style.borderColor = color + '80';
+      badgeEl.style.color = color;
+      // Update spine color
+      const rows = document.querySelectorAll('.spine');
+      showMsg(`✓ 進度已更新為「${label}」`);
+      // Rebuild to update spine color
+      setTimeout(() => buildTimeline(), 300);
+    }
+  } catch(e) { showMsg('✗ 儲存失敗'); }
+}
+
+// ── Lane assignment ───────────────────────────────
 function assignLanes(cases) {
-  const lanes    = [];
-  const laneEnds = [];
-  const sorted   = [...cases].sort((a, b) => dateMs(a.date) - dateMs(b.date));
+  const lanes = [], ends = [];
+  const sorted = [...cases].sort((a, b) => dateMs(a.date) - dateMs(b.date));
   for (const c of sorted) {
-    const s = dateMs(c.date);
-    const e = dateMs(c.deadline || c.date);
+    const s = dateMs(c.date), e = dateMs(c.deadline || c.date);
     let placed = false;
     for (let i = 0; i < lanes.length; i++) {
-      if (laneEnds[i] < s) {
-        lanes[i].push(c); laneEnds[i] = e; placed = true; break;
-      }
+      if (ends[i] < s) { lanes[i].push(c); ends[i] = e; placed = true; break; }
     }
-    if (!placed) { lanes.push([c]); laneEnds.push(e); }
+    if (!placed) { lanes.push([c]); ends.push(e); }
   }
   return lanes.length ? lanes : [[]];
 }
 
-// ────────────────────────────────────────────────
-// HEADER
-// ────────────────────────────────────────────────
+// ── Header ────────────────────────────────────────
 function renderHeader(minDate, totalDays, totalWidth) {
-  const canvas = document.getElementById('header-dates-canvas');
+  const canvas = document.getElementById('header-dates-inner');
   canvas.style.width = totalWidth + 'px';
   canvas.innerHTML = '';
-  let d = new Date(minDate);
-  let lastMonth = -1;
+  let d = new Date(minDate), lastMonth = -1;
   for (let i = 0; i < totalDays; i++) {
     const x = i * dayPx;
     if (d.getMonth() !== lastMonth) {
       lastMonth = d.getMonth();
-      const ml = el('div');
-      ml.style.cssText = `position:absolute;left:${x+3}px;top:2px;font-size:10px;color:var(--text-dim);font-weight:600;white-space:nowrap;pointer-events:none;`;
+      const ml = mk('div');
+      ml.style.cssText = `position:absolute;left:${x+3}px;top:2px;font-size:10px;color:var(--text-dim);font-weight:700;white-space:nowrap;pointer-events:none;`;
       ml.textContent = d.toLocaleDateString('zh-TW', { year:'numeric', month:'long' });
       canvas.appendChild(ml);
     }
     const dow = d.getDay();
-    const showDay = dayPx >= 38 || dow === 1 || dow === 0;
-    if (showDay) {
+    if (dayPx >= 36 || dow === 1 || dow === 0) {
       const isToday = sameDay(d, new Date());
-      const dl = el('div');
-      dl.style.cssText = `position:absolute;left:${x}px;bottom:4px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
+      const dl = mk('div');
+      dl.style.cssText = `position:absolute;left:${x}px;bottom:3px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
       dl.style.color = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#7c8de8' : 'var(--text-dim)');
       dl.style.fontWeight = isToday ? '700' : '400';
       dl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
@@ -497,60 +747,7 @@ function renderHeader(minDate, totalDays, totalWidth) {
   }
 }
 
-// ────────────────────────────────────────────────
-// POPUP
-// ────────────────────────────────────────────────
-function openPopup(c, segEl, dotEl) {
-  document.getElementById('popup-title').textContent =
-    `${c.notion_project || '—'}  ·  ${(c.job_types||[]).join(', ') || '—'}`;
-  document.getElementById('popup-dates').textContent =
-    `${c.date}  →  ${c.deadline || c.date}`;
-
-  const btns = document.getElementById('popup-status-btns');
-  btns.innerHTML = '';
-  for (const s of STATUS_LIST) {
-    const btn = el('button', 'status-btn' + (c.status === s ? ' current' : ''));
-    const sd  = el('div', 's-dot');
-    sd.style.background = STATUS_COLORS[s];
-    btn.append(sd, document.createTextNode(s));
-    btn.onclick = () => updateStatus(c, s, segEl, dotEl);
-    btns.appendChild(btn);
-  }
-
-  const rect = segEl.getBoundingClientRect();
-  const popup = document.getElementById('popup');
-  popup.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
-  popup.style.top  = Math.min(rect.bottom + 6, window.innerHeight - 200) + 'px';
-  popup.classList.add('visible');
-}
-
-function closePopup() { document.getElementById('popup').classList.remove('visible'); }
-document.addEventListener('click', (e) => {
-  if (!document.getElementById('popup').contains(e.target)) closePopup();
-});
-
-async function updateStatus(c, newStatus, segEl, dotEl) {
-  closePopup();
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/cases?id=eq.${c.id}`, {
-    method: 'PATCH',
-    headers: {
-      'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
-      'Content-Type': 'application/json', 'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ status: newStatus })
-  });
-  if (res.ok) {
-    c.status = newStatus;
-    if (dotEl) dotEl.style.background = STATUS_COLORS[newStatus] || 'var(--s-active)';
-    showMsg(`✓ 狀態已更新為「${newStatus}」`);
-  } else {
-    showMsg('✗ 更新失敗');
-  }
-}
-
-// ────────────────────────────────────────────────
-// ZOOM / SCROLL / ORDER
-// ────────────────────────────────────────────────
+// ── Zoom / scroll ─────────────────────────────────
 function setZoom(mode) {
   zoomDays = mode === 'week' ? 7 : mode === 'month' ? 30 : 14;
   document.querySelectorAll('.btn[id^="z-"]').forEach(b => b.classList.remove('active'));
@@ -559,63 +756,65 @@ function setZoom(mode) {
 }
 
 function scrollToToday() {
-  const bs  = document.getElementById('body-scroll');
-  const gc  = document.getElementById('gantt-col');
+  const bs = document.getElementById('body-scroll');
   const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
   if (!allMs.length) return;
   const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
   const today   = new Date(); today.setHours(0,0,0,0);
-  const todayX  = daysBetween(minDate, today) * dayPx;
-  const visW    = bs.clientWidth;
-  bs.scrollLeft = Math.max(0, todayX - visW / 3);
+  const tx = daysBetween(minDate, today) * dayPx;
+  bs.scrollLeft = Math.max(0, tx - (bs.clientWidth - 220) / 3);
   document.getElementById('header-scroll').scrollLeft = bs.scrollLeft;
 }
 
-function syncHeaderScroll(el) {
+function syncScroll(el) {
   document.getElementById('header-scroll').scrollLeft = el.scrollLeft;
 }
 
+// ── Reorder ───────────────────────────────────────
 function moveProject(name, dir) {
-  const idx = projectOrder.indexOf(name);
-  if (idx < 0) return;
-  const ni = idx + dir;
+  const i = projectOrder.indexOf(name);
+  if (i < 0) return;
+  const ni = i + dir;
   if (ni < 0 || ni >= projectOrder.length) return;
-  [projectOrder[idx], projectOrder[ni]] = [projectOrder[ni], projectOrder[idx]];
+  [projectOrder[i], projectOrder[ni]] = [projectOrder[ni], projectOrder[i]];
   customOrder = [...projectOrder];
   localStorage.setItem('tl-order', JSON.stringify(customOrder));
   buildTimeline();
 }
 
-// ────────────────────────────────────────────────
-// UTILS
-// ────────────────────────────────────────────────
-function dateMs(str) {
-  if (!str) return 0;
-  const [y,m,d] = str.split('-').map(Number);
-  return new Date(y, m-1, d).getTime();
+// ── Popup helpers ─────────────────────────────────
+function positionPopup(id, anchorEl) {
+  closePopup('info-popup'); closePopup('progress-popup');
+  const popup = document.getElementById(id);
+  const rect  = anchorEl.getBoundingClientRect();
+  const top   = Math.min(rect.bottom + 6, window.innerHeight - 280);
+  const left  = Math.min(rect.left, window.innerWidth - 310);
+  popup.style.top  = top + 'px';
+  popup.style.left = left + 'px';
+  popup.classList.add('visible');
 }
+function closePopup(id) { document.getElementById(id).classList.remove('visible'); }
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('info-popup').contains(e.target))     closePopup('info-popup');
+  if (!document.getElementById('progress-popup').contains(e.target)) closePopup('progress-popup');
+});
+
+// ── Utilities ─────────────────────────────────────
+function dateMs(s) { if (!s) return 0; const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d).getTime(); }
 function daysBetween(a, b) {
-  const am = a instanceof Date ? a.setHours(0,0,0,0) || a.getTime() : dateMs(a);
-  const bm = b instanceof Date ? (new Date(b)).setHours(0,0,0,0) : dateMs(b);
+  const am = a instanceof Date ? new Date(a).setHours(0,0,0,0) : dateMs(a);
+  const bm = b instanceof Date ? new Date(b).setHours(0,0,0,0) : dateMs(b);
   return Math.round((bm - am) / 86400000);
 }
-function sameDay(a, b) {
-  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
-}
-function el(tag, cls) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  return e;
-}
+function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function mk(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 function showMsg(txt) {
   const m = document.getElementById('status-msg');
   m.textContent = txt;
-  setTimeout(() => { m.textContent = `共 ${allCases.length} 筆派案`; }, 2500);
+  setTimeout(() => { m.textContent = `${allCases.length} 筆派案 · ${Object.keys(groupByProject()).length} 個專案`; }, 2500);
 }
 
-// ────────────────────────────────────────────────
-// INIT
-// ────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────
 loadData();
 window.addEventListener('resize', () => buildTimeline());
 </script>
