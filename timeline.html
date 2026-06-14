@@ -4,148 +4,162 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3250;
-    --text: #e2e8f0;
-    --text-dim: #8892a4;
-    --today: #f87171;
-    --label-w: 220px;
+    --bg:       #f7f6f3;
+    --surface:  #ffffff;
+    --surface2: #f0eee9;
+    --border:   #e8e5df;
+    --text:     #1a1817;
+    --text-mid: #5c5852;
+    --text-dim: #9b9590;
+    --today:    #dc2626;
+    --label-w:  230px;
     --header-h: 44px;
 
-    /* Job type colors */
-    --c-note:         #60a5fa;
-    --c-jpg:          #34d399;
-    --c-v1:           #a78bfa;
-    --c-presentation: #fb923c;
-    --c-m1:           #f472b6;
-    --c-other:        #94a3b8;
+    --c-note:         #3b82f6;
+    --c-jpg:          #059669;
+    --c-v1:           #7c3aed;
+    --c-presentation: #ea580c;
+    --c-m1:           #db2777;
+    --c-other:        #64748b;
 
-    /* Progress colors */
-    --p-待開始: #475569;
-    --p-草稿:   #60a5fa;
+    --p-待開始: #94a3b8;
+    --p-草稿:   #3b82f6;
     --p-討論:   #f59e0b;
-    --p-合成:   #a78bfa;
-    --p-完成:   #22c55e;
-    --p-其他:   #64748b;
+    --p-合成:   #8b5cf6;
+    --p-完成:   #10b981;
+    --p-其他:   #6b7280;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: var(--bg); color: var(--text);
-    font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px;
-    overflow: hidden; height: 100vh; display: flex; flex-direction: column;
+    font-family: 'Noto Sans TC', -apple-system, sans-serif;
+    font-size: 13px; overflow: hidden; height: 100vh;
+    display: flex; flex-direction: column;
   }
 
   /* ── Top bar ── */
   #topbar {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+    padding: 8px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
-  #topbar h1 { font-size: 14px; font-weight: 600; margin-right: 4px; }
+  #topbar h1 { font-size: 14px; font-weight: 700; margin-right: 4px; }
   .btn {
-    padding: 4px 11px; border-radius: 6px; border: 1px solid var(--border);
-    background: var(--surface2); color: var(--text); cursor: pointer; font-size: 12px;
-    transition: background .15s; white-space: nowrap;
+    padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-mid); cursor: pointer;
+    font-size: 12px; font-family: inherit; transition: all .15s; white-space: nowrap;
   }
-  .btn:hover { background: var(--border); }
-  .btn.active { background: #3b4fd8; border-color: #6475e8; }
+  .btn:hover { background: var(--surface2); border-color: #ccc9c2; color: var(--text); }
+  .btn.active { background: #1a1817; border-color: #1a1817; color: #fff; }
   .sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
   .zoom-label { color: var(--text-dim); font-size: 11px; }
   #status-msg { margin-left: auto; font-size: 11px; color: var(--text-dim); }
-  #auth-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: rgba(100,117,232,.15); border: 1px solid rgba(100,117,232,.3); color: #a0aee8; }
 
   /* ── Legend ── */
   #legend {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 5px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+    padding: 5px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
-  .legend-group { display: flex; align-items: center; gap: 8px; }
   .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
-  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
   .legend-sep { width: 1px; height: 14px; background: var(--border); }
 
-  /* ── Timeline wrapper ── */
+  /* ── Timeline ── */
   #timeline-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
-
-  /* ── Header ── */
   #header-scroll { overflow: hidden; flex-shrink: 0; }
-  #header-inner { display: flex; }
+  #header-inner  { display: flex; }
   #header-label {
     width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
-    background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    height: var(--header-h); display: flex; align-items: center; padding: 0 10px;
-    font-size: 11px; color: var(--text-dim);
+    background: var(--surface); border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border); height: var(--header-h);
+    display: flex; align-items: center; padding: 0 12px;
+    font-size: 11px; color: var(--text-dim); font-weight: 600; letter-spacing: .03em;
   }
-  #header-dates { flex: 1; height: var(--header-h); position: relative; overflow: hidden; }
+  #header-dates {
+    flex: 1; height: var(--header-h); position: relative; overflow: hidden;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
   #header-dates-inner { position: absolute; top: 0; left: 0; height: 100%; }
 
-  /* ── Body ── */
   #body-scroll { flex: 1; overflow: auto; display: flex; min-height: 0; }
 
+  /* ── Label column ── */
   #label-col {
     width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
     background: var(--surface); border-right: 1px solid var(--border);
     position: sticky; left: 0; z-index: 10;
   }
   .row-label {
-    display: flex; align-items: center; padding: 0 6px; gap: 4px;
-    border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s;
+    display: flex; align-items: center; padding: 0 8px; gap: 4px;
+    border-bottom: 1px solid var(--border); transition: background .12s;
   }
   .row-label:hover { background: var(--surface2); }
-  .reorder-btns { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
+  .reorder-btns { display: flex; flex-direction: column; flex-shrink: 0; }
   .reorder-btn {
     background: none; border: none; color: var(--text-dim); cursor: pointer;
-    font-size: 8px; line-height: 1.2; padding: 1px 3px;
+    font-size: 7px; line-height: 1.3; padding: 1px 2px; font-family: inherit;
   }
   .reorder-btn:hover { color: var(--text); }
   .proj-name {
-    font-size: 11px; font-weight: 500; flex: 1; min-width: 0;
+    font-size: 11px; font-weight: 600; flex: 1; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer; color: var(--text);
   }
-  .notion-link { font-size: 10px; color: #6475e8; text-decoration: none; flex-shrink: 0; opacity: .8; }
-  .notion-link:hover { opacity: 1; }
+  .proj-name:hover { color: #3b82f6; }
+  .notion-link {
+    font-size: 11px; color: var(--text-dim); text-decoration: none; flex-shrink: 0;
+    padding: 2px 4px; border-radius: 4px; transition: background .1s; line-height: 1;
+  }
+  .notion-link:hover { background: var(--surface2); color: var(--text); }
   .progress-badge {
-    flex-shrink: 0; font-size: 9px; padding: 1px 5px; border-radius: 8px;
-    cursor: pointer; white-space: nowrap; font-weight: 600; border: 1px solid transparent;
-    transition: filter .15s;
+    flex-shrink: 0; font-size: 9px; padding: 1px 6px; border-radius: 10px;
+    cursor: pointer; white-space: nowrap; font-weight: 700; border: 1px solid transparent;
+    transition: filter .15s; font-family: inherit;
   }
-  .progress-badge:hover { filter: brightness(1.2); }
+  .progress-badge:hover { filter: brightness(.88); }
 
   /* ── Gantt ── */
   #gantt-col { flex: 1; position: relative; }
   .gantt-row { border-bottom: 1px solid var(--border); position: relative; }
-  .gantt-row:nth-child(even) { background: rgba(255,255,255,.013); }
+  .gantt-row:nth-child(even) { background: rgba(0,0,0,.014); }
 
   .today-line {
     position: absolute; top: 0; bottom: 0; width: 2px;
-    background: var(--today); z-index: 5; pointer-events: none; opacity: .65;
+    background: var(--today); z-index: 5; pointer-events: none; opacity: .7;
   }
   .grid-line {
     position: absolute; top: 0; bottom: 0; width: 1px;
-    background: var(--border); opacity: .3; pointer-events: none;
+    background: var(--border); pointer-events: none;
   }
 
-  /* Spine bar (project date range background) */
+  /* Spine – grey track spanning full project duration */
   .spine {
-    position: absolute; height: 4px; border-radius: 2px;
-    background: rgba(255,255,255,.07); pointer-events: none; z-index: 1;
+    position: absolute; height: 6px; border-radius: 3px;
+    background: rgba(0,0,0,.08); pointer-events: none; z-index: 1;
   }
 
-  /* Segments */
-  .segment {
-    position: absolute; height: 22px; border-radius: 4px;
-    cursor: pointer; display: flex; align-items: center; padding: 0 6px;
-    font-size: 11px; font-weight: 500; color: rgba(255,255,255,.92);
-    overflow: hidden; white-space: nowrap; z-index: 2;
-    border: 1px solid rgba(0,0,0,.18); box-shadow: 0 1px 3px rgba(0,0,0,.25);
-    transition: filter .12s, transform .1s; user-select: none;
+  /* Phase bands – colored strips on spine showing progress history */
+  .phase-band {
+    position: absolute; height: 6px; border-radius: 3px;
+    pointer-events: none; z-index: 2; opacity: .85;
   }
-  .segment:hover { filter: brightness(1.18); transform: scaleY(1.06); z-index: 20; }
+
+  /* Dispatch segments */
+  .segment {
+    position: absolute; height: 22px; border-radius: 5px;
+    cursor: pointer; display: flex; align-items: center; padding: 0 7px;
+    font-size: 11px; font-weight: 500; color: #fff;
+    overflow: hidden; white-space: nowrap; z-index: 3;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    transition: filter .12s, box-shadow .1s; user-select: none;
+  }
+  .segment:hover { filter: brightness(.88); box-shadow: 0 2px 8px rgba(0,0,0,.2); z-index: 20; }
   .seg-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
   .seg-note         { background: var(--c-note); }
   .seg-jpg          { background: var(--c-jpg); }
@@ -156,61 +170,62 @@
 
   /* ── Popups ── */
   .popup {
-    position: fixed; z-index: 200; background: var(--surface2);
-    border: 1px solid var(--border); border-radius: 10px; padding: 14px;
-    box-shadow: 0 10px 40px rgba(0,0,0,.6); min-width: 220px; max-width: 300px;
+    position: fixed; z-index: 200; background: #fff;
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.12); min-width: 260px; max-width: 320px;
     display: none;
   }
   .popup.visible { display: block; }
-  .popup-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-  .popup-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.5; }
-  .popup-section { font-size: 10px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .popup-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .popup-meta  { font-size: 11px; color: var(--text-mid); line-height: 1.7; margin-bottom: 12px; }
+  .popup-divider { height: 1px; background: var(--border); margin: 12px 0; }
+  .popup-section {
+    font-size: 10px; color: var(--text-dim); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
+  }
+
+  /* Link fields */
+  .link-field { margin-bottom: 8px; }
+  .link-field label { font-size: 11px; color: var(--text-mid); display: block; margin-bottom: 3px; font-weight: 500; }
+  .link-field input {
+    width: 100%; padding: 6px 9px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 11px; font-family: inherit; transition: border-color .15s;
+  }
+  .link-field input:focus { outline: none; border-color: #3b82f6; }
+
+  .save-btn {
+    width: 100%; padding: 7px; border-radius: 8px; border: none;
+    background: #1a1817; color: #fff; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; margin-top: 4px; transition: background .15s;
+  }
+  .save-btn:hover { background: #2d2926; }
+
+  .popup-close {
+    margin-top: 8px; width: 100%; padding: 5px; border-radius: 7px;
+    border: 1px solid var(--border); background: none;
+    color: var(--text-dim); cursor: pointer; font-size: 11px; font-family: inherit;
+  }
+  .popup-close:hover { background: var(--surface2); color: var(--text); }
+
+  /* Progress options */
   .option-btn {
     display: flex; align-items: center; gap: 8px; width: 100%;
-    padding: 7px 10px; border-radius: 6px; border: 1px solid transparent;
-    background: var(--surface); color: var(--text); cursor: pointer;
-    font-size: 12px; margin-bottom: 4px; transition: background .1s; text-align: left;
+    padding: 7px 10px; border-radius: 7px; border: 1px solid transparent;
+    background: var(--bg); color: var(--text); cursor: pointer;
+    font-size: 12px; margin-bottom: 4px; transition: background .1s;
+    text-align: left; font-family: inherit;
   }
-  .option-btn:hover { background: var(--border); }
-  .option-btn.active { border-color: rgba(100,117,232,.5); background: rgba(100,117,232,.18); }
+  .option-btn:hover { background: var(--surface2); }
+  .option-btn.active { border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.07); }
   .opt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   #custom-label-row { display: none; margin-top: 4px; }
   #custom-label-input {
-    width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--text); font-size: 12px;
+    width: 100%; padding: 6px 9px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 12px; font-family: inherit;
   }
-  .popup-close {
-    margin-top: 8px; width: 100%; padding: 5px; border-radius: 6px;
-    border: 1px solid var(--border); background: none; color: var(--text-dim); cursor: pointer; font-size: 11px;
-  }
-  .popup-close:hover { background: var(--surface); color: var(--text); }
-
-  /* Password modal */
-  #auth-modal {
-    position: fixed; inset: 0; z-index: 300; display: none;
-    align-items: center; justify-content: center;
-    background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
-  }
-  #auth-modal.visible { display: flex; }
-  #auth-box {
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
-    padding: 24px; width: 280px; box-shadow: 0 16px 48px rgba(0,0,0,.6);
-  }
-  #auth-box h2 { font-size: 15px; margin-bottom: 6px; }
-  #auth-box p { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
-  #auth-input {
-    width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--text); font-size: 14px;
-    margin-bottom: 10px; letter-spacing: .15em;
-  }
-  #auth-input:focus { outline: none; border-color: #6475e8; }
-  #auth-err { font-size: 11px; color: #f87171; margin-bottom: 8px; display: none; }
-  #auth-submit {
-    width: 100%; padding: 8px; border-radius: 7px; border: none;
-    background: #3b4fd8; color: #fff; font-size: 13px; cursor: pointer; font-weight: 600;
-  }
-  #auth-submit:hover { background: #4c5fe8; }
-  #auth-cancel { background: none; border: none; color: var(--text-dim); font-size: 11px; cursor: pointer; margin-top: 8px; width: 100%; }
+  #custom-label-input:focus { outline: none; border-color: #3b82f6; }
 
   /* ── Loading ── */
   #loading {
@@ -219,8 +234,8 @@
     z-index: 400; flex-direction: column; gap: 12px;
   }
   .spinner {
-    width: 32px; height: 32px; border: 3px solid var(--border);
-    border-top-color: #6475e8; border-radius: 50%; animation: spin .7s linear infinite;
+    width: 28px; height: 28px; border: 2px solid var(--border);
+    border-top-color: #1a1817; border-radius: 50%; animation: spin .7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   #loading p { color: var(--text-dim); font-size: 13px; }
@@ -230,26 +245,29 @@
 
 <div id="loading"><div class="spinner"></div><p>載入資料中…</p></div>
 
-<!-- Auth modal -->
-<div id="auth-modal">
-  <div id="auth-box">
-    <h2>🔒 編輯進度</h2>
-    <p>請輸入密碼以修改專案進度</p>
-    <input id="auth-input" type="password" placeholder="密碼" autocomplete="off">
-    <div id="auth-err">密碼錯誤，請再試一次</div>
-    <button id="auth-submit">確認</button>
-    <button id="auth-cancel" onclick="closeAuthModal()">取消</button>
-  </div>
-</div>
-
-<!-- Info popup (segment click) -->
+<!-- Segment click popup -->
 <div id="info-popup" class="popup">
   <div id="info-title" class="popup-title"></div>
-  <div id="info-sub" class="popup-sub"></div>
+  <div id="info-meta"  class="popup-meta"></div>
+  <div class="popup-divider"></div>
+  <div class="popup-section">連結</div>
+  <div class="link-field">
+    <label>會議連結</label>
+    <input id="link-meeting" type="url" placeholder="https://…">
+  </div>
+  <div class="link-field">
+    <label>討論板</label>
+    <input id="link-discussion" type="url" placeholder="https://…">
+  </div>
+  <div class="link-field">
+    <label>Brief 連結</label>
+    <input id="link-brief" type="url" placeholder="https://…">
+  </div>
+  <button class="save-btn" onclick="saveLinks()">儲存連結</button>
   <button class="popup-close" onclick="closePopup('info-popup')">關閉</button>
 </div>
 
-<!-- Progress popup (project label click) -->
+<!-- Progress popup (project name click) -->
 <div id="progress-popup" class="popup">
   <div id="progress-proj-name" class="popup-title"></div>
   <div style="margin-bottom:10px"></div>
@@ -261,47 +279,42 @@
   <button class="popup-close" onclick="closePopup('progress-popup')">關閉</button>
 </div>
 
+<!-- Top bar -->
 <div id="topbar">
-  <h1>📅 Project Timeline</h1>
+  <h1>Project Timeline</h1>
   <div class="sep"></div>
   <span class="zoom-label">縮放：</span>
   <button class="btn" id="z-week"   onclick="setZoom('week')">週</button>
   <button class="btn active" id="z-biweek" onclick="setZoom('biweek')">雙週</button>
   <button class="btn" id="z-month"  onclick="setZoom('month')">月</button>
   <div class="sep"></div>
-  <button class="btn" onclick="scrollToToday()">📍 今天</button>
-  <button class="btn" onclick="loadData()">↻ 重新整理</button>
-  <div class="sep"></div>
-  <span id="auth-status">👁 閱覽模式</span>
-  <button class="btn" id="edit-toggle" onclick="toggleEditMode()">編輯進度</button>
+  <button class="btn" onclick="scrollToToday()">今天</button>
+  <button class="btn" onclick="loadData()">重新整理</button>
   <span id="status-msg"></span>
 </div>
 
+<!-- Legend -->
 <div id="legend">
-  <span class="legend-item" style="color:var(--text-dim);font-size:11px;margin-right:2px">段落顏色 = 案件種類：</span>
-  <div class="legend-group">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-note)"></div>Note</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
-  </div>
+  <span class="legend-item" style="margin-right:2px;color:var(--text-dim)">案件種類：</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-note)"></div>Note</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
   <div class="legend-sep"></div>
-  <span class="legend-item" style="color:var(--text-dim);font-size:11px;margin-right:2px">專案進度：</span>
-  <div class="legend-group">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--p-待開始);border-radius:50%"></div>待開始</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--p-草稿);border-radius:50%"></div>草稿</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--p-討論);border-radius:50%"></div>討論</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--p-合成);border-radius:50%"></div>合成</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--p-完成);border-radius:50%"></div>完成</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--p-其他);border-radius:50%"></div>其他</div>
-  </div>
+  <span class="legend-item" style="margin-right:2px;color:var(--text-dim)">進度：</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p-待開始);border-radius:50%"></div>待開始</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p-草稿);border-radius:50%"></div>草稿</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p-討論);border-radius:50%"></div>討論</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p-合成);border-radius:50%"></div>合成</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p-完成);border-radius:50%"></div>完成</div>
 </div>
 
+<!-- Timeline -->
 <div id="timeline-wrap">
   <div id="header-scroll">
     <div id="header-inner">
-      <div id="header-label">專案 / 進度</div>
+      <div id="header-label">專案</div>
       <div id="header-dates"><div id="header-dates-inner"></div></div>
     </div>
   </div>
@@ -312,107 +325,49 @@
 </div>
 
 <script>
-// ── Config ──────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────
 const SUPABASE   = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
 const ANON_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
 const NOTION_FN  = `${SUPABASE}/functions/v1/get-timeline`;
-const EDIT_PWD   = '1208';
 const START_DATE = '2026-06-08';
 
-const JOB_CLASS = { Note:'seg-note', JPG:'seg-jpg', V1:'seg-v1', Presentation:'seg-presentation', M1:'seg-m1' };
+const JOB_CLASS = {
+  Note: 'seg-note', JPG: 'seg-jpg', V1: 'seg-v1',
+  Presentation: 'seg-presentation', M1: 'seg-m1',
+};
 
 const PROGRESS_OPTS = [
-  { key:'待開始', color:'#475569' },
-  { key:'草稿',   color:'#60a5fa' },
-  { key:'討論',   color:'#f59e0b' },
-  { key:'合成',   color:'#a78bfa' },
-  { key:'完成',   color:'#22c55e' },
-  { key:'其他',   color:'#64748b', custom: true },
+  { key: '待開始', color: '#94a3b8' },
+  { key: '草稿',   color: '#3b82f6' },
+  { key: '討論',   color: '#f59e0b' },
+  { key: '合成',   color: '#8b5cf6' },
+  { key: '完成',   color: '#10b981' },
+  { key: '其他',   color: '#6b7280', custom: true },
 ];
-const progressColor = (key) => {
-  const o = PROGRESS_OPTS.find(p => p.key === key);
-  return o ? o.color : '#475569';
-};
+const progressColor = k => (PROGRESS_OPTS.find(p => p.key === k) || PROGRESS_OPTS[0]).color;
 
-// ── State ────────────────────────────────────────
-let allCases      = [];
-let notionMap     = {};      // project_name → notion url
-let progressMap   = {};      // project_name → { progress, custom_label }
-let projectOrder  = [];
-let customOrder   = null;
-let zoomDays      = 14;
-let dayPx         = 60;
-let isAuthed      = sessionStorage.getItem('tl-auth') === '1';
-let editMode      = isAuthed;
-let pendingAction = null;    // fn to call after auth
+// ── State ───────────────────────────────────────────────────
+let allCases    = [];
+let notionMap   = {};   // project_name → notion url
+let progressMap = {};   // project_name → { progress, custom_label, meeting_link, … }
+let phasesMap   = {};   // project_name → [{phase, start_date}, …] sorted asc
+let projectOrder = [];
+let customOrder  = null;
+let zoomDays    = 14;
+let dayPx       = 60;
+let currentInfoProject = null;   // project open in info popup
 
-// ── Auth ─────────────────────────────────────────
-function updateAuthUI() {
-  const s = document.getElementById('auth-status');
-  const b = document.getElementById('edit-toggle');
-  if (editMode) {
-    s.textContent = '✏️ 編輯模式';
-    s.style.background = 'rgba(34,197,94,.12)';
-    s.style.borderColor = 'rgba(34,197,94,.3)';
-    s.style.color = '#86efac';
-    b.textContent = '退出編輯';
-    b.classList.add('active');
-  } else {
-    s.textContent = '👁 閱覽模式';
-    s.style.background = 'rgba(100,117,232,.15)';
-    s.style.borderColor = 'rgba(100,117,232,.3)';
-    s.style.color = '#a0aee8';
-    b.textContent = '編輯進度';
-    b.classList.remove('active');
-  }
-}
-function toggleEditMode() {
-  if (editMode) { editMode = false; updateAuthUI(); return; }
-  if (isAuthed) { editMode = true; updateAuthUI(); return; }
-  openAuthModal(() => { editMode = true; updateAuthUI(); });
-}
-function openAuthModal(onSuccess) {
-  pendingAction = onSuccess;
-  document.getElementById('auth-input').value = '';
-  document.getElementById('auth-err').style.display = 'none';
-  document.getElementById('auth-modal').classList.add('visible');
-  setTimeout(() => document.getElementById('auth-input').focus(), 100);
-}
-function closeAuthModal() {
-  document.getElementById('auth-modal').classList.remove('visible');
-  pendingAction = null;
-}
-document.getElementById('auth-submit').onclick = () => {
-  const v = document.getElementById('auth-input').value;
-  if (v === EDIT_PWD) {
-    isAuthed = true;
-    sessionStorage.setItem('tl-auth', '1');
-    closeAuthModal();
-    if (pendingAction) pendingAction();
-  } else {
-    document.getElementById('auth-err').style.display = 'block';
-    document.getElementById('auth-input').value = '';
-    document.getElementById('auth-input').focus();
-  }
-};
-document.getElementById('auth-input').onkeydown = (e) => {
-  if (e.key === 'Enter') document.getElementById('auth-submit').click();
-};
-document.getElementById('auth-modal').onclick = (e) => {
-  if (e.target === document.getElementById('auth-modal')) closeAuthModal();
-};
-updateAuthUI();
-
-// ── Data loading ─────────────────────────────────
+// ── Data loading ────────────────────────────────────────────
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
   document.getElementById('status-msg').textContent = '';
   try {
     const h = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
 
-    const [casesRes, progressRes, notionRes] = await Promise.all([
+    const [casesRes, progressRes, phasesRes, notionRes] = await Promise.all([
       fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, { headers: h }),
       fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, { headers: h }),
+      fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, { headers: h }),
       fetch(NOTION_FN, { headers: h }).catch(() => null),
     ]);
 
@@ -421,29 +376,38 @@ async function loadData() {
 
     const progressRows = await progressRes.json();
     progressMap = {};
-    for (const r of (progressRows || [])) {
-      progressMap[r.project_name] = { progress: r.progress, custom_label: r.custom_label };
+    for (const r of (progressRows || [])) progressMap[r.project_name] = r;
+
+    const phaseRows = await phasesRes.json();
+    phasesMap = {};
+    for (const r of (phaseRows || [])) {
+      if (!phasesMap[r.project_name]) phasesMap[r.project_name] = [];
+      phasesMap[r.project_name].push(r);
     }
 
     notionMap = {};
     if (notionRes?.ok) {
       try {
         const { items } = await notionRes.json();
-        for (const it of (items || [])) if (it.name && it.url) notionMap[it.name] = it.url;
-      } catch(_) {}
+        for (const it of (items || [])) {
+          if (it.name && it.url) notionMap[it.name.trim()] = it.url;
+        }
+      } catch (_) {}
     }
 
-    try { customOrder = JSON.parse(localStorage.getItem('tl-order') || 'null'); } catch(_) {}
+    try { customOrder = JSON.parse(localStorage.getItem('tl-order') || 'null'); } catch (_) {}
 
     buildTimeline();
-    document.getElementById('status-msg').textContent = `${allCases.length} 筆派案 · ${Object.keys(groupByProject()).length} 個專案`;
-  } catch(e) {
+    const projCount = Object.keys(groupByProject()).length;
+    document.getElementById('status-msg').textContent =
+      `${allCases.length} 筆派案 · ${projCount} 個專案`;
+  } catch (e) {
     document.getElementById('status-msg').textContent = '載入失敗：' + e.message;
   }
   document.getElementById('loading').style.display = 'none';
 }
 
-// ── Grouping ─────────────────────────────────────
+// ── Grouping ────────────────────────────────────────────────
 function groupByProject() {
   const g = {};
   for (const c of allCases) {
@@ -454,7 +418,7 @@ function groupByProject() {
   return g;
 }
 
-// ── Build timeline ───────────────────────────────
+// ── Build timeline ───────────────────────────────────────────
 function buildTimeline() {
   const groups = groupByProject();
   const defaultOrder = Object.keys(groups).sort((a, b) => {
@@ -464,7 +428,7 @@ function buildTimeline() {
   });
 
   if (customOrder) {
-    const kept = customOrder.filter(p => defaultOrder.includes(p));
+    const kept  = customOrder.filter(p => defaultOrder.includes(p));
     const added = defaultOrder.filter(p => !kept.includes(p));
     projectOrder = [...kept, ...added];
   } else {
@@ -473,11 +437,12 @@ function buildTimeline() {
 
   const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
   if (!allMs.length) return;
+
   const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
   const maxDate = new Date(Math.max(...allMs)); maxDate.setDate(maxDate.getDate() + 10);
   const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
 
-  const visW = Math.max(600, window.innerWidth - 220);
+  const visW = Math.max(600, window.innerWidth - 230);
   dayPx = Math.max(16, visW / zoomDays);
   const totalWidth = totalDays * dayPx;
 
@@ -490,10 +455,11 @@ function buildTimeline() {
   ganttCol.style.width = ganttCol.style.minWidth = totalWidth + 'px';
 
   // Today line
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const tx = daysBetween(minDate, today) * dayPx;
   if (tx >= 0 && tx <= totalWidth) {
-    const tl = mk('div', 'today-line'); tl.style.left = tx + 'px';
+    const tl = mk('div', 'today-line');
+    tl.style.left = tx + 'px';
     ganttCol.appendChild(tl);
   }
 
@@ -501,7 +467,8 @@ function buildTimeline() {
   let gd = new Date(minDate);
   for (let i = 0; i < totalDays; i++) {
     if (gd.getDay() === 1) {
-      const gl = mk('div', 'grid-line'); gl.style.left = (i * dayPx) + 'px';
+      const gl = mk('div', 'grid-line');
+      gl.style.left = (i * dayPx) + 'px';
       ganttCol.appendChild(gl);
     }
     gd.setDate(gd.getDate() + 1);
@@ -509,67 +476,90 @@ function buildTimeline() {
 
   // Rows
   for (const proj of projectOrder) {
-    const cases = groups[proj] || [];
+    const cases  = groups[proj] || [];
     const lanes  = assignLanes(cases);
     const nLanes = Math.max(1, lanes.length);
-    const rowH   = Math.max(46, nLanes * 28 + 10);
-    const prog   = progressMap[proj] || { progress: '待開始', custom_label: null };
-    const pColor = progressColor(prog.progress);
-    const pLabel = prog.progress === '其他' && prog.custom_label ? prog.custom_label : prog.progress;
+    const rowH   = Math.max(48, nLanes * 28 + 16);
 
-    // --- Label ---
+    const prog   = progressMap[proj] || { progress: '待開始' };
+    const pColor = progressColor(prog.progress);
+    const pLabel = prog.progress === '其他' && prog.custom_label
+      ? prog.custom_label : (prog.progress || '待開始');
+
+    // ── Label ──
     const label = mk('div', 'row-label');
     label.style.height = rowH + 'px';
-    label.title = proj;
 
-    // Reorder buttons
     const rbtns = mk('div', 'reorder-btns');
     const up = mk('button', 'reorder-btn'); up.textContent = '▲';
-    up.onclick = (e) => { e.stopPropagation(); moveProject(proj, -1); };
+    up.onclick = e => { e.stopPropagation(); moveProject(proj, -1); };
     const dn = mk('button', 'reorder-btn'); dn.textContent = '▼';
-    dn.onclick = (e) => { e.stopPropagation(); moveProject(proj, 1); };
+    dn.onclick = e => { e.stopPropagation(); moveProject(proj, 1); };
     rbtns.append(up, dn);
 
     const pname = mk('span', 'proj-name');
     pname.textContent = proj;
+    pname.title = proj;
+    pname.onclick = e => { e.stopPropagation(); openProgressPopup(proj, pname); };
 
-    // Progress badge
     const badge = mk('span', 'progress-badge');
     badge.textContent = pLabel;
-    badge.style.background = pColor + '28';
-    badge.style.borderColor = pColor + '80';
-    badge.style.color = pColor;
-    badge.onclick = (e) => { e.stopPropagation(); handleProgressClick(proj, badge, e); };
+    badge.style.background    = pColor + '22';
+    badge.style.borderColor   = pColor + '66';
+    badge.style.color         = pColor;
+    badge.onclick = e => { e.stopPropagation(); openProgressPopup(proj, badge); };
 
     label.append(rbtns, pname, badge);
 
-    // Notion link
     if (notionMap[proj]) {
       const a = mk('a', 'notion-link');
-      a.href = notionMap[proj]; a.target = '_blank'; a.textContent = '↗';
+      a.href = notionMap[proj]; a.target = '_blank';
+      a.textContent = '↗'; a.title = 'Notion 頁面';
       a.onclick = e => e.stopPropagation();
       label.appendChild(a);
     }
 
     labelCol.appendChild(label);
 
-    // --- Gantt row ---
+    // ── Gantt row ──
     const row = mk('div', 'gantt-row');
     row.style.height = rowH + 'px';
 
-    // Spine bar
-    const spineStart = Math.min(...cases.map(c => dateMs(c.date)));
-    const spineEnd   = Math.max(...cases.map(c => dateMs(c.deadline || c.date)));
+    const spineMs  = cases.map(c => dateMs(c.date));
+    const deadMs   = cases.map(c => dateMs(c.deadline || c.date));
+    const spineStart = Math.min(...spineMs);
+    const spineEnd   = Math.max(...deadMs);
+
+    // Spine (grey background track)
     const sx = daysBetween(minDate, new Date(spineStart)) * dayPx;
-    const sw = (daysBetween(new Date(spineStart), new Date(spineEnd)) + 1) * dayPx;
+    const sw = Math.max(6, (daysBetween(new Date(spineStart), new Date(spineEnd)) + 1) * dayPx);
     const spine = mk('div', 'spine');
-    spine.style.left   = sx + 'px';
-    spine.style.width  = sw + 'px';
-    spine.style.top    = (rowH / 2 - 2) + 'px';
-    spine.style.background = pColor + '30';
+    spine.style.left  = sx + 'px';
+    spine.style.width = sw + 'px';
+    spine.style.top   = (rowH - 10) + 'px';
     row.appendChild(spine);
 
-    // Segments
+    // Phase bands (colored history on spine)
+    const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
+    for (let pi = 0; pi < phases.length; pi++) {
+      const ph      = phases[pi];
+      const phStart = new Date(ph.start_date + 'T00:00:00');
+      const phEnd   = pi < phases.length - 1
+        ? new Date(phases[pi + 1].start_date + 'T00:00:00')
+        : today;  // current phase extends to today
+
+      const bx = daysBetween(minDate, phStart) * dayPx;
+      const bw = Math.max(3, daysBetween(phStart, phEnd) * dayPx);
+      const band = mk('div', 'phase-band');
+      band.style.left       = bx + 'px';
+      band.style.width      = bw + 'px';
+      band.style.top        = (rowH - 10) + 'px';
+      band.style.background = progressColor(ph.phase);
+      band.title            = ph.phase + '・' + ph.start_date;
+      row.appendChild(band);
+    }
+
+    // Dispatch segments
     for (let li = 0; li < lanes.length; li++) {
       for (const c of lanes[li]) {
         const seg = buildSegment(c, minDate, li, nLanes, rowH);
@@ -583,7 +573,7 @@ function buildTimeline() {
   setTimeout(scrollToToday, 50);
 }
 
-// ── Segment ──────────────────────────────────────
+// ── Build one dispatch segment ───────────────────────────────
 function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
   if (!c.date) return null;
   const x    = daysBetween(minDate, new Date(c.date + 'T00:00:00')) * dayPx;
@@ -591,52 +581,86 @@ function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
   const span = Math.max(1, daysBetween(new Date(c.date), new Date(endD)) + 1);
   const w    = Math.max(dayPx * .7, span * dayPx - 3);
 
-  const SEG_H = 22;
-  const laneH = numLanes > 1 ? (rowH - 8) / numLanes : rowH;
-  const top   = 4 + laneIdx * laneH + (laneH - SEG_H) / 2;
+  const SEG_H  = 22;
+  const laneH  = numLanes > 1 ? (rowH - 18) / numLanes : rowH - 12;
+  const top    = 4 + laneIdx * laneH + (laneH - SEG_H) / 2;
 
   const jobType = (Array.isArray(c.job_types) && c.job_types[0]) || 'Other';
-  const cls = JOB_CLASS[jobType] || 'seg-other';
+  const cls     = JOB_CLASS[jobType] || 'seg-other';
 
   const seg = mk('div', `segment ${cls}`);
   seg.style.cssText = `left:${x}px;width:${w}px;top:${top}px;`;
 
   const lbl = mk('span', 'seg-label');
-  lbl.textContent = w > 45 ? jobType : '';
+  lbl.textContent = w > 48 ? jobType : '';
   seg.appendChild(lbl);
 
-  seg.onclick = (e) => { e.stopPropagation(); showSegmentInfo(c, seg); };
+  seg.onclick = e => { e.stopPropagation(); showSegmentInfo(c, seg); };
   return seg;
 }
 
-// ── Segment info popup ───────────────────────────
+// ── Segment info popup ───────────────────────────────────────
 function showSegmentInfo(c, segEl) {
   const jobType   = (Array.isArray(c.job_types) ? c.job_types : []).join(', ') || '—';
-  const designers = (Array.isArray(c.designers) ? c.designers : []).join(', ') || '—';
+  const designers = (Array.isArray(c.designers)  ? c.designers  : []).join(', ') || '—';
+  const deadline  = c.deadline || c.date;
 
-  document.getElementById('info-title').textContent = `${c.notion_project}`;
-  document.getElementById('info-sub').innerHTML =
+  document.getElementById('info-title').textContent = c.notion_project;
+  document.getElementById('info-meta').innerHTML =
     `<b>${jobType}</b><br>` +
-    `📅 ${c.date} → ${c.deadline || c.date}<br>` +
-    `🎨 設計師：${designers}<br>` +
-    `📋 派案狀態：${c.status || '—'}` +
-    (c.note ? `<br>📝 ${c.note}` : '');
+    `${c.date}${deadline !== c.date ? ' → ' + deadline : ''}<br>` +
+    `設計師：${designers}`;
 
+  const proj = progressMap[c.notion_project] || {};
+  document.getElementById('link-meeting').value    = proj.meeting_link    || '';
+  document.getElementById('link-discussion').value = proj.discussion_link || '';
+  document.getElementById('link-brief').value      = proj.brief_link      || '';
+
+  currentInfoProject = c.notion_project;
   positionPopup('info-popup', segEl);
 }
 
-// ── Progress popup ────────────────────────────────
-function handleProgressClick(proj, badgeEl, e) {
-  if (!editMode) {
-    // Show hint
-    openAuthModal(() => { editMode = true; updateAuthUI(); openProgressPopup(proj, badgeEl); });
-    return;
-  }
-  openProgressPopup(proj, badgeEl);
+async function saveLinks() {
+  if (!currentInfoProject) return;
+  const meeting    = document.getElementById('link-meeting').value.trim();
+  const discussion = document.getElementById('link-discussion').value.trim();
+  const brief      = document.getElementById('link-brief').value.trim();
+
+  try {
+    const existing = progressMap[currentInfoProject] || { progress: '待開始' };
+    const body = {
+      project_name:    currentInfoProject,
+      progress:        existing.progress || '待開始',
+      custom_label:    existing.custom_label || null,
+      meeting_link:    meeting    || null,
+      discussion_link: discussion || null,
+      brief_link:      brief      || null,
+      updated_at:      new Date().toISOString(),
+    };
+    const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
+      method: 'POST',
+      headers: {
+        'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.ok || res.status === 204 || res.status === 201) {
+      if (!progressMap[currentInfoProject]) progressMap[currentInfoProject] = {};
+      Object.assign(progressMap[currentInfoProject], {
+        meeting_link: meeting || null, discussion_link: discussion || null, brief_link: brief || null,
+      });
+      showMsg('✓ 連結已儲存');
+      closePopup('info-popup');
+    } else {
+      showMsg('✗ 儲存失敗');
+    }
+  } catch (e) { showMsg('✗ 儲存失敗'); }
 }
 
-function openProgressPopup(proj, badgeEl) {
-  const current = (progressMap[proj] || {}).progress || '待開始';
+// ── Progress popup ────────────────────────────────────────────
+function openProgressPopup(proj, anchorEl) {
+  const current      = (progressMap[proj] || {}).progress || '待開始';
   const currentCustom = (progressMap[proj] || {}).custom_label || '';
 
   document.getElementById('progress-proj-name').textContent = proj;
@@ -647,63 +671,76 @@ function openProgressPopup(proj, badgeEl) {
     const btn = mk('button', 'option-btn' + (current === opt.key ? ' active' : ''));
     const dot = mk('div', 'opt-dot'); dot.style.background = opt.color;
     btn.append(dot, document.createTextNode(opt.key));
-    btn.onclick = () => selectProgress(proj, opt.key, badgeEl);
+    btn.onclick = () => selectProgress(proj, opt.key, anchorEl);
     container.appendChild(btn);
   }
 
-  const customRow = document.getElementById('custom-label-row');
+  const customRow   = document.getElementById('custom-label-row');
   const customInput = document.getElementById('custom-label-input');
   customRow.style.display = current === '其他' ? 'block' : 'none';
   customInput.value = currentCustom;
-  customInput.onchange = () => saveCustomLabel(proj, customInput.value, badgeEl);
+  customInput.onchange = () => saveProgress(proj, '其他', customInput.value, anchorEl);
 
-  positionPopup('progress-popup', badgeEl);
+  positionPopup('progress-popup', anchorEl);
 }
 
-async function selectProgress(proj, newProg, badgeEl) {
+async function selectProgress(proj, newProg, anchorEl) {
   const isCustom = newProg === '其他';
-  const customRow = document.getElementById('custom-label-row');
-  customRow.style.display = isCustom ? 'block' : 'none';
-
-  // Update active button
-  document.querySelectorAll('#progress-options .option-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent.trim() === newProg);
-  });
-
+  document.getElementById('custom-label-row').style.display = isCustom ? 'block' : 'none';
+  document.querySelectorAll('#progress-options .option-btn').forEach(b =>
+    b.classList.toggle('active', b.textContent.trim() === newProg)
+  );
   const customLabel = isCustom ? document.getElementById('custom-label-input').value : null;
-  await saveProgress(proj, newProg, customLabel, badgeEl);
+  await saveProgress(proj, newProg, customLabel, anchorEl);
 }
 
-async function saveCustomLabel(proj, label, badgeEl) {
-  await saveProgress(proj, '其他', label, badgeEl);
-}
-
-async function saveProgress(proj, progress, customLabel, badgeEl) {
+async function saveProgress(proj, progress, customLabel, anchorEl) {
   try {
-    const body = { project_name: proj, progress, custom_label: customLabel || null, updated_at: new Date().toISOString() };
-    const res  = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
+    const existing = progressMap[proj] || {};
+    const body = {
+      project_name:    proj,
+      progress,
+      custom_label:    customLabel || null,
+      meeting_link:    existing.meeting_link    || null,
+      discussion_link: existing.discussion_link || null,
+      brief_link:      existing.brief_link      || null,
+      updated_at:      new Date().toISOString(),
+    };
+    const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
       method: 'POST',
-      headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify(body)
+      headers: {
+        'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(body),
     });
     if (res.ok || res.status === 204 || res.status === 201) {
-      progressMap[proj] = { progress, custom_label: customLabel || null };
-      const color = progressColor(progress);
-      const label = progress === '其他' && customLabel ? customLabel : progress;
-      badgeEl.textContent = label;
-      badgeEl.style.background = color + '28';
-      badgeEl.style.borderColor = color + '80';
-      badgeEl.style.color = color;
-      // Update spine color
-      const rows = document.querySelectorAll('.spine');
-      showMsg(`✓ 進度已更新為「${label}」`);
-      // Rebuild to update spine color
-      setTimeout(() => buildTimeline(), 300);
+      progressMap[proj] = { ...existing, progress, custom_label: customLabel || null };
+
+      // Record phase history (only if phase actually changed)
+      const phases    = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
+      const lastPhase = phases[phases.length - 1];
+      if (!lastPhase || lastPhase.phase !== progress) {
+        const today = new Date().toISOString().slice(0, 10);
+        await fetch(`${SUPABASE}/rest/v1/project_phases`, {
+          method: 'POST',
+          headers: {
+            'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ project_name: proj, phase: progress, start_date: today }),
+        });
+        if (!phasesMap[proj]) phasesMap[proj] = [];
+        phasesMap[proj].push({ project_name: proj, phase: progress, start_date: today });
+      }
+
+      showMsg(`✓ 進度已更新為「${progress}」`);
+      setTimeout(() => buildTimeline(), 200);
     }
-  } catch(e) { showMsg('✗ 儲存失敗'); }
+  } catch (e) { showMsg('✗ 儲存失敗'); }
 }
 
-// ── Lane assignment ───────────────────────────────
+// ── Lane assignment ──────────────────────────────────────────
 function assignLanes(cases) {
   const lanes = [], ends = [];
   const sorted = [...cases].sort((a, b) => dateMs(a.date) - dateMs(b.date));
@@ -718,7 +755,7 @@ function assignLanes(cases) {
   return lanes.length ? lanes : [[]];
 }
 
-// ── Header ────────────────────────────────────────
+// ── Header ────────────────────────────────────────────────────
 function renderHeader(minDate, totalDays, totalWidth) {
   const canvas = document.getElementById('header-dates-inner');
   canvas.style.width = totalWidth + 'px';
@@ -729,25 +766,25 @@ function renderHeader(minDate, totalDays, totalWidth) {
     if (d.getMonth() !== lastMonth) {
       lastMonth = d.getMonth();
       const ml = mk('div');
-      ml.style.cssText = `position:absolute;left:${x+3}px;top:2px;font-size:10px;color:var(--text-dim);font-weight:700;white-space:nowrap;pointer-events:none;`;
-      ml.textContent = d.toLocaleDateString('zh-TW', { year:'numeric', month:'long' });
+      ml.style.cssText = `position:absolute;left:${x + 4}px;top:3px;font-size:10px;color:var(--text-mid);font-weight:700;white-space:nowrap;pointer-events:none;`;
+      ml.textContent = d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' });
       canvas.appendChild(ml);
     }
     const dow = d.getDay();
     if (dayPx >= 36 || dow === 1 || dow === 0) {
       const isToday = sameDay(d, new Date());
       const dl = mk('div');
-      dl.style.cssText = `position:absolute;left:${x}px;bottom:3px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
-      dl.style.color = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#7c8de8' : 'var(--text-dim)');
+      dl.style.cssText = `position:absolute;left:${x}px;bottom:4px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
+      dl.style.color      = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#94a3b8' : 'var(--text-dim)');
       dl.style.fontWeight = isToday ? '700' : '400';
-      dl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+      dl.textContent = `${d.getMonth() + 1}/${d.getDate()}`;
       canvas.appendChild(dl);
     }
     d.setDate(d.getDate() + 1);
   }
 }
 
-// ── Zoom / scroll ─────────────────────────────────
+// ── Zoom / scroll ─────────────────────────────────────────────
 function setZoom(mode) {
   zoomDays = mode === 'week' ? 7 : mode === 'month' ? 30 : 14;
   document.querySelectorAll('.btn[id^="z-"]').forEach(b => b.classList.remove('active'));
@@ -760,9 +797,9 @@ function scrollToToday() {
   const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
   if (!allMs.length) return;
   const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
-  const today   = new Date(); today.setHours(0,0,0,0);
+  const today   = new Date(); today.setHours(0, 0, 0, 0);
   const tx = daysBetween(minDate, today) * dayPx;
-  bs.scrollLeft = Math.max(0, tx - (bs.clientWidth - 220) / 3);
+  bs.scrollLeft = Math.max(0, tx - (bs.clientWidth - 230) / 3);
   document.getElementById('header-scroll').scrollLeft = bs.scrollLeft;
 }
 
@@ -770,7 +807,7 @@ function syncScroll(el) {
   document.getElementById('header-scroll').scrollLeft = el.scrollLeft;
 }
 
-// ── Reorder ───────────────────────────────────────
+// ── Reorder ───────────────────────────────────────────────────
 function moveProject(name, dir) {
   const i = projectOrder.indexOf(name);
   if (i < 0) return;
@@ -782,39 +819,50 @@ function moveProject(name, dir) {
   buildTimeline();
 }
 
-// ── Popup helpers ─────────────────────────────────
+// ── Popup helpers ─────────────────────────────────────────────
 function positionPopup(id, anchorEl) {
   closePopup('info-popup'); closePopup('progress-popup');
   const popup = document.getElementById(id);
   const rect  = anchorEl.getBoundingClientRect();
-  const top   = Math.min(rect.bottom + 6, window.innerHeight - 280);
-  const left  = Math.min(rect.left, window.innerWidth - 310);
-  popup.style.top  = top + 'px';
+  const top   = Math.max(10, Math.min(rect.bottom + 6, window.innerHeight - 420));
+  const left  = Math.max(10, Math.min(rect.left, window.innerWidth - 340));
+  popup.style.top  = top  + 'px';
   popup.style.left = left + 'px';
   popup.classList.add('visible');
 }
 function closePopup(id) { document.getElementById(id).classList.remove('visible'); }
-document.addEventListener('click', (e) => {
+document.addEventListener('click', e => {
   if (!document.getElementById('info-popup').contains(e.target))     closePopup('info-popup');
   if (!document.getElementById('progress-popup').contains(e.target)) closePopup('progress-popup');
 });
 
-// ── Utilities ─────────────────────────────────────
-function dateMs(s) { if (!s) return 0; const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d).getTime(); }
+// ── Utilities ─────────────────────────────────────────────────
+function dateMs(s) {
+  if (!s) return 0;
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+}
 function daysBetween(a, b) {
-  const am = a instanceof Date ? new Date(a).setHours(0,0,0,0) : dateMs(a);
-  const bm = b instanceof Date ? new Date(b).setHours(0,0,0,0) : dateMs(b);
+  const am = a instanceof Date ? new Date(a).setHours(0, 0, 0, 0) : dateMs(a);
+  const bm = b instanceof Date ? new Date(b).setHours(0, 0, 0, 0) : dateMs(b);
   return Math.round((bm - am) / 86400000);
 }
-function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth()    === b.getMonth()    &&
+         a.getDate()     === b.getDate();
+}
 function mk(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 function showMsg(txt) {
   const m = document.getElementById('status-msg');
   m.textContent = txt;
-  setTimeout(() => { m.textContent = `${allCases.length} 筆派案 · ${Object.keys(groupByProject()).length} 個專案`; }, 2500);
+  setTimeout(() => {
+    const projCount = Object.keys(groupByProject()).length;
+    m.textContent = `${allCases.length} 筆派案 · ${projCount} 個專案`;
+  }, 2500);
 }
 
-// ── Init ─────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────
 loadData();
 window.addEventListener('resize', () => buildTimeline());
 </script>
