@@ -20,19 +20,24 @@
     --label-w:  230px;
     --header-h: 44px;
 
-    --c-note:         #3b82f6;
-    --c-jpg:          #059669;
-    --c-v1:           #7c3aed;
-    --c-presentation: #ea580c;
-    --c-m1:           #db2777;
-    --c-other:        #64748b;
+    /* Pastel segment colors */
+    --c-jpg:           #9dd4b4;
+    --c-v1:            #b8a8e8;
+    --c-presentation:  #f0bc88;
+    --c-kv:            #88c8e8;
+    --c-moodboard:     #e8b8d4;
+    --c-revision:      #e8d888;
+    --c-m1:            #e8a0b8;
+    --c-revised-maker: #b8a8d8;
+    --c-other:         #bcc4cc;
 
-    --p-待開始: #94a3b8;
-    --p-草稿:   #3b82f6;
-    --p-討論:   #f59e0b;
-    --p-合成:   #8b5cf6;
-    --p-完成:   #10b981;
-    --p-其他:   #6b7280;
+    /* Pastel phase colors */
+    --ph-初步討論: #a8c8f5;
+    --ph-草稿:     #f5d888;
+    --ph-合成:     #c0b0f5;
+    --ph-修改:     #f5b898;
+    --ph-上版:     #8cd4b0;
+    --ph-其他:     #b8c4cc;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -62,13 +67,15 @@
 
   /* ── Legend ── */
   #legend {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding: 5px 16px; background: var(--surface);
     border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
+  .legend-grp { display: flex; align-items: center; gap: 6px; }
   .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
   .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
   .legend-sep { width: 1px; height: 14px; background: var(--border); }
+  .legend-lbl { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-right: 2px; }
 
   /* ── Timeline ── */
   #timeline-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
@@ -85,7 +92,7 @@
     flex: 1; height: var(--header-h); position: relative; overflow: hidden;
     border-bottom: 1px solid var(--border); background: var(--surface);
   }
-  #header-dates-inner { position: absolute; top: 0; left: 0; height: 100%; }
+  #header-dates-inner { position: absolute; top: 0; left: 0; height: 100%; will-change: transform; }
 
   #body-scroll { flex: 1; overflow: auto; display: flex; min-height: 0; }
 
@@ -98,8 +105,19 @@
   .row-label {
     display: flex; align-items: center; padding: 0 8px; gap: 4px;
     border-bottom: 1px solid var(--border); transition: background .12s;
+    cursor: pointer;
   }
   .row-label:hover { background: var(--surface2); }
+
+  /* Group divider in label col */
+  .divider-label {
+    height: 24px; display: flex; align-items: center;
+    padding: 0 12px; background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 10px; font-weight: 700; color: var(--text-dim);
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+
   .reorder-btns { display: flex; flex-direction: column; flex-shrink: 0; }
   .reorder-btn {
     background: none; border: none; color: var(--text-dim); cursor: pointer;
@@ -109,25 +127,22 @@
   .proj-name {
     font-size: 11px; font-weight: 600; flex: 1; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    cursor: pointer; color: var(--text);
+    color: var(--text);
   }
-  .proj-name:hover { color: #3b82f6; }
   .notion-link {
     font-size: 11px; color: var(--text-dim); text-decoration: none; flex-shrink: 0;
     padding: 2px 4px; border-radius: 4px; transition: background .1s; line-height: 1;
   }
   .notion-link:hover { background: var(--surface2); color: var(--text); }
-  .progress-badge {
-    flex-shrink: 0; font-size: 9px; padding: 1px 6px; border-radius: 10px;
-    cursor: pointer; white-space: nowrap; font-weight: 700; border: 1px solid transparent;
-    transition: filter .15s; font-family: inherit;
-  }
-  .progress-badge:hover { filter: brightness(.88); }
 
   /* ── Gantt ── */
   #gantt-col { flex: 1; position: relative; }
   .gantt-row { border-bottom: 1px solid var(--border); position: relative; }
   .gantt-row:nth-child(even) { background: rgba(0,0,0,.014); }
+  .gantt-divider {
+    height: 24px; background: var(--surface2);
+    border-bottom: 1px solid var(--border); position: relative;
+  }
 
   .today-line {
     position: absolute; top: 0; bottom: 0; width: 2px;
@@ -144,45 +159,102 @@
     background: rgba(0,0,0,.08); pointer-events: none; z-index: 1;
   }
 
-  /* Phase bands – colored strips on spine showing progress history */
+  /* Phase bands */
   .phase-band {
     position: absolute; height: 6px; border-radius: 3px;
-    pointer-events: none; z-index: 2; opacity: .85;
+    pointer-events: none; z-index: 2; opacity: .9;
   }
 
-  /* Dispatch segments */
+  /* Dispatch segments — pastel with dark text */
   .segment {
     position: absolute; height: 22px; border-radius: 5px;
     cursor: pointer; display: flex; align-items: center; padding: 0 7px;
-    font-size: 11px; font-weight: 500; color: #fff;
+    font-size: 11px; font-weight: 600; color: #3a3530;
     overflow: hidden; white-space: nowrap; z-index: 3;
-    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
     transition: filter .12s, box-shadow .1s; user-select: none;
   }
-  .segment:hover { filter: brightness(.88); box-shadow: 0 2px 8px rgba(0,0,0,.2); z-index: 20; }
+  .segment:hover { filter: brightness(.92); box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 20; }
   .seg-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-  .seg-note         { background: var(--c-note); }
-  .seg-jpg          { background: var(--c-jpg); }
-  .seg-v1           { background: var(--c-v1); }
-  .seg-presentation { background: var(--c-presentation); }
-  .seg-m1           { background: var(--c-m1); }
-  .seg-other        { background: var(--c-other); }
+  .seg-jpg           { background: var(--c-jpg); }
+  .seg-v1            { background: var(--c-v1); }
+  .seg-presentation  { background: var(--c-presentation); }
+  .seg-kv            { background: var(--c-kv); }
+  .seg-moodboard     { background: var(--c-moodboard); }
+  .seg-revision      { background: var(--c-revision); }
+  .seg-m1            { background: var(--c-m1); }
+  .seg-revised-maker { background: var(--c-revised-maker); }
+  .seg-other         { background: var(--c-other); }
 
-  /* ── Popups ── */
+  /* ── Scheduler popup ── */
   .popup {
     position: fixed; z-index: 200; background: #fff;
     border: 1px solid var(--border); border-radius: 12px; padding: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.12); min-width: 260px; max-width: 320px;
-    display: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,.12); min-width: 300px; max-width: 360px;
+    display: none; max-height: 90vh; overflow-y: auto;
   }
   .popup.visible { display: block; }
   .popup-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-  .popup-meta  { font-size: 11px; color: var(--text-mid); line-height: 1.7; margin-bottom: 12px; }
+  .popup-meta  { font-size: 11px; color: var(--text-mid); margin-bottom: 8px; }
   .popup-divider { height: 1px; background: var(--border); margin: 12px 0; }
   .popup-section {
     font-size: 10px; color: var(--text-dim); font-weight: 700;
     text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
   }
+
+  /* Phase list */
+  .phase-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 7px; border-radius: 7px; margin-bottom: 4px;
+    background: var(--bg); font-size: 11px;
+  }
+  .phase-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .phase-name { font-weight: 600; color: var(--text); flex: 1; }
+  .phase-dates { font-size: 10px; color: var(--text-mid); white-space: nowrap; }
+  .phase-del {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 0 2px; flex-shrink: 0;
+    transition: color .1s;
+  }
+  .phase-del:hover { color: #dc2626; }
+
+  /* Add phase form */
+  #add-phase-toggle {
+    width: 100%; padding: 6px; border-radius: 7px;
+    border: 1px dashed var(--border); background: none;
+    color: var(--text-dim); cursor: pointer; font-size: 11px;
+    font-family: inherit; transition: all .15s; text-align: left;
+    margin-top: 4px;
+  }
+  #add-phase-toggle:hover { background: var(--surface2); color: var(--text); border-style: solid; }
+  #add-phase-form { display: none; margin-top: 8px; }
+  #add-phase-form.open { display: block; }
+  .form-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .form-field { flex: 1; }
+  .form-field label { font-size: 10px; color: var(--text-dim); display: block; margin-bottom: 3px; }
+  .form-field select,
+  .form-field input[type="date"],
+  .form-field input[type="text"] {
+    width: 100%; padding: 5px 8px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 11px; font-family: inherit;
+  }
+  .form-field select:focus,
+  .form-field input:focus { outline: none; border-color: #6b9cf5; }
+  #custom-phase-input { display: none; margin-top: 4px; }
+  #custom-phase-input input {
+    width: 100%; padding: 5px 8px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 11px; font-family: inherit;
+  }
+  #custom-phase-input input:focus { outline: none; border-color: #6b9cf5; }
+  .add-btn {
+    width: 100%; padding: 6px; border-radius: 7px; border: none;
+    background: #1a1817; color: #fff; font-size: 11px; font-weight: 600;
+    cursor: pointer; font-family: inherit; margin-top: 2px;
+    transition: background .15s;
+  }
+  .add-btn:hover { background: #2d2926; }
 
   /* Link fields */
   .link-field { margin-bottom: 8px; }
@@ -192,7 +264,7 @@
     border: 1px solid var(--border); background: var(--bg);
     color: var(--text); font-size: 11px; font-family: inherit; transition: border-color .15s;
   }
-  .link-field input:focus { outline: none; border-color: #3b82f6; }
+  .link-field input:focus { outline: none; border-color: #6b9cf5; }
 
   .save-btn {
     width: 100%; padding: 7px; border-radius: 8px; border: none;
@@ -200,32 +272,12 @@
     cursor: pointer; font-family: inherit; margin-top: 4px; transition: background .15s;
   }
   .save-btn:hover { background: #2d2926; }
-
   .popup-close {
     margin-top: 8px; width: 100%; padding: 5px; border-radius: 7px;
     border: 1px solid var(--border); background: none;
     color: var(--text-dim); cursor: pointer; font-size: 11px; font-family: inherit;
   }
   .popup-close:hover { background: var(--surface2); color: var(--text); }
-
-  /* Progress options */
-  .option-btn {
-    display: flex; align-items: center; gap: 8px; width: 100%;
-    padding: 7px 10px; border-radius: 7px; border: 1px solid transparent;
-    background: var(--bg); color: var(--text); cursor: pointer;
-    font-size: 12px; margin-bottom: 4px; transition: background .1s;
-    text-align: left; font-family: inherit;
-  }
-  .option-btn:hover { background: var(--surface2); }
-  .option-btn.active { border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.07); }
-  .opt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  #custom-label-row { display: none; margin-top: 4px; }
-  #custom-label-input {
-    width: 100%; padding: 6px 9px; border-radius: 7px;
-    border: 1px solid var(--border); background: var(--bg);
-    color: var(--text); font-size: 12px; font-family: inherit;
-  }
-  #custom-label-input:focus { outline: none; border-color: #3b82f6; }
 
   /* ── Loading ── */
   #loading {
@@ -245,10 +297,46 @@
 
 <div id="loading"><div class="spinner"></div><p>載入資料中…</p></div>
 
-<!-- Segment click popup -->
-<div id="info-popup" class="popup">
-  <div id="info-title" class="popup-title"></div>
-  <div id="info-meta"  class="popup-meta"></div>
+<!-- Scheduler popup (segment click or project name click) -->
+<div id="scheduler-popup" class="popup">
+  <div id="sch-title" class="popup-title"></div>
+  <div id="sch-meta"  class="popup-meta"></div>
+
+  <div class="popup-divider"></div>
+  <div class="popup-section">時程規劃</div>
+  <div id="sch-phases"></div>
+
+  <button id="add-phase-toggle" onclick="toggleAddForm()">＋ 新增時程</button>
+  <div id="add-phase-form">
+    <div class="form-row">
+      <div class="form-field" style="flex:1.4">
+        <label>階段名稱</label>
+        <select id="phase-name-select" onchange="onPhaseNameChange()">
+          <option value="初步討論">初步討論</option>
+          <option value="草稿">草稿</option>
+          <option value="合成">合成</option>
+          <option value="修改">修改</option>
+          <option value="上版">上版</option>
+          <option value="__custom__">自訂…</option>
+        </select>
+        <div id="custom-phase-input">
+          <input id="custom-phase-text" type="text" placeholder="自訂名稱" maxlength="20">
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>開始日期</label>
+        <input id="phase-start" type="date">
+      </div>
+      <div class="form-field">
+        <label>結束日期</label>
+        <input id="phase-end" type="date">
+      </div>
+    </div>
+    <button class="add-btn" onclick="addPhase()">新增</button>
+  </div>
+
   <div class="popup-divider"></div>
   <div class="popup-section">連結</div>
   <div class="link-field">
@@ -264,19 +352,7 @@
     <input id="link-brief" type="url" placeholder="https://…">
   </div>
   <button class="save-btn" onclick="saveLinks()">儲存連結</button>
-  <button class="popup-close" onclick="closePopup('info-popup')">關閉</button>
-</div>
-
-<!-- Progress popup (project name click) -->
-<div id="progress-popup" class="popup">
-  <div id="progress-proj-name" class="popup-title"></div>
-  <div style="margin-bottom:10px"></div>
-  <div class="popup-section">選擇進度</div>
-  <div id="progress-options"></div>
-  <div id="custom-label-row">
-    <input id="custom-label-input" type="text" placeholder="自訂標籤…" maxlength="20">
-  </div>
-  <button class="popup-close" onclick="closePopup('progress-popup')">關閉</button>
+  <button class="popup-close" onclick="closePopup()">關閉</button>
 </div>
 
 <!-- Top bar -->
@@ -295,19 +371,30 @@
 
 <!-- Legend -->
 <div id="legend">
-  <span class="legend-item" style="margin-right:2px;color:var(--text-dim)">案件種類：</span>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-note)"></div>Note</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
+  <span class="legend-lbl">G1：</span>
+  <div class="legend-grp">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-kv)"></div>KV</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-moodboard)"></div>Moodboard</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-revision)"></div>Revision</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
+  </div>
   <div class="legend-sep"></div>
-  <span class="legend-item" style="margin-right:2px;color:var(--text-dim)">進度：</span>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--p-待開始);border-radius:50%"></div>待開始</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--p-草稿);border-radius:50%"></div>草稿</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--p-討論);border-radius:50%"></div>討論</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--p-合成);border-radius:50%"></div>合成</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--p-完成);border-radius:50%"></div>完成</div>
+  <span class="legend-lbl">G2：</span>
+  <div class="legend-grp">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-revised-maker)"></div>Revised Maker</div>
+  </div>
+  <div class="legend-sep"></div>
+  <span class="legend-lbl">時程：</span>
+  <div class="legend-grp">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-初步討論);border-radius:50%"></div>初步討論</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-草稿);border-radius:50%"></div>草稿</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-合成);border-radius:50%"></div>合成</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-修改);border-radius:50%"></div>修改</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-上版);border-radius:50%"></div>上版</div>
+  </div>
 </div>
 
 <!-- Timeline -->
@@ -326,49 +413,62 @@
 
 <script>
 // ── Config ──────────────────────────────────────────────────
-const SUPABASE   = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
-const ANON_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
-const NOTION_FN  = `${SUPABASE}/functions/v1/get-timeline`;
+const SUPABASE  = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
+const ANON_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
+const NOTION_FN = `${SUPABASE}/functions/v1/get-timeline`;
 const START_DATE = '2026-06-08';
 
+// Group definitions
+const GROUP1 = new Set(['Presentation','V1','KV','Moodboard','Revision','JPG']);
+const GROUP2 = new Set(['M1','Revised Maker']);
+
 const JOB_CLASS = {
-  Note: 'seg-note', JPG: 'seg-jpg', V1: 'seg-v1',
-  Presentation: 'seg-presentation', M1: 'seg-m1',
+  JPG:            'seg-jpg',
+  V1:             'seg-v1',
+  Presentation:   'seg-presentation',
+  KV:             'seg-kv',
+  Moodboard:      'seg-moodboard',
+  Revision:       'seg-revision',
+  M1:             'seg-m1',
+  'Revised Maker':'seg-revised-maker',
 };
 
-const PROGRESS_OPTS = [
-  { key: '待開始', color: '#94a3b8' },
-  { key: '草稿',   color: '#3b82f6' },
-  { key: '討論',   color: '#f59e0b' },
-  { key: '合成',   color: '#8b5cf6' },
-  { key: '完成',   color: '#10b981' },
-  { key: '其他',   color: '#6b7280', custom: true },
-];
-const progressColor = k => (PROGRESS_OPTS.find(p => p.key === k) || PROGRESS_OPTS[0]).color;
+const PHASE_COLORS = {
+  '初步討論': '#a8c8f5',
+  '草稿':     '#f5d888',
+  '合成':     '#c0b0f5',
+  '修改':     '#f5b898',
+  '上版':     '#8cd4b0',
+};
+function phaseColor(name) { return PHASE_COLORS[name] || '#b8c4cc'; }
+
+const PHASE_OPTS = ['初步討論','草稿','合成','修改','上版'];
 
 // ── State ───────────────────────────────────────────────────
-let allCases    = [];
-let notionMap   = {};   // project_name → notion url
-let progressMap = {};   // project_name → { progress, custom_label, meeting_link, … }
-let phasesMap   = {};   // project_name → [{phase, start_date}, …] sorted asc
-let projectOrder = [];
-let customOrder  = null;
-let zoomDays    = 14;
-let dayPx       = 60;
-let currentInfoProject = null;   // project open in info popup
+let allCases     = [];
+let notionMap    = {};   // project_name → url
+let progressMap  = {};   // project_name → {meeting_link, discussion_link, brief_link}
+let phasesMap    = {};   // project_name → [{id, phase, start_date, end_date}, …]
+let zoomDays     = 14;
+let dayPx        = 60;
+let timelineMinDate = null;
 
-// ── Data loading ────────────────────────────────────────────
+let currentPopupProject = null;
+let currentPopupMeta    = null;  // {jobType, date, deadline, designers} from segment click
+
+// ── Headers ─────────────────────────────────────────────────
+const H = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
+
+// ── Data loading ─────────────────────────────────────────────
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
   document.getElementById('status-msg').textContent = '';
   try {
-    const h = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
-
     const [casesRes, progressRes, phasesRes, notionRes] = await Promise.all([
-      fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, { headers: h }),
-      fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, { headers: h }),
-      fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, { headers: h }),
-      fetch(NOTION_FN, { headers: h }).catch(() => null),
+      fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, { headers: H }),
+      fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, { headers: H }),
+      fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, { headers: H }),
+      fetch(NOTION_FN, { headers: H }).catch(() => null),
     ]);
 
     allCases = await casesRes.json();
@@ -395,45 +495,56 @@ async function loadData() {
       } catch (_) {}
     }
 
-    try { customOrder = JSON.parse(localStorage.getItem('tl-order') || 'null'); } catch (_) {}
-
     buildTimeline();
-    const projCount = Object.keys(groupByProject()).length;
+
+    const projNames = new Set(allCases.map(c => c.notion_project));
     document.getElementById('status-msg').textContent =
-      `${allCases.length} 筆派案 · ${projCount} 個專案`;
+      `${allCases.length} 筆派案 · ${projNames.size} 個專案`;
   } catch (e) {
     document.getElementById('status-msg').textContent = '載入失敗：' + e.message;
   }
   document.getElementById('loading').style.display = 'none';
 }
 
-// ── Grouping ────────────────────────────────────────────────
-function groupByProject() {
-  const g = {};
+// ── Build rows (dual-group) ───────────────────────────────────
+function buildRows() {
+  // Gather all cases per project
+  const byCases = {};
   for (const c of allCases) {
     const p = c.notion_project;
-    if (!g[p]) g[p] = [];
-    g[p].push(c);
+    if (!byCases[p]) byCases[p] = [];
+    byCases[p].push(c);
   }
-  return g;
-}
 
-// ── Build timeline ───────────────────────────────────────────
-function buildTimeline() {
-  const groups = groupByProject();
-  const defaultOrder = Object.keys(groups).sort((a, b) => {
-    const aMin = Math.min(...groups[a].map(c => dateMs(c.date)));
-    const bMin = Math.min(...groups[b].map(c => dateMs(c.date)));
+  // For each project, determine which groups it belongs to and which cases go in each
+  const g1Map = new Map(); // proj → cases matching GROUP1
+  const g2Map = new Map();
+
+  for (const [proj, cases] of Object.entries(byCases)) {
+    const g1 = cases.filter(c => (c.job_types || []).some(t => GROUP1.has(t)));
+    const g2 = cases.filter(c => (c.job_types || []).some(t => GROUP2.has(t)));
+    if (g1.length) g1Map.set(proj, g1);
+    if (g2.length) g2Map.set(proj, g2);
+  }
+
+  // Sort each group by earliest date
+  const sortMap = m => [...m.entries()].sort((a, b) => {
+    const aMin = Math.min(...a[1].map(c => dateMs(c.date)));
+    const bMin = Math.min(...b[1].map(c => dateMs(c.date)));
     return aMin - bMin;
   });
 
-  if (customOrder) {
-    const kept  = customOrder.filter(p => defaultOrder.includes(p));
-    const added = defaultOrder.filter(p => !kept.includes(p));
-    projectOrder = [...kept, ...added];
-  } else {
-    projectOrder = defaultOrder;
-  }
+  const rows = [];
+  for (const [proj, cases] of sortMap(g1Map)) rows.push({ type:'row', proj, groupId:1, cases });
+  if (g1Map.size && g2Map.size) rows.push({ type:'divider' });
+  for (const [proj, cases] of sortMap(g2Map)) rows.push({ type:'row', proj, groupId:2, cases });
+
+  return rows;
+}
+
+// ── Build timeline ────────────────────────────────────────────
+function buildTimeline() {
+  const rows = buildRows();
 
   const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
   if (!allMs.length) return;
@@ -441,6 +552,7 @@ function buildTimeline() {
   const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
   const maxDate = new Date(Math.max(...allMs)); maxDate.setDate(maxDate.getDate() + 10);
   const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
+  timelineMinDate = minDate;
 
   const visW = Math.max(600, window.innerWidth - 230);
   dayPx = Math.max(16, visW / zoomDays);
@@ -454,126 +566,107 @@ function buildTimeline() {
   ganttCol.innerHTML = '';
   ganttCol.style.width = ganttCol.style.minWidth = totalWidth + 'px';
 
-  // Today line
+  // Today line + grid lines (on full gantt)
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tx = daysBetween(minDate, today) * dayPx;
   if (tx >= 0 && tx <= totalWidth) {
-    const tl = mk('div', 'today-line');
-    tl.style.left = tx + 'px';
+    const tl = mk('div', 'today-line'); tl.style.left = tx + 'px';
     ganttCol.appendChild(tl);
   }
-
-  // Weekly grid lines
   let gd = new Date(minDate);
   for (let i = 0; i < totalDays; i++) {
     if (gd.getDay() === 1) {
-      const gl = mk('div', 'grid-line');
-      gl.style.left = (i * dayPx) + 'px';
+      const gl = mk('div', 'grid-line'); gl.style.left = (i * dayPx) + 'px';
       ganttCol.appendChild(gl);
     }
     gd.setDate(gd.getDate() + 1);
   }
 
-  // Rows
-  for (const proj of projectOrder) {
-    const cases  = groups[proj] || [];
-    const lanes  = assignLanes(cases);
-    const nLanes = Math.max(1, lanes.length);
-    const rowH   = Math.max(48, nLanes * 28 + 16);
-
-    const prog   = progressMap[proj] || { progress: '待開始' };
-    const pColor = progressColor(prog.progress);
-    const pLabel = prog.progress === '其他' && prog.custom_label
-      ? prog.custom_label : (prog.progress || '待開始');
-
-    // ── Label ──
-    const label = mk('div', 'row-label');
-    label.style.height = rowH + 'px';
-
-    const rbtns = mk('div', 'reorder-btns');
-    const up = mk('button', 'reorder-btn'); up.textContent = '▲';
-    up.onclick = e => { e.stopPropagation(); moveProject(proj, -1); };
-    const dn = mk('button', 'reorder-btn'); dn.textContent = '▼';
-    dn.onclick = e => { e.stopPropagation(); moveProject(proj, 1); };
-    rbtns.append(up, dn);
-
-    const pname = mk('span', 'proj-name');
-    pname.textContent = proj;
-    pname.title = proj;
-    pname.onclick = e => { e.stopPropagation(); openProgressPopup(proj, pname); };
-
-    const badge = mk('span', 'progress-badge');
-    badge.textContent = pLabel;
-    badge.style.background    = pColor + '22';
-    badge.style.borderColor   = pColor + '66';
-    badge.style.color         = pColor;
-    badge.onclick = e => { e.stopPropagation(); openProgressPopup(proj, badge); };
-
-    label.append(rbtns, pname, badge);
-
-    if (notionMap[proj]) {
-      const a = mk('a', 'notion-link');
-      a.href = notionMap[proj]; a.target = '_blank';
-      a.textContent = '↗'; a.title = 'Notion 頁面';
-      a.onclick = e => e.stopPropagation();
-      label.appendChild(a);
+  for (const row of rows) {
+    if (row.type === 'divider') {
+      labelCol.appendChild(mk('div', 'divider-label')).textContent = 'M1 ／ Revised Maker';
+      ganttCol.appendChild(mk('div', 'gantt-divider'));
+      continue;
     }
-
-    labelCol.appendChild(label);
-
-    // ── Gantt row ──
-    const row = mk('div', 'gantt-row');
-    row.style.height = rowH + 'px';
-
-    const spineMs  = cases.map(c => dateMs(c.date));
-    const deadMs   = cases.map(c => dateMs(c.deadline || c.date));
-    const spineStart = Math.min(...spineMs);
-    const spineEnd   = Math.max(...deadMs);
-
-    // Spine (grey background track)
-    const sx = daysBetween(minDate, new Date(spineStart)) * dayPx;
-    const sw = Math.max(6, (daysBetween(new Date(spineStart), new Date(spineEnd)) + 1) * dayPx);
-    const spine = mk('div', 'spine');
-    spine.style.left  = sx + 'px';
-    spine.style.width = sw + 'px';
-    spine.style.top   = (rowH - 10) + 'px';
-    row.appendChild(spine);
-
-    // Phase bands (colored history on spine)
-    const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
-    for (let pi = 0; pi < phases.length; pi++) {
-      const ph      = phases[pi];
-      const phStart = new Date(ph.start_date + 'T00:00:00');
-      const phEnd   = pi < phases.length - 1
-        ? new Date(phases[pi + 1].start_date + 'T00:00:00')
-        : today;  // current phase extends to today
-
-      const bx = daysBetween(minDate, phStart) * dayPx;
-      const bw = Math.max(3, daysBetween(phStart, phEnd) * dayPx);
-      const band = mk('div', 'phase-band');
-      band.style.left       = bx + 'px';
-      band.style.width      = bw + 'px';
-      band.style.top        = (rowH - 10) + 'px';
-      band.style.background = progressColor(ph.phase);
-      band.title            = ph.phase + '・' + ph.start_date;
-      row.appendChild(band);
-    }
-
-    // Dispatch segments
-    for (let li = 0; li < lanes.length; li++) {
-      for (const c of lanes[li]) {
-        const seg = buildSegment(c, minDate, li, nLanes, rowH);
-        if (seg) row.appendChild(seg);
-      }
-    }
-
-    ganttCol.appendChild(row);
+    buildRow(row, minDate, totalWidth, labelCol, ganttCol);
   }
 
   setTimeout(scrollToToday, 50);
 }
 
-// ── Build one dispatch segment ───────────────────────────────
+function buildRow({ proj, groupId, cases }, minDate, totalWidth, labelCol, ganttCol) {
+  const lanes  = assignLanes(cases);
+  const nLanes = Math.max(1, lanes.length);
+  const rowH   = Math.max(48, nLanes * 28 + 16);
+
+  // ── Label ──
+  const label = mk('div', 'row-label');
+  label.style.height = rowH + 'px';
+  label.onclick = () => openScheduler(proj, null);
+
+  const rbtns = mk('div', 'reorder-btns');
+  const up = mk('button', 'reorder-btn'); up.textContent = '▲';
+  up.onclick = e => { e.stopPropagation(); };
+  const dn = mk('button', 'reorder-btn'); dn.textContent = '▼';
+  dn.onclick = e => { e.stopPropagation(); };
+  rbtns.append(up, dn);
+
+  const pname = mk('span', 'proj-name');
+  pname.textContent = proj; pname.title = proj;
+  label.append(rbtns, pname);
+
+  if (notionMap[proj]) {
+    const a = mk('a', 'notion-link');
+    a.href = notionMap[proj]; a.target = '_blank';
+    a.textContent = '↗'; a.title = 'Notion 頁面';
+    a.onclick = e => e.stopPropagation();
+    label.appendChild(a);
+  }
+  labelCol.appendChild(label);
+
+  // ── Gantt row ──
+  const row = mk('div', 'gantt-row');
+  row.style.height = rowH + 'px';
+
+  const spineMs    = cases.map(c => dateMs(c.date));
+  const deadMs     = cases.map(c => dateMs(c.deadline || c.date));
+  const spineStart = Math.min(...spineMs);
+  const spineEnd   = Math.max(...deadMs);
+
+  const sx = daysBetween(minDate, new Date(spineStart)) * dayPx;
+  const sw = Math.max(6, (daysBetween(new Date(spineStart), new Date(spineEnd)) + 1) * dayPx);
+  const spine = mk('div', 'spine');
+  spine.style.cssText = `left:${sx}px;width:${sw}px;top:${rowH - 10}px;`;
+  row.appendChild(spine);
+
+  // Phase bands using explicit start_date + end_date
+  const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (const ph of phases) {
+    const phStart = new Date(ph.start_date + 'T00:00:00');
+    const phEnd   = ph.end_date
+      ? new Date(ph.end_date + 'T00:00:00')
+      : today;
+    const bx = daysBetween(minDate, phStart) * dayPx;
+    const bw = Math.max(3, daysBetween(phStart, phEnd) * dayPx);
+    const band = mk('div', 'phase-band');
+    band.style.cssText = `left:${bx}px;width:${bw}px;top:${rowH - 10}px;background:${phaseColor(ph.phase)};`;
+    band.title = ph.phase + '　' + ph.start_date + ' → ' + (ph.end_date || '今天');
+    row.appendChild(band);
+  }
+
+  // Dispatch segments
+  for (let li = 0; li < lanes.length; li++) {
+    for (const c of lanes[li]) {
+      const seg = buildSegment(c, minDate, li, nLanes, rowH);
+      if (seg) row.appendChild(seg);
+    }
+  }
+
+  ganttCol.appendChild(row);
+}
+
+// ── Build one dispatch segment ────────────────────────────────
 function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
   if (!c.date) return null;
   const x    = daysBetween(minDate, new Date(c.date + 'T00:00:00')) * dayPx;
@@ -581,57 +674,172 @@ function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
   const span = Math.max(1, daysBetween(new Date(c.date), new Date(endD)) + 1);
   const w    = Math.max(dayPx * .7, span * dayPx - 3);
 
-  const SEG_H  = 22;
-  const laneH  = numLanes > 1 ? (rowH - 18) / numLanes : rowH - 12;
-  const top    = 4 + laneIdx * laneH + (laneH - SEG_H) / 2;
+  const SEG_H = 22;
+  const laneH = numLanes > 1 ? (rowH - 18) / numLanes : rowH - 12;
+  const top   = 4 + laneIdx * laneH + (laneH - SEG_H) / 2;
 
   const jobType = (Array.isArray(c.job_types) && c.job_types[0]) || 'Other';
   const cls     = JOB_CLASS[jobType] || 'seg-other';
 
   const seg = mk('div', `segment ${cls}`);
   seg.style.cssText = `left:${x}px;width:${w}px;top:${top}px;`;
-
   const lbl = mk('span', 'seg-label');
   lbl.textContent = w > 48 ? jobType : '';
   seg.appendChild(lbl);
-
-  seg.onclick = e => { e.stopPropagation(); showSegmentInfo(c, seg); };
+  seg.onclick = e => { e.stopPropagation(); openScheduler(c.notion_project, c); };
   return seg;
 }
 
-// ── Segment info popup ───────────────────────────────────────
-function showSegmentInfo(c, segEl) {
-  const jobType   = (Array.isArray(c.job_types) ? c.job_types : []).join(', ') || '—';
-  const designers = (Array.isArray(c.designers)  ? c.designers  : []).join(', ') || '—';
-  const deadline  = c.deadline || c.date;
+// ── Scheduler popup ───────────────────────────────────────────
+function openScheduler(proj, caseObj) {
+  currentPopupProject = proj;
+  currentPopupMeta    = caseObj;
 
-  document.getElementById('info-title').textContent = c.notion_project;
-  document.getElementById('info-meta').innerHTML =
-    `<b>${jobType}</b><br>` +
-    `${c.date}${deadline !== c.date ? ' → ' + deadline : ''}<br>` +
-    `設計師：${designers}`;
+  // Title + meta
+  document.getElementById('sch-title').textContent = proj;
+  if (caseObj) {
+    const jt  = (Array.isArray(caseObj.job_types) ? caseObj.job_types : []).join(', ') || '—';
+    const des = (Array.isArray(caseObj.designers)  ? caseObj.designers  : []).join(', ') || '—';
+    const dl  = caseObj.deadline || caseObj.date;
+    document.getElementById('sch-meta').innerHTML =
+      `<b>${jt}</b> · ${caseObj.date}${dl !== caseObj.date ? ' → ' + dl : ''}<br>設計師：${des}`;
+  } else {
+    document.getElementById('sch-meta').textContent = '';
+  }
 
-  const proj = progressMap[c.notion_project] || {};
-  document.getElementById('link-meeting').value    = proj.meeting_link    || '';
-  document.getElementById('link-discussion').value = proj.discussion_link || '';
-  document.getElementById('link-brief').value      = proj.brief_link      || '';
+  // Phases list
+  renderPhaseList(proj);
 
-  currentInfoProject = c.notion_project;
-  positionPopup('info-popup', segEl);
+  // Reset add form
+  document.getElementById('add-phase-form').classList.remove('open');
+  document.getElementById('add-phase-toggle').textContent = '＋ 新增時程';
+  document.getElementById('phase-name-select').value = '初步討論';
+  document.getElementById('custom-phase-input').style.display = 'none';
+  document.getElementById('custom-phase-text').value = '';
+  const todayStr = new Date().toISOString().slice(0, 10);
+  document.getElementById('phase-start').value = todayStr;
+  document.getElementById('phase-end').value   = todayStr;
+
+  // Links
+  const prog = progressMap[proj] || {};
+  document.getElementById('link-meeting').value    = prog.meeting_link    || '';
+  document.getElementById('link-discussion').value = prog.discussion_link || '';
+  document.getElementById('link-brief').value      = prog.brief_link      || '';
+
+  // Position & show
+  const popup = document.getElementById('scheduler-popup');
+  popup.style.top  = '80px';
+  popup.style.left = Math.max(10, (window.innerWidth - 370) / 2) + 'px';
+  popup.classList.add('visible');
+}
+
+function renderPhaseList(proj) {
+  const container = document.getElementById('sch-phases');
+  container.innerHTML = '';
+  const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
+  if (!phases.length) {
+    const empty = mk('div');
+    empty.style.cssText = 'font-size:11px;color:var(--text-dim);margin-bottom:8px;';
+    empty.textContent = '尚無時程規劃';
+    container.appendChild(empty);
+    return;
+  }
+  for (const ph of phases) {
+    const item = mk('div', 'phase-item');
+    const dot  = mk('div', 'phase-dot'); dot.style.background = phaseColor(ph.phase);
+    const name = mk('span', 'phase-name'); name.textContent = ph.phase;
+    const dates = mk('span', 'phase-dates');
+    dates.textContent = ph.start_date + (ph.end_date ? ' → ' + ph.end_date : ' → 今天');
+    const del = mk('button', 'phase-del'); del.textContent = '×'; del.title = '刪除';
+    del.onclick = () => deletePhase(ph.id, proj);
+    item.append(dot, name, dates, del);
+    container.appendChild(item);
+  }
+}
+
+function toggleAddForm() {
+  const form = document.getElementById('add-phase-form');
+  const btn  = document.getElementById('add-phase-toggle');
+  const open = form.classList.toggle('open');
+  btn.textContent = open ? '收起' : '＋ 新增時程';
+}
+
+function onPhaseNameChange() {
+  const val = document.getElementById('phase-name-select').value;
+  document.getElementById('custom-phase-input').style.display =
+    val === '__custom__' ? 'block' : 'none';
+}
+
+async function addPhase() {
+  if (!currentPopupProject) return;
+  const sel    = document.getElementById('phase-name-select').value;
+  const name   = sel === '__custom__'
+    ? document.getElementById('custom-phase-text').value.trim()
+    : sel;
+  const start  = document.getElementById('phase-start').value;
+  const end    = document.getElementById('phase-end').value;
+
+  if (!name) { showMsg('請填寫階段名稱'); return; }
+  if (!start) { showMsg('請填寫開始日期'); return; }
+
+  try {
+    const body = {
+      project_name: currentPopupProject,
+      phase:        name,
+      start_date:   start,
+      end_date:     end || null,
+    };
+    const res = await fetch(`${SUPABASE}/rest/v1/project_phases`, {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok || res.status === 201) {
+      const data = await res.json();
+      const newRow = Array.isArray(data) ? data[0] : data;
+      if (!phasesMap[currentPopupProject]) phasesMap[currentPopupProject] = [];
+      phasesMap[currentPopupProject].push(newRow || body);
+      renderPhaseList(currentPopupProject);
+      document.getElementById('add-phase-form').classList.remove('open');
+      document.getElementById('add-phase-toggle').textContent = '＋ 新增時程';
+      showMsg('✓ 時程已新增');
+      buildTimeline();
+      // Re-open popup (buildTimeline clears DOM)
+      openScheduler(currentPopupProject, currentPopupMeta);
+    } else {
+      showMsg('✗ 新增失敗');
+    }
+  } catch (e) { showMsg('✗ 新增失敗'); }
+}
+
+async function deletePhase(id, proj) {
+  try {
+    const res = await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+    });
+    if (res.ok || res.status === 204) {
+      if (phasesMap[proj]) {
+        phasesMap[proj] = phasesMap[proj].filter(p => p.id !== id);
+      }
+      renderPhaseList(proj);
+      showMsg('✓ 已刪除');
+      buildTimeline();
+      openScheduler(currentPopupProject, currentPopupMeta);
+    } else {
+      showMsg('✗ 刪除失敗');
+    }
+  } catch (e) { showMsg('✗ 刪除失敗'); }
 }
 
 async function saveLinks() {
-  if (!currentInfoProject) return;
+  if (!currentPopupProject) return;
   const meeting    = document.getElementById('link-meeting').value.trim();
   const discussion = document.getElementById('link-discussion').value.trim();
   const brief      = document.getElementById('link-brief').value.trim();
-
   try {
-    const existing = progressMap[currentInfoProject] || { progress: '待開始' };
     const body = {
-      project_name:    currentInfoProject,
-      progress:        existing.progress || '待開始',
-      custom_label:    existing.custom_label || null,
+      project_name:    currentPopupProject,
       meeting_link:    meeting    || null,
       discussion_link: discussion || null,
       brief_link:      brief      || null,
@@ -639,108 +847,33 @@ async function saveLinks() {
     };
     const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
       method: 'POST',
-      headers: {
-        'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
-        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
-      },
+      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify(body),
     });
     if (res.ok || res.status === 204 || res.status === 201) {
-      if (!progressMap[currentInfoProject]) progressMap[currentInfoProject] = {};
-      Object.assign(progressMap[currentInfoProject], {
+      if (!progressMap[currentPopupProject]) progressMap[currentPopupProject] = {};
+      Object.assign(progressMap[currentPopupProject], {
         meeting_link: meeting || null, discussion_link: discussion || null, brief_link: brief || null,
       });
       showMsg('✓ 連結已儲存');
-      closePopup('info-popup');
+      closePopup();
     } else {
       showMsg('✗ 儲存失敗');
     }
   } catch (e) { showMsg('✗ 儲存失敗'); }
 }
 
-// ── Progress popup ────────────────────────────────────────────
-function openProgressPopup(proj, anchorEl) {
-  const current      = (progressMap[proj] || {}).progress || '待開始';
-  const currentCustom = (progressMap[proj] || {}).custom_label || '';
-
-  document.getElementById('progress-proj-name').textContent = proj;
-
-  const container = document.getElementById('progress-options');
-  container.innerHTML = '';
-  for (const opt of PROGRESS_OPTS) {
-    const btn = mk('button', 'option-btn' + (current === opt.key ? ' active' : ''));
-    const dot = mk('div', 'opt-dot'); dot.style.background = opt.color;
-    btn.append(dot, document.createTextNode(opt.key));
-    btn.onclick = () => selectProgress(proj, opt.key, anchorEl);
-    container.appendChild(btn);
-  }
-
-  const customRow   = document.getElementById('custom-label-row');
-  const customInput = document.getElementById('custom-label-input');
-  customRow.style.display = current === '其他' ? 'block' : 'none';
-  customInput.value = currentCustom;
-  customInput.onchange = () => saveProgress(proj, '其他', customInput.value, anchorEl);
-
-  positionPopup('progress-popup', anchorEl);
+function closePopup() {
+  document.getElementById('scheduler-popup').classList.remove('visible');
+  currentPopupProject = null;
+  currentPopupMeta    = null;
 }
+document.addEventListener('click', e => {
+  const popup = document.getElementById('scheduler-popup');
+  if (popup.classList.contains('visible') && !popup.contains(e.target)) closePopup();
+});
 
-async function selectProgress(proj, newProg, anchorEl) {
-  const isCustom = newProg === '其他';
-  document.getElementById('custom-label-row').style.display = isCustom ? 'block' : 'none';
-  document.querySelectorAll('#progress-options .option-btn').forEach(b =>
-    b.classList.toggle('active', b.textContent.trim() === newProg)
-  );
-  const customLabel = isCustom ? document.getElementById('custom-label-input').value : null;
-  await saveProgress(proj, newProg, customLabel, anchorEl);
-}
-
-async function saveProgress(proj, progress, customLabel, anchorEl) {
-  try {
-    const existing = progressMap[proj] || {};
-    const body = {
-      project_name:    proj,
-      progress,
-      custom_label:    customLabel || null,
-      meeting_link:    existing.meeting_link    || null,
-      discussion_link: existing.discussion_link || null,
-      brief_link:      existing.brief_link      || null,
-      updated_at:      new Date().toISOString(),
-    };
-    const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
-      method: 'POST',
-      headers: {
-        'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
-        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify(body),
-    });
-    if (res.ok || res.status === 204 || res.status === 201) {
-      progressMap[proj] = { ...existing, progress, custom_label: customLabel || null };
-
-      // Record phase history (only if phase actually changed)
-      const phases    = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
-      const lastPhase = phases[phases.length - 1];
-      if (!lastPhase || lastPhase.phase !== progress) {
-        const today = new Date().toISOString().slice(0, 10);
-        await fetch(`${SUPABASE}/rest/v1/project_phases`, {
-          method: 'POST',
-          headers: {
-            'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ project_name: proj, phase: progress, start_date: today }),
-        });
-        if (!phasesMap[proj]) phasesMap[proj] = [];
-        phasesMap[proj].push({ project_name: proj, phase: progress, start_date: today });
-      }
-
-      showMsg(`✓ 進度已更新為「${progress}」`);
-      setTimeout(() => buildTimeline(), 200);
-    }
-  } catch (e) { showMsg('✗ 儲存失敗'); }
-}
-
-// ── Lane assignment ──────────────────────────────────────────
+// ── Lane assignment ───────────────────────────────────────────
 function assignLanes(cases) {
   const lanes = [], ends = [];
   const sorted = [...cases].sort((a, b) => dateMs(a.date) - dateMs(b.date));
@@ -766,8 +899,8 @@ function renderHeader(minDate, totalDays, totalWidth) {
     if (d.getMonth() !== lastMonth) {
       lastMonth = d.getMonth();
       const ml = mk('div');
-      ml.style.cssText = `position:absolute;left:${x + 4}px;top:3px;font-size:10px;color:var(--text-mid);font-weight:700;white-space:nowrap;pointer-events:none;`;
-      ml.textContent = d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' });
+      ml.style.cssText = `position:absolute;left:${x+4}px;top:3px;font-size:10px;color:var(--text-mid);font-weight:700;white-space:nowrap;pointer-events:none;`;
+      ml.textContent = d.toLocaleDateString('zh-TW', { year:'numeric', month:'long' });
       canvas.appendChild(ml);
     }
     const dow = d.getDay();
@@ -775,16 +908,19 @@ function renderHeader(minDate, totalDays, totalWidth) {
       const isToday = sameDay(d, new Date());
       const dl = mk('div');
       dl.style.cssText = `position:absolute;left:${x}px;bottom:4px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
-      dl.style.color      = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#94a3b8' : 'var(--text-dim)');
+      dl.style.color      = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#b0b8c4' : 'var(--text-dim)');
       dl.style.fontWeight = isToday ? '700' : '400';
-      dl.textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+      dl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
       canvas.appendChild(dl);
     }
     d.setDate(d.getDate() + 1);
   }
+  // Apply current scroll
+  const bs = document.getElementById('body-scroll');
+  document.getElementById('header-dates-inner').style.transform = `translateX(-${bs.scrollLeft}px)`;
 }
 
-// ── Zoom / scroll ─────────────────────────────────────────────
+// ── Zoom / scroll ──────────────────────────────────────────────
 function setZoom(mode) {
   zoomDays = mode === 'week' ? 7 : mode === 'month' ? 30 : 14;
   document.querySelectorAll('.btn[id^="z-"]').forEach(b => b.classList.remove('active'));
@@ -797,44 +933,16 @@ function scrollToToday() {
   const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
   if (!allMs.length) return;
   const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
-  const today   = new Date(); today.setHours(0, 0, 0, 0);
+  const today   = new Date(); today.setHours(0,0,0,0);
   const tx = daysBetween(minDate, today) * dayPx;
   bs.scrollLeft = Math.max(0, tx - (bs.clientWidth - 230) / 3);
-  document.getElementById('header-scroll').scrollLeft = bs.scrollLeft;
+  syncScroll(bs);
 }
 
 function syncScroll(el) {
-  document.getElementById('header-scroll').scrollLeft = el.scrollLeft;
+  // Translate header-dates-inner so dates align with gantt-col
+  document.getElementById('header-dates-inner').style.transform = `translateX(-${el.scrollLeft}px)`;
 }
-
-// ── Reorder ───────────────────────────────────────────────────
-function moveProject(name, dir) {
-  const i = projectOrder.indexOf(name);
-  if (i < 0) return;
-  const ni = i + dir;
-  if (ni < 0 || ni >= projectOrder.length) return;
-  [projectOrder[i], projectOrder[ni]] = [projectOrder[ni], projectOrder[i]];
-  customOrder = [...projectOrder];
-  localStorage.setItem('tl-order', JSON.stringify(customOrder));
-  buildTimeline();
-}
-
-// ── Popup helpers ─────────────────────────────────────────────
-function positionPopup(id, anchorEl) {
-  closePopup('info-popup'); closePopup('progress-popup');
-  const popup = document.getElementById(id);
-  const rect  = anchorEl.getBoundingClientRect();
-  const top   = Math.max(10, Math.min(rect.bottom + 6, window.innerHeight - 420));
-  const left  = Math.max(10, Math.min(rect.left, window.innerWidth - 340));
-  popup.style.top  = top  + 'px';
-  popup.style.left = left + 'px';
-  popup.classList.add('visible');
-}
-function closePopup(id) { document.getElementById(id).classList.remove('visible'); }
-document.addEventListener('click', e => {
-  if (!document.getElementById('info-popup').contains(e.target))     closePopup('info-popup');
-  if (!document.getElementById('progress-popup').contains(e.target)) closePopup('progress-popup');
-});
 
 // ── Utilities ─────────────────────────────────────────────────
 function dateMs(s) {
@@ -843,8 +951,8 @@ function dateMs(s) {
   return new Date(y, m - 1, d).getTime();
 }
 function daysBetween(a, b) {
-  const am = a instanceof Date ? new Date(a).setHours(0, 0, 0, 0) : dateMs(a);
-  const bm = b instanceof Date ? new Date(b).setHours(0, 0, 0, 0) : dateMs(b);
+  const am = a instanceof Date ? new Date(a).setHours(0,0,0,0) : dateMs(a);
+  const bm = b instanceof Date ? new Date(b).setHours(0,0,0,0) : dateMs(b);
   return Math.round((bm - am) / 86400000);
 }
 function sameDay(a, b) {
@@ -857,8 +965,8 @@ function showMsg(txt) {
   const m = document.getElementById('status-msg');
   m.textContent = txt;
   setTimeout(() => {
-    const projCount = Object.keys(groupByProject()).length;
-    m.textContent = `${allCases.length} 筆派案 · ${projCount} 個專案`;
+    const ps = new Set(allCases.map(c => c.notion_project));
+    m.textContent = `${allCases.length} 筆派案 · ${ps.size} 個專案`;
   }, 2500);
 }
 
