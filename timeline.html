@@ -256,6 +256,24 @@
   }
   .add-btn:hover { background: #2d2926; }
 
+  /* Link display (saved state) */
+  .link-display-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
+  }
+  .link-display-label { font-size: 10px; color: var(--text-dim); font-weight: 600; width: 56px; flex-shrink: 0; }
+  .link-display-val {
+    flex: 1; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .link-display-val a { color: #3b82f6; text-decoration: none; }
+  .link-display-val a:hover { text-decoration: underline; }
+  .link-display-val.empty { color: var(--text-dim); }
+  .link-edit-all-btn {
+    display: block; width: 100%; margin-top: 4px; padding: 5px; border-radius: 7px;
+    border: 1px solid var(--border); background: none; color: var(--text-dim);
+    cursor: pointer; font-size: 11px; font-family: inherit;
+  }
+  .link-edit-all-btn:hover { background: var(--surface2); color: var(--text); }
+
   /* Link fields */
   .link-field { margin-bottom: 8px; }
   .link-field label { font-size: 11px; color: var(--text-mid); display: block; margin-bottom: 3px; font-weight: 500; }
@@ -339,19 +357,25 @@
 
   <div class="popup-divider"></div>
   <div class="popup-section">連結</div>
-  <div class="link-field">
-    <label>會議連結</label>
-    <input id="link-meeting" type="url" placeholder="https://…">
+  <div id="links-display-mode">
+    <!-- Shown when links already exist -->
   </div>
-  <div class="link-field">
-    <label>討論板</label>
-    <input id="link-discussion" type="url" placeholder="https://…">
+  <div id="links-edit-mode" style="display:none">
+    <div class="link-field">
+      <label>會議連結</label>
+      <input id="link-meeting" type="url" placeholder="https://…">
+    </div>
+    <div class="link-field">
+      <label>討論板</label>
+      <input id="link-discussion" type="url" placeholder="https://…">
+    </div>
+    <div class="link-field">
+      <label>Brief 連結</label>
+      <input id="link-brief" type="url" placeholder="https://…">
+    </div>
+    <button class="save-btn" onclick="saveLinks()">儲存連結</button>
+    <button class="popup-close" style="margin-top:6px" onclick="showLinksDisplay()">取消</button>
   </div>
-  <div class="link-field">
-    <label>Brief 連結</label>
-    <input id="link-brief" type="url" placeholder="https://…">
-  </div>
-  <button class="save-btn" onclick="saveLinks()">儲存連結</button>
   <button class="popup-close" onclick="closePopup()">關閉</button>
 </div>
 
@@ -385,15 +409,6 @@
   <div class="legend-grp">
     <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--c-revised-maker)"></div>Revised Maker</div>
-  </div>
-  <div class="legend-sep"></div>
-  <span class="legend-lbl">時程：</span>
-  <div class="legend-grp">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-初步討論);border-radius:50%"></div>初步討論</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-草稿);border-radius:50%"></div>草稿</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-合成);border-radius:50%"></div>合成</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-修改);border-radius:50%"></div>修改</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--ph-上版);border-radius:50%"></div>上版</div>
   </div>
 </div>
 
@@ -628,17 +643,6 @@ function buildRow({ proj, groupId, cases }, minDate, totalWidth, labelCol, gantt
   const row = mk('div', 'gantt-row');
   row.style.height = rowH + 'px';
 
-  const spineMs    = cases.map(c => dateMs(c.date));
-  const deadMs     = cases.map(c => dateMs(c.deadline || c.date));
-  const spineStart = Math.min(...spineMs);
-  const spineEnd   = Math.max(...deadMs);
-
-  const sx = daysBetween(minDate, new Date(spineStart)) * dayPx;
-  const sw = Math.max(6, (daysBetween(new Date(spineStart), new Date(spineEnd)) + 1) * dayPx);
-  const spine = mk('div', 'spine');
-  spine.style.cssText = `left:${sx}px;width:${sw}px;top:${rowH - 10}px;`;
-  row.appendChild(spine);
-
   // Phase bands using explicit start_date + end_date
   const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
   const today = new Date(); today.setHours(0,0,0,0);
@@ -720,11 +724,8 @@ function openScheduler(proj, caseObj) {
   document.getElementById('phase-start').value = todayStr;
   document.getElementById('phase-end').value   = todayStr;
 
-  // Links
-  const prog = progressMap[proj] || {};
-  document.getElementById('link-meeting').value    = prog.meeting_link    || '';
-  document.getElementById('link-discussion').value = prog.discussion_link || '';
-  document.getElementById('link-brief').value      = prog.brief_link      || '';
+  // Links — show display mode first
+  renderLinksDisplay(proj);
 
   // Position & show
   const popup = document.getElementById('scheduler-popup');
@@ -745,16 +746,113 @@ function renderPhaseList(proj) {
     return;
   }
   for (const ph of phases) {
-    const item = mk('div', 'phase-item');
-    const dot  = mk('div', 'phase-dot'); dot.style.background = phaseColor(ph.phase);
-    const name = mk('span', 'phase-name'); name.textContent = ph.phase;
-    const dates = mk('span', 'phase-dates');
-    dates.textContent = ph.start_date + (ph.end_date ? ' → ' + ph.end_date : ' → 今天');
-    const del = mk('button', 'phase-del'); del.textContent = '×'; del.title = '刪除';
-    del.onclick = () => deletePhase(ph.id, proj);
-    item.append(dot, name, dates, del);
-    container.appendChild(item);
+    container.appendChild(buildPhaseRow(ph, proj));
   }
+}
+
+function buildPhaseRow(ph, proj) {
+  const item = mk('div', 'phase-item');
+
+  // Display mode (date first → name)
+  const dot   = mk('div', 'phase-dot'); dot.style.background = phaseColor(ph.phase);
+  const dates = mk('span', 'phase-dates');
+  dates.textContent = fmtDate(ph.start_date) + (ph.end_date ? ' → ' + fmtDate(ph.end_date) : ' → 今天');
+  const name = mk('span', 'phase-name'); name.textContent = ph.phase;
+  const del  = mk('button', 'phase-del'); del.textContent = '×'; del.title = '刪除';
+  del.onclick = e => { e.stopPropagation(); deletePhase(ph.id, proj); };
+
+  item.append(dot, dates, name, del);
+
+  // Click row (not ×) → switch to inline edit
+  item.onclick = e => {
+    if (e.target === del) return;
+    item.innerHTML = '';
+    buildPhaseEditInline(item, ph, proj);
+  };
+
+  return item;
+}
+
+function buildPhaseEditInline(container, ph, proj) {
+  // Name select
+  const selWrap = mk('div'); selWrap.style.cssText = 'flex:1.2;min-width:0;';
+  const sel = mk('select'); sel.style.cssText = 'width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;';
+  for (const opt of PHASE_OPTS) {
+    const o = mk('option'); o.value = opt; o.textContent = opt;
+    if (opt === ph.phase) o.selected = true;
+    sel.appendChild(o);
+  }
+  const customOpt = mk('option'); customOpt.value = '__custom__'; customOpt.textContent = '自訂…';
+  if (!PHASE_OPTS.includes(ph.phase)) customOpt.selected = true;
+  sel.appendChild(customOpt);
+  selWrap.appendChild(sel);
+
+  const customInput = mk('input'); customInput.type = 'text'; customInput.maxLength = 20;
+  customInput.style.cssText = 'width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;margin-top:3px;display:none;';
+  if (!PHASE_OPTS.includes(ph.phase)) {
+    customInput.style.display = 'block';
+    customInput.value = ph.phase;
+  }
+  sel.onchange = () => {
+    customInput.style.display = sel.value === '__custom__' ? 'block' : 'none';
+  };
+  selWrap.appendChild(customInput);
+
+  // Date inputs
+  const startIn = mk('input'); startIn.type = 'date'; startIn.value = ph.start_date || '';
+  startIn.style.cssText = 'padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:112px;';
+  const endIn = mk('input'); endIn.type = 'date'; endIn.value = ph.end_date || '';
+  endIn.style.cssText = 'padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:112px;';
+
+  // Buttons
+  const saveB = mk('button'); saveB.textContent = '✓';
+  saveB.style.cssText = 'background:#1a1817;color:#fff;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:12px;font-family:inherit;';
+  const cancelB = mk('button'); cancelB.textContent = '✕';
+  cancelB.style.cssText = 'background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--text-dim);font-family:inherit;';
+
+  // Layout: two-row inline form
+  const row1 = mk('div'); row1.style.cssText = 'display:flex;gap:5px;align-items:flex-start;width:100%;flex-wrap:wrap;';
+  const row2 = mk('div'); row2.style.cssText = 'display:flex;gap:5px;align-items:center;margin-top:5px;width:100%;flex-wrap:wrap;';
+  row1.appendChild(selWrap);
+  const dateLabel = mk('span'); dateLabel.style.cssText = 'font-size:10px;color:var(--text-dim);align-self:center;';
+  row2.append(startIn, dateLabel, endIn, saveB, cancelB);
+  container.style.cssText = 'flex-direction:column;background:var(--surface2);border-radius:7px;padding:7px 8px;cursor:default;';
+  container.append(row1, row2);
+
+  cancelB.onclick = e => {
+    e.stopPropagation();
+    container.replaceWith(buildPhaseRow(ph, proj));
+  };
+
+  saveB.onclick = async e => {
+    e.stopPropagation();
+    const newName = sel.value === '__custom__' ? customInput.value.trim() : sel.value;
+    if (!newName) return;
+    const newStart = startIn.value;
+    const newEnd   = endIn.value || null;
+    try {
+      const res = await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${ph.id}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ phase: newName, start_date: newStart, end_date: newEnd }),
+      });
+      if (res.ok || res.status === 204) {
+        if (phasesMap[proj]) {
+          const idx = phasesMap[proj].findIndex(p => p.id === ph.id);
+          if (idx >= 0) phasesMap[proj][idx] = { ...ph, phase: newName, start_date: newStart, end_date: newEnd };
+        }
+        showMsg('✓ 已更新');
+        buildTimeline();
+        openScheduler(currentPopupProject, currentPopupMeta);
+      } else { showMsg('✗ 儲存失敗'); }
+    } catch { showMsg('✗ 儲存失敗'); }
+  };
+}
+
+function fmtDate(s) {
+  if (!s) return '';
+  const [, m, d] = s.split('-');
+  return `${parseInt(m)}/${parseInt(d)}`;
 }
 
 function toggleAddForm() {
@@ -832,6 +930,56 @@ async function deletePhase(id, proj) {
   } catch (e) { showMsg('✗ 刪除失敗'); }
 }
 
+// ── Link display helpers ───────────────────────────────────────
+function renderLinksDisplay(proj) {
+  const prog = progressMap[proj] || {};
+  const links = [
+    { label: '會議連結', val: prog.meeting_link    || '' },
+    { label: '討論板',   val: prog.discussion_link || '' },
+    { label: 'Brief',   val: prog.brief_link      || '' },
+  ];
+  const hasAny = links.some(l => l.val);
+
+  const disp = document.getElementById('links-display-mode');
+  disp.innerHTML = '';
+  for (const { label, val } of links) {
+    const row = mk('div', 'link-display-row');
+    const lbl = mk('span', 'link-display-label'); lbl.textContent = label;
+    const valEl = mk('div', 'link-display-val' + (val ? '' : ' empty'));
+    if (val) {
+      const a = mk('a');
+      a.href = val; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = val.replace(/^https?:\/\//, '').slice(0, 40) + (val.length > 47 ? '…' : '');
+      a.onclick = e => e.stopPropagation();
+      valEl.appendChild(a);
+    } else {
+      valEl.textContent = '—';
+    }
+    row.append(lbl, valEl);
+    disp.appendChild(row);
+  }
+  const editBtn = mk('button', 'link-edit-all-btn');
+  editBtn.textContent = hasAny ? '編輯連結' : '新增連結';
+  editBtn.onclick = () => showLinksEdit(proj);
+  disp.appendChild(editBtn);
+
+  document.getElementById('links-display-mode').style.display = 'block';
+  document.getElementById('links-edit-mode').style.display    = 'none';
+}
+
+function showLinksDisplay() {
+  renderLinksDisplay(currentPopupProject);
+}
+
+function showLinksEdit(proj) {
+  const prog = progressMap[proj] || {};
+  document.getElementById('link-meeting').value    = prog.meeting_link    || '';
+  document.getElementById('link-discussion').value = prog.discussion_link || '';
+  document.getElementById('link-brief').value      = prog.brief_link      || '';
+  document.getElementById('links-display-mode').style.display = 'none';
+  document.getElementById('links-edit-mode').style.display    = 'block';
+}
+
 async function saveLinks() {
   if (!currentPopupProject) return;
   const meeting    = document.getElementById('link-meeting').value.trim();
@@ -856,7 +1004,7 @@ async function saveLinks() {
         meeting_link: meeting || null, discussion_link: discussion || null, brief_link: brief || null,
       });
       showMsg('✓ 連結已儲存');
-      closePopup();
+      renderLinksDisplay(currentPopupProject);
     } else {
       showMsg('✗ 儲存失敗');
     }
