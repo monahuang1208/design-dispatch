@@ -144,13 +144,13 @@
     border-bottom: 1px solid var(--border); position: relative;
   }
 
-  .today-line {
-    position: absolute; top: 0; bottom: 0; width: 2px;
-    background: var(--today); z-index: 5; pointer-events: none; opacity: .7;
-  }
   .grid-line {
     position: absolute; top: 0; bottom: 0; width: 1px;
-    background: var(--border); pointer-events: none;
+    background: rgba(0,0,0,.06); pointer-events: none;
+  }
+  .grid-line-mon {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: rgba(0,0,0,.12); pointer-events: none;
   }
 
   /* Dispatch segments — pastel with dark text */
@@ -188,6 +188,16 @@
   .seg-m1            { background: var(--c-m1); }
   .seg-revised-maker { background: var(--c-revised-maker); }
   .seg-other         { background: var(--c-other); }
+
+  /* ── Leader row ── */
+  .leader-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
+  .leader-label { font-size: 10px; color: var(--text-dim); font-weight: 700; width: 82px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em; }
+  .leader-input {
+    flex: 1; padding: 5px 8px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 11px; font-family: inherit;
+  }
+  .leader-input:focus { outline: none; border-color: #6b9cf5; }
 
   /* ── Scheduler popup ── */
   .popup {
@@ -322,6 +332,10 @@
 <div id="scheduler-popup" class="popup">
   <div id="sch-title" class="popup-title"></div>
   <div id="sch-meta"  class="popup-meta"></div>
+  <div class="leader-row">
+    <span class="leader-label">Project Leader</span>
+    <input id="leader-input" type="text" class="leader-input" placeholder="輸入負責人…" onblur="saveLeader()">
+  </div>
 
   <div class="popup-divider"></div>
   <div class="popup-section">時程規劃</div>
@@ -584,17 +598,15 @@ function buildTimeline() {
   ganttCol.innerHTML = '';
   ganttCol.style.width = ganttCol.style.minWidth = totalWidth + 'px';
 
-  // Today line + grid lines (on full gantt)
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tx = daysBetween(minDate, today) * dayPx;
-  if (tx >= 0 && tx <= totalWidth) {
-    const tl = mk('div', 'today-line'); tl.style.left = tx + 'px';
-    ganttCol.appendChild(tl);
-  }
+  // Grid lines for every date (Mondays slightly darker; no today line)
+  const todayD = new Date(); todayD.setHours(0,0,0,0);
   let gd = new Date(minDate);
   for (let i = 0; i < totalDays; i++) {
-    if (gd.getDay() === 1) {
-      const gl = mk('div', 'grid-line'); gl.style.left = (i * dayPx) + 'px';
+    const isMon = gd.getDay() === 1;
+    // Only draw every-day lines when zoomed in enough; otherwise just Mondays
+    if (dayPx >= 28 || isMon) {
+      const gl = mk('div', isMon ? 'grid-line-mon' : 'grid-line');
+      gl.style.left = (i * dayPx) + 'px';
       ganttCol.appendChild(gl);
     }
     gd.setDate(gd.getDate() + 1);
@@ -693,7 +705,7 @@ function buildSegment(c, minDate, laneIdx, numLanes, rowH, phases) {
   const chunks = []; // {phaseName, startMs, endMs, widthPx}
   for (const ph of (phases || [])) {
     const phStartMs = dateMs(ph.start_date);
-    const phEndMs   = ph.end_date ? dateMs(ph.end_date) : today.getTime();
+    const phEndMs   = ph.end_date ? dateMs(ph.end_date) : today.getTime() + 86400000; // null = through today
     // Overlap check
     if (phEndMs <= segStartMs || phStartMs >= segEndMs + 86400000) continue;
     const clampStart = Math.max(phStartMs, segStartMs);
@@ -750,6 +762,10 @@ function openScheduler(proj, caseObj) {
   const todayStr = new Date().toISOString().slice(0, 10);
   document.getElementById('phase-start').value = todayStr;
   document.getElementById('phase-end').value   = todayStr;
+
+  // Project Leader
+  const prog = progressMap[proj] || {};
+  document.getElementById('leader-input').value = prog.project_leader || '';
 
   // Links — show display mode first
   renderLinksDisplay(proj);
@@ -994,6 +1010,28 @@ async function deletePhase(id, proj) {
   } catch (e) { showMsg('✗ 刪除失敗'); }
 }
 
+// ── Project Leader ────────────────────────────────────────────
+async function saveLeader() {
+  if (!currentPopupProject) return;
+  const leader = document.getElementById('leader-input').value.trim();
+  try {
+    const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        project_name: currentPopupProject,
+        project_leader: leader || null,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (res.ok || res.status === 204 || res.status === 201) {
+      if (!progressMap[currentPopupProject]) progressMap[currentPopupProject] = {};
+      progressMap[currentPopupProject].project_leader = leader || null;
+      showMsg('✓ 已儲存');
+    }
+  } catch {}
+}
+
 // ── Link display helpers ───────────────────────────────────────
 function renderLinksDisplay(proj) {
   const prog = progressMap[proj] || {};
@@ -1119,10 +1157,18 @@ function renderHeader(minDate, totalDays, totalWidth) {
     if (dayPx >= 36 || dow === 1 || dow === 0) {
       const isToday = sameDay(d, new Date());
       const dl = mk('div');
-      dl.style.cssText = `position:absolute;left:${x}px;bottom:4px;font-size:10px;width:${dayPx}px;text-align:center;pointer-events:none;`;
-      dl.style.color      = isToday ? 'var(--today)' : (dow === 0 || dow === 6 ? '#b0b8c4' : 'var(--text-dim)');
-      dl.style.fontWeight = isToday ? '700' : '400';
-      dl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+      dl.style.cssText = `position:absolute;left:${x}px;bottom:3px;width:${dayPx}px;text-align:center;pointer-events:none;display:flex;align-items:center;justify-content:center;`;
+      if (isToday) {
+        const chip = mk('span');
+        chip.style.cssText = `font-size:10px;font-weight:700;color:#fff;background:#ea580c;border-radius:5px;padding:1px 5px;`;
+        chip.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+        dl.appendChild(chip);
+      } else {
+        const lbl = mk('span');
+        lbl.style.cssText = `font-size:10px;color:${dow === 0 || dow === 6 ? '#b0b8c4' : 'var(--text-dim)'};`;
+        lbl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+        dl.appendChild(lbl);
+      }
       canvas.appendChild(dl);
     }
     d.setDate(d.getDate() + 1);
