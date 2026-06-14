@@ -153,29 +153,32 @@
     background: var(--border); pointer-events: none;
   }
 
-  /* Spine – grey track spanning full project duration */
-  .spine {
-    position: absolute; height: 6px; border-radius: 3px;
-    background: rgba(0,0,0,.08); pointer-events: none; z-index: 1;
-  }
-
-  /* Phase bands */
-  .phase-band {
-    position: absolute; height: 6px; border-radius: 3px;
-    pointer-events: none; z-index: 2; opacity: .9;
-  }
-
   /* Dispatch segments — pastel with dark text */
   .segment {
     position: absolute; height: 22px; border-radius: 5px;
-    cursor: pointer; display: flex; align-items: center; padding: 0 7px;
+    cursor: pointer; display: flex; align-items: center;
     font-size: 11px; font-weight: 600; color: #3a3530;
     overflow: hidden; white-space: nowrap; z-index: 3;
     box-shadow: 0 1px 2px rgba(0,0,0,.08);
     transition: filter .12s, box-shadow .1s; user-select: none;
   }
   .segment:hover { filter: brightness(.92); box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 20; }
-  .seg-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+
+  /* Job type label (leftmost chunk in the bar) */
+  .seg-type-label {
+    padding: 0 8px; font-weight: 700; flex-shrink: 0; pointer-events: none;
+    border-right: 1px solid rgba(0,0,0,.12);
+  }
+
+  /* Phase label chunks inside the bar */
+  .seg-phase-chunk {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px; font-size: 10px; font-weight: 500; flex-shrink: 0;
+    overflow: hidden; pointer-events: none;
+    border-right: 1px solid rgba(0,0,0,.1);
+    height: 100%; color: rgba(40,32,26,.75);
+  }
+  .seg-phase-chunk:last-child { border-right: none; }
   .seg-jpg           { background: var(--c-jpg); }
   .seg-v1            { background: var(--c-v1); }
   .seg-presentation  { background: var(--c-presentation); }
@@ -643,26 +646,11 @@ function buildRow({ proj, groupId, cases }, minDate, totalWidth, labelCol, gantt
   const row = mk('div', 'gantt-row');
   row.style.height = rowH + 'px';
 
-  // Phase bands using explicit start_date + end_date
-  const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
-  const today = new Date(); today.setHours(0,0,0,0);
-  for (const ph of phases) {
-    const phStart = new Date(ph.start_date + 'T00:00:00');
-    const phEnd   = ph.end_date
-      ? new Date(ph.end_date + 'T00:00:00')
-      : today;
-    const bx = daysBetween(minDate, phStart) * dayPx;
-    const bw = Math.max(3, daysBetween(phStart, phEnd) * dayPx);
-    const band = mk('div', 'phase-band');
-    band.style.cssText = `left:${bx}px;width:${bw}px;top:${rowH - 10}px;background:${phaseColor(ph.phase)};`;
-    band.title = ph.phase + '　' + ph.start_date + ' → ' + (ph.end_date || '今天');
-    row.appendChild(band);
-  }
-
-  // Dispatch segments
+  // Dispatch segments (phase labels rendered inside each segment)
+  const sortedPhases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
   for (let li = 0; li < lanes.length; li++) {
     for (const c of lanes[li]) {
-      const seg = buildSegment(c, minDate, li, nLanes, rowH);
+      const seg = buildSegment(c, minDate, li, nLanes, rowH, sortedPhases);
       if (seg) row.appendChild(seg);
     }
   }
@@ -670,13 +658,15 @@ function buildRow({ proj, groupId, cases }, minDate, totalWidth, labelCol, gantt
   ganttCol.appendChild(row);
 }
 
-// ── Build one dispatch segment ────────────────────────────────
-function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
+// ── Build one dispatch segment (with phase labels inside) ────────
+function buildSegment(c, minDate, laneIdx, numLanes, rowH, phases) {
   if (!c.date) return null;
-  const x    = daysBetween(minDate, new Date(c.date + 'T00:00:00')) * dayPx;
-  const endD = c.deadline || c.date;
-  const span = Math.max(1, daysBetween(new Date(c.date), new Date(endD)) + 1);
-  const w    = Math.max(dayPx * .7, span * dayPx - 3);
+  const segStart = new Date(c.date + 'T00:00:00');
+  const endD     = c.deadline || c.date;
+  const segEnd   = new Date(endD + 'T00:00:00');
+  const x        = daysBetween(minDate, segStart) * dayPx;
+  const span     = Math.max(1, daysBetween(segStart, segEnd) + 1);
+  const w        = Math.max(dayPx * .7, span * dayPx - 3);
 
   const SEG_H = 22;
   const laneH = numLanes > 1 ? (rowH - 18) / numLanes : rowH - 12;
@@ -687,9 +677,46 @@ function buildSegment(c, minDate, laneIdx, numLanes, rowH) {
 
   const seg = mk('div', `segment ${cls}`);
   seg.style.cssText = `left:${x}px;width:${w}px;top:${top}px;`;
-  const lbl = mk('span', 'seg-label');
-  lbl.textContent = w > 48 ? jobType : '';
-  seg.appendChild(lbl);
+
+  // Job type label (leftmost)
+  const typeLbl = mk('span', 'seg-type-label');
+  typeLbl.textContent = jobType;
+  seg.appendChild(typeLbl);
+
+  // Phase chunks: phases that overlap this segment's date range
+  const today = new Date(); today.setHours(0,0,0,0);
+  const segStartMs = dateMs(c.date);
+  const segEndMs   = dateMs(endD);
+
+  // Build ordered phase chunks covering the segment's span
+  // Each phase that overlaps [segStart, segEnd] contributes a chunk
+  const chunks = []; // {phaseName, startMs, endMs, widthPx}
+  for (const ph of (phases || [])) {
+    const phStartMs = dateMs(ph.start_date);
+    const phEndMs   = ph.end_date ? dateMs(ph.end_date) : today.getTime();
+    // Overlap check
+    if (phEndMs <= segStartMs || phStartMs >= segEndMs + 86400000) continue;
+    const clampStart = Math.max(phStartMs, segStartMs);
+    const clampEnd   = Math.min(phEndMs, segEndMs + 86400000);
+    const chunkDays  = Math.max(0, Math.round((clampEnd - clampStart) / 86400000));
+    if (chunkDays <= 0) continue;
+    const chunkW = chunkDays * dayPx;
+    chunks.push({ name: ph.phase, chunkW });
+  }
+
+  // Only show phase text if bar is wide enough and there are phases
+  if (chunks.length > 0 && w > 60) {
+    for (const ch of chunks) {
+      const chunk = mk('span', 'seg-phase-chunk');
+      chunk.style.width = ch.chunkW + 'px';
+      chunk.style.minWidth = '0';
+      // Show text only if chunk is wide enough
+      chunk.textContent = ch.chunkW > 30 ? ch.name : '';
+      chunk.title = ch.name;
+      seg.appendChild(chunk);
+    }
+  }
+
   seg.onclick = e => { e.stopPropagation(); openScheduler(c.notion_project, c); };
   return seg;
 }
@@ -745,13 +772,23 @@ function renderPhaseList(proj) {
     container.appendChild(empty);
     return;
   }
-  for (const ph of phases) {
-    container.appendChild(buildPhaseRow(ph, proj));
+  for (let i = 0; i < phases.length; i++) {
+    container.appendChild(buildPhaseRow(phases[i], proj, i, phases.length));
   }
 }
 
-function buildPhaseRow(ph, proj) {
+function buildPhaseRow(ph, proj, idx, total) {
   const item = mk('div', 'phase-item');
+
+  // ▲/▼ reorder buttons
+  const rbtns = mk('div'); rbtns.style.cssText = 'display:flex;flex-direction:column;flex-shrink:0;gap:0;';
+  const up = mk('button', 'reorder-btn'); up.textContent = '▲'; up.title = '上移';
+  up.style.opacity = idx === 0 ? '0.2' : '1';
+  up.onclick = e => { e.stopPropagation(); if (idx > 0) reorderPhase(proj, idx, -1); };
+  const dn = mk('button', 'reorder-btn'); dn.textContent = '▼'; dn.title = '下移';
+  dn.style.opacity = idx === total - 1 ? '0.2' : '1';
+  dn.onclick = e => { e.stopPropagation(); if (idx < total - 1) reorderPhase(proj, idx, 1); };
+  rbtns.append(up, dn);
 
   // Display mode (date first → name)
   const dot   = mk('div', 'phase-dot'); dot.style.background = phaseColor(ph.phase);
@@ -761,12 +798,13 @@ function buildPhaseRow(ph, proj) {
   const del  = mk('button', 'phase-del'); del.textContent = '×'; del.title = '刪除';
   del.onclick = e => { e.stopPropagation(); deletePhase(ph.id, proj); };
 
-  item.append(dot, dates, name, del);
+  item.append(rbtns, dot, dates, name, del);
 
-  // Click row (not ×) → switch to inline edit
+  // Click row (not buttons) → switch to inline edit
   item.onclick = e => {
-    if (e.target === del) return;
+    if (e.target === del || e.target === up || e.target === dn) return;
     item.innerHTML = '';
+    item.style.cssText = '';
     buildPhaseEditInline(item, ph, proj);
   };
 
@@ -908,6 +946,32 @@ async function addPhase() {
       showMsg('✗ 新增失敗');
     }
   } catch (e) { showMsg('✗ 新增失敗'); }
+}
+
+function reorderPhase(proj, idx, dir) {
+  const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
+  const ni = idx + dir;
+  if (ni < 0 || ni >= phases.length) return;
+  // Swap start_dates between the two phases
+  const a = phases[idx], b = phases[ni];
+  const tmpStart = a.start_date, tmpEnd = a.end_date;
+  a.start_date = b.start_date; a.end_date = b.end_date;
+  b.start_date = tmpStart; b.end_date = tmpEnd;
+  // Persist both via PATCH
+  const headers = { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+  Promise.all([
+    fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${a.id}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ start_date: a.start_date, end_date: a.end_date }),
+    }),
+    fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${b.id}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ start_date: b.start_date, end_date: b.end_date }),
+    }),
+  ]).then(() => {
+    buildTimeline();
+    openScheduler(currentPopupProject, currentPopupMeta);
+  });
 }
 
 async function deletePhase(id, proj) {
