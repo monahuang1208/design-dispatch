@@ -70,11 +70,11 @@ td{padding:9px 12px;vertical-align:middle}
 .btn-del:hover{background:#FFF0EE}
 
 /* ── DEADLINE PILL ── */
-.deadline{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace}
-.deadline.ok{background:#EAFAF1;color:var(--green)}
-.deadline.warn{background:#FEF9E7;color:var(--yellow)}
-.deadline.urgent{background:#FFF0EE;color:var(--red);animation:pulse-bg 1.5s infinite}
-.deadline.none{background:#F5F5F5;color:var(--text3)}
+.deadline{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace}
+.deadline.ok{color:var(--green)}
+.deadline.warn{color:var(--yellow)}
+.deadline.urgent{color:var(--red)}
+.deadline.none{color:var(--text3)}
 @keyframes pulse-bg{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* ── BADGE ── */
@@ -226,8 +226,22 @@ const STATUS_STYLE = {
   "擱置":   {bg:"#FEF9E7",text:"#D4AC0D",dot:"#D4AC0D",border:"#D4AC0D"},
 };
 const TYPE_COLORS = ["#6C63FF","#FF6584","#43BCCD","#F9844A","#4CC9F0","#F72585","#7209B7","#3A0CA3","#4361EE","#4895EF","#E76F51","#2A9D8F"];
-
-function typeColor(t,types){ return TYPE_COLORS[types.indexOf(t) % TYPE_COLORS.length] || "#888"; }
+// ── Named color map (overrides positional) ──
+const TYPE_COLOR_MAP = {
+  "V1":           "#666666",  // 灰黑
+  "Revision":     "#666666",  // 灰黑
+  "Presentation": "#666666",  // 灰黑
+  "M1":           "#2A9D8F",  // 綠（原JPG）
+  "Revised Maker":"#2A9D8F",  // 綠（原JPG）
+  "KV":           "#FF6584",  // 粉（原Revision）
+  "Moodboard":    "#FF6584",  // 粉（原Revision）
+  "Check Info":   "#43BCCD",  // 藍綠（原M1）
+  "Pkg Layout":   "#43BCCD",  // 藍綠（原M1）
+  "care card":    "#43BCCD",  // 藍綠（原M1）
+  "JPG":          "#4361EE",  // 靛藍（原care card）
+  "Note":         "#E76F51",  // 橘（不變）
+};
+function typeColor(t,types){ return TYPE_COLOR_MAP[t] || TYPE_COLORS[types ? types.indexOf(t) % TYPE_COLORS.length : 0] || "#888"; }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function today(){ return new Date().toISOString().slice(0,10); }
 function allDesigners(dObj){ return Object.values(dObj).flat(); }
@@ -265,23 +279,59 @@ async function loadCases(){
   if(error){ console.error("loadCases",error); return []; }
   return (data||[]).map(dbToCase);
 }
-async function saveCase_db(c, syncToNotion=true){
+async function saveCase_db(c){
   const row=caseToDb(c);
   const {error}=await db.from("cases").upsert(row,{onConflict:"id"});
   if(error) console.error("saveCase_db",error);
-  if(c.notionProject && syncToNotion){
-    fetch("https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/sync-to-notion",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw"},
-      body:JSON.stringify({id:c.id,notionProject:c.notionProject,notionPageId:c.notionPageId||"",date:c.date,jobTypes:c.jobTypes,note:c.note,designers:c.designers,sales:c.sales,deadline:c.deadline,market:c.market})
-    }).then(r=>r.json()).then(d=>{
-      if(d.pageId&&d.pageId!==c.notionPageId){const idx=S.cases.findIndex(x=>x.id===c.id);if(idx>=0)S.cases[idx].notionPageId=d.pageId;}
-    }).catch(e=>console.error("notion sync error",e));
-  }
 }
 async function deleteCaseDb(id){
   const {error}=await db.from("cases").delete().eq("id",id);
   if(error) console.error("deleteCaseDb",error);
+}
+
+// Project links (shared with Timeline via project_progress)
+async function loadProjectLinks(projectName){
+  if(!projectName) return;
+  if(!S.projectLinks) S.projectLinks={};
+  if(S.projectLinks[projectName]!==undefined) return; // cached
+  const {data,error}=await db.from("project_progress")
+    .select("meeting_link,discussion_link,brief_link")
+    .eq("project_name",projectName)
+    .single();
+  S.projectLinks[projectName]=(!error&&data)?data:{};
+  render();
+}
+async function onMarketChange(val){
+  if(!val) return;
+  if(!S.projectLinks) S.projectLinks={};
+  if(S.projectLinks[val]===undefined){
+    const {data,error}=await db.from("project_progress")
+      .select("meeting_link,discussion_link,brief_link")
+      .eq("project_name",val).single();
+    S.projectLinks[val]=(!error&&data)?data:{};
+  }
+  const lk=S.projectLinks[val]||{};
+  const ml=document.getElementById("f-meeting-link");
+  const dl=document.getElementById("f-discussion-link");
+  const bl=document.getElementById("f-brief-link");
+  if(ml) ml.value=lk.meeting_link||"";
+  if(dl) dl.value=lk.discussion_link||"";
+  if(bl) bl.value=lk.brief_link||"";
+}
+async function saveProjectLinks(projectName){
+  if(!projectName) return;
+  const ml=document.getElementById("f-meeting-link")?.value.trim()||null;
+  const dl=document.getElementById("f-discussion-link")?.value.trim()||null;
+  const bl=document.getElementById("f-brief-link")?.value.trim()||null;
+  const {error}=await db.from("project_progress").upsert({
+    project_name:projectName,
+    meeting_link:ml, discussion_link:dl, brief_link:bl,
+    updated_at:new Date().toISOString()
+  },{onConflict:"project_name"});
+  if(!error){
+    if(!S.projectLinks) S.projectLinks={};
+    S.projectLinks[projectName]={meeting_link:ml,discussion_link:dl,brief_link:bl};
+  }
 }
 
 // Vacations
@@ -365,8 +415,6 @@ function caseToDb(c){
     email_link:c.emailLink||null,
     designer_status:c.designerStatus||null,
     review:c.review||null,
-    notion_project:c.notionProject||null,
-    notion_page_id:c.notionPageId||null,
   };
 }
 function dbToCase(r){
@@ -379,8 +427,6 @@ function dbToCase(r){
     emailLink:r.email_link||"",
     designerStatus:r.designer_status||{},
     review:r.review||"",
-    notionProject:r.notion_project||"",
-    notionPageId:r.notion_page_id||"",
   };
 }
 
@@ -613,6 +659,7 @@ let S = {
   settings: { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES },
   vacations: [],
   freeRows: [],
+  projectLinks: {},  // cache: market → {meeting_link, discussion_link, brief_link}
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   reviewFilter: {market:"",designer:"",jobType:""},
@@ -698,7 +745,7 @@ function renderList(cases){
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
         <td>
           <div style="display:flex;flex-direction:column;gap:2px">
-            ${c.deadline?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:#888">${c.deadline}</span>`:""}
+            ${c.deadline?`<span style="font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:${{ok:'var(--green)',warn:'var(--yellow)',urgent:'var(--red)',none:'#aaa'}[deadlineStatus(c.deadline)]||'#aaa'}">${c.deadline}</span>`:""}
             ${showDlPill?dlPill(c.deadline):""}
           </div>
         </td>
@@ -1004,6 +1051,7 @@ function renderExcel(cases){
       ${todayBtn}
     </div>
   </div>`;
+
   return `<div class="excel-wrap">
     ${nav}
     <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 160px)">
@@ -1375,7 +1423,7 @@ function renderModal(){
         <div class="fg-modal"><label>截止時間 <span style="font-weight:400;color:#aaa">（如：中午前、17:00）</span></label><input type="text" id="f-deadline-time" placeholder="選填，如：中午前、EOD、17:00" value="${c.deadlineTime||""}"/></div>
       </div>
       <div class="form-row">
-        <div class="fg-modal"><label>市場</label><select id="f-market">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>市場</label><select id="f-market" onchange="onMarketChange(this.value)">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
         <div class="fg-modal"><label>案件種類（可複選）</label>${msJobTypes()}</div>
       </div>
       <div class="form-row">
@@ -1402,15 +1450,12 @@ function renderModal(){
       </div>
       <div class="form-row single">
         <div class="fg-modal">
-          <label>📎 Notion 專案 <span style="font-weight:400;color:#aaa">（選填，同名自動歸入同一專案）</span></label>
-          <input type="text" id="f-notion-project" list="notion-project-list"
-            placeholder="例：SBJ Holiday 2027 I&amp;II"
-            value="${c.notionProject||""}"
-            style="width:100%"/>
-          <datalist id="notion-project-list">
-            ${[...new Set(S.cases.map(x=>x.notionProject).filter(Boolean))].map(p=>`<option value="${p}"/>`).join("")}
-          </datalist>
-          ${c.notionPageId?`<div style="margin-top:4px;font-size:10px;color:#27AE60">✅ 已連結 Notion 頁面</div>`:`<div style="margin-top:4px;font-size:10px;color:#aaa">填寫後，下次同步時自動建立或更新 Notion 專案</div>`}
+          <label>🔗 連結 <span style="font-weight:400;color:#aaa">（同步至時間軸 — 依市場儲存）</span></label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <input type="url" id="f-meeting-link" placeholder="🎥 會議連結" value="${(S.projectLinks[c.market]||{}).meeting_link||""}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg)"/>
+            <input type="url" id="f-discussion-link" placeholder="💬 討論板" value="${(S.projectLinks[c.market]||{}).discussion_link||""}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg)"/>
+            <input type="url" id="f-brief-link" placeholder="📄 Brief" value="${(S.projectLinks[c.market]||{}).brief_link||""}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg)"/>
+          </div>
         </div>
       </div>
       <div class="modal-btns">
@@ -1639,7 +1684,9 @@ function openEdit(id){
   if(c){
     // Normalize legacy single-value fields to arrays
     const normalized={...c, designers:toArr(c.designers||c.designer), jobTypes:toArr(c.jobTypes||c.jobType)};
-    S.modal=normalized; S.parseText=""; S.parseStatus=""; render();
+    S.modal=normalized; S.parseText=""; S.parseStatus="";
+    loadProjectLinks(c.market); // load links for this market (async, re-renders when done)
+    render();
   }
 }
 
@@ -1674,7 +1721,6 @@ function syncModalFields(){
     note: document.getElementById("f-note")?.value,
     sales: document.getElementById("f-sales-select")?.value||"",
     review: reviewEl?reviewEl.value:(S.modal._preset?.review||S.modal.review||""),
-    notionProject: document.getElementById("f-notion-project")?.value||"",
   };
   if(S.modal._preset){
     Object.assign(S.modal._preset, fields);
@@ -1725,8 +1771,6 @@ function saveCase(id){
   const curDesigners = isNew ? toArr(S.modal._preset?.designers) : toArr(S.modal.designers);
   const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
   const curReview    = isNew ? (S.modal._preset?.review||"")     : (S.modal.review||"");
-  const prevNotionProject = isNew ? "" : (S.modal.notionProject||"");
-      const prevDeadline = isNew ? "" : (S.modal.deadline||"");
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
@@ -1740,14 +1784,11 @@ function saveCase(id){
     note:document.getElementById("f-note").value,
     emailLink:"",
     review:curReview,
-    notionProject:document.getElementById("f-notion-project")?.value.trim()||"",
-    notionPageId: isNew ? "" : (S.modal.notionPageId||""),
   };
-  const deadlineChanged = !isNew && c.deadline !== prevDeadline;
-      const shouldSyncNotion = c.notionProject && (isNew || c.notionProject !== prevNotionProject || deadlineChanged);
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
-  saveCase_db(c, shouldSyncNotion);
+  saveCase_db(c);
+  saveProjectLinks(c.market); // sync links to project_progress (shared with Timeline)
   S.modal=null; S.parseText=""; S.parseStatus="";
   render();
 }
