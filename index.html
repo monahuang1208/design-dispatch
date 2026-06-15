@@ -75,7 +75,6 @@ td{padding:9px 12px;vertical-align:middle}
 .deadline.warn{color:var(--yellow)}
 .deadline.urgent{color:var(--red)}
 .deadline.none{color:var(--text3)}
-@keyframes pulse-bg{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* ── BADGE ── */
 .badge{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
@@ -226,21 +225,21 @@ const STATUS_STYLE = {
   "擱置":   {bg:"#FEF9E7",text:"#D4AC0D",dot:"#D4AC0D",border:"#D4AC0D"},
 };
 const TYPE_COLORS = ["#6C63FF","#FF6584","#43BCCD","#F9844A","#4CC9F0","#F72585","#7209B7","#3A0CA3","#4361EE","#4895EF","#E76F51","#2A9D8F"];
-// ── Named color map (overrides positional) ──
 const TYPE_COLOR_MAP = {
-  "V1":           "#666666",  // 灰黑
-  "Revision":     "#666666",  // 灰黑
-  "Presentation": "#666666",  // 灰黑
-  "M1":           "#2A9D8F",  // 綠（原JPG）
-  "Revised Maker":"#2A9D8F",  // 綠（原JPG）
-  "KV":           "#FF6584",  // 粉（原Revision）
-  "Moodboard":    "#FF6584",  // 粉（原Revision）
-  "Check Info":   "#43BCCD",  // 藍綠（原M1）
-  "Pkg Layout":   "#43BCCD",  // 藍綠（原M1）
-  "care card":    "#43BCCD",  // 藍綠（原M1）
-  "JPG":          "#4361EE",  // 靛藍（原care card）
-  "Note":         "#E76F51",  // 橘（不變）
+  "V1":           "#666666",
+  "Revision":     "#666666",
+  "Presentation": "#666666",
+  "M1":           "#2A9D8F",
+  "Revised Maker":"#2A9D8F",
+  "KV":           "#FF6584",
+  "Moodboard":    "#FF6584",
+  "Check Info":   "#43BCCD",
+  "Pkg Layout":   "#43BCCD",
+  "care card":    "#43BCCD",
+  "JPG":          "#4361EE",
+  "Note":         "#E76F51",
 };
+
 function typeColor(t,types){ return TYPE_COLOR_MAP[t] || TYPE_COLORS[types ? types.indexOf(t) % TYPE_COLORS.length : 0] || "#888"; }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function today(){ return new Date().toISOString().slice(0,10); }
@@ -279,21 +278,28 @@ async function loadCases(){
   if(error){ console.error("loadCases",error); return []; }
   return (data||[]).map(dbToCase);
 }
-async function saveCase_db(c){
+async function saveCase_db(c, syncToNotion=true){
   const row=caseToDb(c);
   const {error}=await db.from("cases").upsert(row,{onConflict:"id"});
   if(error) console.error("saveCase_db",error);
+  if(c.notionProject && syncToNotion){
+    fetch("https://lczpbtkoxsvlsucbqoxp.supabase.co/functions/v1/sync-to-notion",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw"},
+      body:JSON.stringify({id:c.id,notionProject:c.notionProject,notionPageId:c.notionPageId||"",date:c.date,jobTypes:c.jobTypes,note:c.note,designers:c.designers,sales:c.sales,deadline:c.deadline,market:c.market})
+    }).then(r=>r.json()).then(d=>{
+      if(d.pageId&&d.pageId!==c.notionPageId){const idx=S.cases.findIndex(x=>x.id===c.id);if(idx>=0)S.cases[idx].notionPageId=d.pageId;}
+    }).catch(e=>console.error("notion sync error",e));
+  }
 }
 async function deleteCaseDb(id){
   const {error}=await db.from("cases").delete().eq("id",id);
   if(error) console.error("deleteCaseDb",error);
 }
-
-// Project links (shared with Timeline via project_progress)
 async function loadProjectLinks(projectName){
   if(!projectName) return;
   if(!S.projectLinks) S.projectLinks={};
-  if(S.projectLinks[projectName]!==undefined) return; // cached
+  if(S.projectLinks[projectName]!==undefined) return;
   const {data,error}=await db.from("project_progress")
     .select("meeting_link,discussion_link,brief_link")
     .eq("project_name",projectName)
@@ -311,27 +317,51 @@ async function onMarketChange(val){
     S.projectLinks[val]=(!error&&data)?data:{};
   }
   const lk=S.projectLinks[val]||{};
-  const ml=document.getElementById("f-meeting-link");
-  const dl=document.getElementById("f-discussion-link");
-  const bl=document.getElementById("f-brief-link");
-  if(ml) ml.value=lk.meeting_link||"";
-  if(dl) dl.value=lk.discussion_link||"";
-  if(bl) bl.value=lk.brief_link||"";
+  ["meeting","discussion","brief"].forEach(k=>{
+    const el=document.getElementById("f-"+k+"-link");
+    if(el) el.value=lk[k+"_link"]||"";
+  });
+  render();
 }
 async function saveProjectLinks(projectName){
   if(!projectName) return;
   const ml=document.getElementById("f-meeting-link")?.value.trim()||null;
   const dl=document.getElementById("f-discussion-link")?.value.trim()||null;
   const bl=document.getElementById("f-brief-link")?.value.trim()||null;
+  // also read from S.projectLinks in case input not in DOM
+  const cached=S.projectLinks[projectName]||{};
+  const finalMl=ml!==null?ml:cached.meeting_link||null;
+  const finalDl=dl!==null?dl:cached.discussion_link||null;
+  const finalBl=bl!==null?bl:cached.brief_link||null;
   const {error}=await db.from("project_progress").upsert({
     project_name:projectName,
-    meeting_link:ml, discussion_link:dl, brief_link:bl,
+    meeting_link:finalMl, discussion_link:finalDl, brief_link:finalBl,
     updated_at:new Date().toISOString()
   },{onConflict:"project_name"});
   if(!error){
     if(!S.projectLinks) S.projectLinks={};
-    S.projectLinks[projectName]={meeting_link:ml,discussion_link:dl,brief_link:bl};
+    S.projectLinks[projectName]={meeting_link:finalMl,discussion_link:finalDl,brief_link:finalBl};
   }
+}
+function editLinkField(fieldId){
+  if(!S.editingLinks) S.editingLinks={};
+  S.editingLinks[fieldId]=true;
+  render();
+}
+function shortUrl(url){
+  try{ const u=new URL(url); return u.hostname+(u.pathname.length>1?u.pathname.substring(0,20)+"…":""); }
+  catch(e){ return url.substring(0,30)+"…"; }
+}
+function renderLinkField(fieldKey,val,placeholder,icon){
+  const inputId="f-"+fieldKey+"-link";
+  const isEditing=!val||(S.editingLinks&&S.editingLinks[fieldKey]);
+  if(!isEditing){
+    return `<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg)">
+      <a href="${val}" target="_blank" style="flex:1;font-size:12px;color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${icon} ${shortUrl(val)}</a>
+      <button onclick="editLinkField('${fieldKey}')" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:.5;padding:2px 4px" title="修改">✏️</button>
+    </div>`;
+  }
+  return `<input type="url" id="${inputId}" value="${val||""}" placeholder="${icon} ${placeholder}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg);width:100%"/>`;
 }
 
 // Vacations
@@ -415,6 +445,8 @@ function caseToDb(c){
     email_link:c.emailLink||null,
     designer_status:c.designerStatus||null,
     review:c.review||null,
+    notion_project:c.notionProject||null,
+    notion_page_id:c.notionPageId||null,
   };
 }
 function dbToCase(r){
@@ -427,6 +459,8 @@ function dbToCase(r){
     emailLink:r.email_link||"",
     designerStatus:r.designer_status||{},
     review:r.review||"",
+    notionProject:r.notion_project||"",
+    notionPageId:r.notion_page_id||"",
   };
 }
 
@@ -659,7 +693,6 @@ let S = {
   settings: { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES },
   vacations: [],
   freeRows: [],
-  projectLinks: {},  // cache: market → {meeting_link, discussion_link, brief_link}
   view: "list",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   reviewFilter: {market:"",designer:"",jobType:""},
@@ -672,6 +705,8 @@ let S = {
   editingVacIdx: null, // index of vacation being inline-edited
   parseText: "",
   parseStatus: "",
+  projectLinks: {},
+  editingLinks: {},
 };
 
 function filtered(){
@@ -745,7 +780,7 @@ function renderList(cases){
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
         <td>
           <div style="display:flex;flex-direction:column;gap:2px">
-            ${c.deadline?`<span style="font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:${{ok:'var(--green)',warn:'var(--yellow)',urgent:'var(--red)',none:'#aaa'}[deadlineStatus(c.deadline)]||'#aaa'}">${c.deadline}</span>`:""}
+            ${c.deadline?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:#888">${c.deadline}</span>`:""}
             ${showDlPill?dlPill(c.deadline):""}
           </div>
         </td>
@@ -1051,7 +1086,6 @@ function renderExcel(cases){
       ${todayBtn}
     </div>
   </div>`;
-
   return `<div class="excel-wrap">
     ${nav}
     <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 160px)">
@@ -1422,6 +1456,19 @@ function renderModal(){
       <div class="form-row">
         <div class="fg-modal"><label>截止時間 <span style="font-weight:400;color:#aaa">（如：中午前、17:00）</span></label><input type="text" id="f-deadline-time" placeholder="選填，如：中午前、EOD、17:00" value="${c.deadlineTime||""}"/></div>
       </div>
+      <div class="form-row single">
+        <div class="fg-modal">
+          <label>📎 Notion 專案 <span style="font-weight:400;color:#aaa">（選填，同名自動歸入同一專案）</span></label>
+          <input type="text" id="f-notion-project" list="notion-project-list"
+            placeholder="例：SBJ Holiday 2027 I&amp;II"
+            value="${c.notionProject||""}"
+            style="width:100%"/>
+          <datalist id="notion-project-list">
+            ${[...new Set(S.cases.map(x=>x.notionProject).filter(Boolean))].map(p=>`<option value="${p}"/>`).join("")}
+          </datalist>
+          ${c.notionPageId?`<div style="margin-top:4px;font-size:10px;color:#27AE60">✅ 已連結 Notion 頁面</div>`:`<div style="margin-top:4px;font-size:10px;color:#aaa">填寫後，下次同步時自動建立或更新 Notion 專案</div>`}
+        </div>
+      </div>
       <div class="form-row">
         <div class="fg-modal"><label>市場</label><select id="f-market" onchange="onMarketChange(this.value)">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
         <div class="fg-modal"><label>案件種類（可複選）</label>${msJobTypes()}</div>
@@ -1450,11 +1497,11 @@ function renderModal(){
       </div>
       <div class="form-row single">
         <div class="fg-modal">
-          <label>🔗 連結 <span style="font-weight:400;color:#aaa">（同步至時間軸 — 依市場儲存）</span></label>
+          <label>🔗 連結 <span style="font-weight:400;color:#aaa;font-size:11px">（同步至時間軸 — 依市場儲存）</span></label>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
-            <input type="url" id="f-meeting-link" placeholder="🎥 會議連結" value="${(S.projectLinks[c.market]||{}).meeting_link||""}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg)"/>
-            <input type="url" id="f-discussion-link" placeholder="💬 討論板" value="${(S.projectLinks[c.market]||{}).discussion_link||""}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg)"/>
-            <input type="url" id="f-brief-link" placeholder="📄 Brief" value="${(S.projectLinks[c.market]||{}).brief_link||""}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg)"/>
+            ${renderLinkField("meeting", (S.projectLinks[c.market]||{}).meeting_link||"", "會議連結", "🎥")}
+            ${renderLinkField("discussion", (S.projectLinks[c.market]||{}).discussion_link||"", "討論板", "💬")}
+            ${renderLinkField("brief", (S.projectLinks[c.market]||{}).brief_link||"", "Brief", "📄")}
           </div>
         </div>
       </div>
@@ -1524,29 +1571,26 @@ function renderVacationModal(){
           </div>
           <div style="display:flex;gap:8px">
             <button onclick="saveEditVacation('${designer}',${i})"
-              style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:7px;padding:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">儲存</button>
+              style="flex:1;background:var(--accent);color:#fff;border:n              style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:7px;padding:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">儲存</button>
             <button onclick="S.editingVacIdx=null;render()"
               style="background:#F0F0F0;color:#666;border:none;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit">取消</button>
-            <button onclick="removeVacation('${designer}',${i})"
+            <button onclick="deleteVacation('${designer}',${i})"
               style="background:#FFF0EE;color:#E74C3C;border:none;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer;font-family:inherit">刪除</button>
           </div>
         </div>`;
       }
-
-      // Normal display row
-      const hoursLabel=v.hours?` · ${v.hours}h`:"";
       return `<div onclick="S.editingVacIdx=${i};render()"
         style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#FFF8E1;border-radius:7px;margin-bottom:6px;font-size:12px;cursor:pointer;transition:background .15s"
         onmouseover="this.style.background='#FFF0CC'" onmouseout="this.style.background='#FFF8E1'">
         <span style="background:${col};color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;flex-shrink:0">${v.vacType||"特休"}</span>
-        <span style="flex:1">${v.start} ～ ${v.end}${hoursLabel}</span>
+        <span style="font-weight:600;flex-shrink:0">${v.start}${v.end!==v.start?` ～ ${v.end}`:""}</span>
         ${v.note?`<span style="color:#aaa;font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.note}</span>`:""}
         <span style="color:#ccc;font-size:11px;flex-shrink:0">✏️</span>
       </div>`;
     }).join("");
 
   return `<div class="overlay" onclick="if(event.target===this)closeVacationModal()">
-    <div class="modal" style="max-width:420px">
+    <div class="modal" style="max-width:400px">
       <h3>🏖 ${designer} 的休假設定</h3>
       <div style="margin-bottom:14px">${existingRows}</div>
       <div style="background:#F8F8FF;border-radius:10px;padding:14px;border:1.5px solid #E0E0F5">
@@ -1561,14 +1605,14 @@ function renderVacationModal(){
           </div>
           <div>
             <label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">時數</label>
-            <select id="vac-hours-sel" onchange="syncVacHours()" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
+            <select id="vac-hours-sel" onchange="toggleNewVacHours()" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
               <option value="">整天</option>
               <option value="4">半天（4h）</option>
               <option value="2">2 小時</option>
               <option value="custom">自訂小時數</option>
             </select>
-            <input type="number" id="vac-hours-custom" min="0.5" max="8" step="0.5" placeholder="小時數"
-              style="display:none;width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
+            <input type="number" id="vac-hours-custom" min="0.5" max="8" step="0.5"
+              placeholder="小時數" style="display:none;width:100%;margin-top:4px;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none"/>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -1585,90 +1629,105 @@ function renderVacationModal(){
         </div>
         <button onclick="addVacation('${designer}')" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">確認新增</button>
       </div>
-      <div class="modal-btns" style="margin-top:14px">
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
         <button class="btn-cancel" onclick="closeVacationModal()">關閉</button>
       </div>
     </div>
   </div>`;
 }
-function toggleVacHours(){
-  const t=document.getElementById("vac-type")?.value;
-  const wrap=document.getElementById("vac-hours-wrap");
-  if(wrap) wrap.style.opacity=t==="特休"?"0.4":"1";
-}
-function toggleEditVacHours(i){
-  const sel=document.getElementById(`edit-vac-hours-sel-${i}`);
-  const custom=document.getElementById(`edit-vac-hours-custom-${i}`);
-  if(!sel||!custom) return;
-  custom.style.display=sel.value==="custom"?"block":"none";
-}
-function syncVacHours(){
-  const sel=document.getElementById("vac-hours-sel");
-  const custom=document.getElementById("vac-hours-custom");
-  if(!sel||!custom) return;
-  custom.style.display=sel.value==="custom"?"block":"none";
-}
-function renderFilter(){
-  if(S.view==="stats"||S.view==="settings"||S.view==="excel"||S.view==="review") return "";
-  const f=S.filter;
-  const s=S.settings;
-  const hasFilter=Object.values(f).some(Boolean);
-  function sel(key,opts){
-    return `<select onchange="setFilter('${key}',this.value)">
-      <option value="">全部</option>
-      ${opts.map(o=>`<option${o===f[key]?" selected":""}>${o}</option>`).join("")}
-    </select>`;
-  }
-  return `<div class="filter-bar">
-    <div class="fg"><label>市場</label>${sel("market",s.markets)}</div>
-    <div class="fg"><label>設計師</label>${sel("designer",allDesigners(s.designers))}</div>
-    <div class="fg"><label>種類</label>${sel("jobType",s.jobTypes)}</div>
-    <div class="fg"><label>狀態</label>${sel("status",STATUSES)}</div>
-    <div class="fg"><label>業務</label>${sel("sales",s.sales)}</div>
-    <span class="filter-count">${filtered().length} 筆</span>
-    ${hasFilter?`<button class="btn-clear-filter" onclick="clearFilter()">✕ 清除</button>`:""}
-  </div>`;
-}
 
-// ── MAIN RENDER ────────────────────────────────────────────────
+// ── RENDER ─────────────────────────────────────────────────────
+const VIEWS=[
+  {key:"list",label:"列表"},
+  {key:"excel",label:"總覧表"},
+  {key:"stats",label:"統計"},
+  {key:"review",label:"回顧"},
+  {key:"settings",label:"設定"},
+];
+
 function render(){
-  const cases=filtered();
-  const VIEWS=[
-    {key:"list",label:"☰ 列表"},
-    {key:"excel",label:"📊 總覽表"},
-    {key:"stats",label:"📈 統計"},
-    {key:"review",label:"🔍 回顧"},
-    {key:"settings",label:"⚙️ 設定"},
-  ];
+  const main=document.getElementById("app");
+  if(!main) return;
 
-  let viewHtml="";
-  if(S.view==="list")         viewHtml=renderList(cases);
-  else if(S.view==="excel")   viewHtml=renderExcel(cases);
-  else if(S.view==="stats")   viewHtml=renderStats();
-  else if(S.view==="review")  viewHtml=renderReview();
-  else                        viewHtml=renderSettings();
-
-  // Review badge count
-  const reviewCount=S.cases.filter(c=>c.review).length;
-
-  document.getElementById("app").innerHTML=`
-    <div class="header">
-      <div class="logo">
-        <span class="logo-title">🎨 Design Dispatch</span>
-        <span class="logo-sub">Mona</span>
+  // Timeline tab
+  if(S.view==="timeline"){
+    const reviewCount=S.cases.filter(c=>!c.review&&c.status==="已完成").length;
+    main.innerHTML=`
+      <div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+        <div class="header">
+          <div class="logo"><span class="logo-title">🎨 Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
+          <nav class="nav">
+            <button class="nav-btn" onclick="setView('timeline')" id="nav-timeline" style="${S.view==="timeline"?"background:rgba(255,255,255,.12);color:#fff":""}">🗓 時間軸</button>
+            ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
+          </nav>
+          <div class="hdr-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openNew()">＋ 新增派案</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden">
+          <iframe id="timeline-iframe" src="/timeline.html" style="width:100%;height:100%;border:none" allow="fullscreen"></iframe>
+        </div>
       </div>
-      <nav class="nav">${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}</nav>
+      ${renderModal()}
+      ${renderVacationModal()}`;
+    return;
+  }
+
+  const cases=filtered();
+  const reviewCount=S.cases.filter(c=>!c.review&&c.status==="已完成").length;
+
+  let content="";
+  if(S.view==="list") content=renderList(cases);
+  else if(S.view==="excel") content=renderExcel(cases);
+  else if(S.view==="stats") content=renderStats();
+  else if(S.view==="review") content=renderReview();
+  else if(S.view==="settings") content=renderSettings();
+
+  const showFilter=S.view==="list";
+  const f=S.filter;
+  const markets=S.settings.markets;
+  const types=S.settings.jobTypes;
+  const designers=allDesigners(S.settings.designers);
+  const sales=S.settings.sales;
+  const activeFilters=[f.market,f.designer,f.jobType,f.status,f.sales].filter(Boolean).length;
+
+  const filterBar=showFilter?`<div class="filter-bar">
+    <div class="fg"><label>市場</label><select onchange="setFilter('market',this.value)">
+      <option value="">全部</option>${markets.map(m=>`<option${m===f.market?" selected":""}>${m}</option>`).join("")}
+    </select></div>
+    <div class="fg"><label>設計師</label><select onchange="setFilter('designer',this.value)">
+      <option value="">全部</option>${designers.map(d=>`<option${d===f.designer?" selected":""}>${d}</option>`).join("")}
+    </select></div>
+    <div class="fg"><label>種類</label><select onchange="setFilter('jobType',this.value)">
+      <option value="">全部</option>${types.map(t=>`<option${t===f.jobType?" selected":""}>${t}</option>`).join("")}
+    </select></div>
+    <div class="fg"><label>狀態</label><select onchange="setFilter('status',this.value)">
+      <option value="">全部</option>${STATUSES.map(s=>`<option${s===f.status?" selected":""}>${s}</option>`).join("")}
+    </select></div>
+    <div class="fg"><label>業務</label><select onchange="setFilter('sales',this.value)">
+      <option value="">全部</option>${sales.map(s=>`<option${s===f.sales?" selected":""}>${s}</option>`).join("")}
+    </select></div>
+    <span class="filter-count">${cases.length} 件</span>
+    ${activeFilters?`<button class="btn-clear-filter" onclick="clearFilter()">✕ 清除篩選</button>`:""}
+  </div>`:"";
+
+  main.innerHTML=`
+    <div class="header">
+      <div class="logo"><span class="logo-title">🎨 Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
+      <nav class="nav">
+        <button class="nav-btn" onclick="setView('timeline')" id="nav-timeline">🗓 時間軸</button>
+        ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
+      </nav>
       <div class="hdr-actions">
-        <button class="btn btn-ghost" onclick="exportCSV(filtered())">⬇ CSV</button>
-        <button class="btn btn-ghost" onclick="openExcelExportModal()">📊 Excel</button>
-        <button class="btn btn-primary" onclick="openNew()">＋ 新增派案</button>
+        ${S.view==="list"?`<button class="btn btn-ghost btn-sm" onclick="exportCSV(filtered())">⬇ CSV</button>`:""}
+        ${S.view==="excel"?`<button class="btn btn-ghost btn-sm" onclick="openExcelExportModal()">⬇ Excel</button>`:""}
+        <button class="btn btn-primary btn-sm" onclick="openNew()">＋ 新增派案</button>
       </div>
     </div>
-    ${renderFilter()}
-    <div class="content">${viewHtml}</div>
+    ${filterBar}
+    <div class="content">${content}</div>
     ${renderModal()}
-    ${renderVacationModal()}
-  `;
+    ${renderVacationModal()}`;
 }
 
 // ── ACTIONS ────────────────────────────────────────────────────
@@ -1685,7 +1744,8 @@ function openEdit(id){
     // Normalize legacy single-value fields to arrays
     const normalized={...c, designers:toArr(c.designers||c.designer), jobTypes:toArr(c.jobTypes||c.jobType)};
     S.modal=normalized; S.parseText=""; S.parseStatus="";
-    loadProjectLinks(c.market); // load links for this market (async, re-renders when done)
+    loadProjectLinks(c.market);
+    S.editingLinks={};
     render();
   }
 }
@@ -1708,7 +1768,7 @@ function closeMsDropdownsOnOutside(e){
     document.querySelectorAll(".ms-trigger").forEach(el=>el.classList.remove("open"));
   }
 }
-// ── SYNC MODAL FIELDS before re-render ────────────────────────
+
 function syncModalFields(){
   if(!S.modal) return;
   const reviewEl=document.querySelector("input[name='f-review']:checked");
@@ -1747,30 +1807,22 @@ function toggleModalJobType(name,checked){
   else { S.modal.jobTypes=updated; }
   render();
 }
-
-function syncSalesInput(){
-  const sel=document.getElementById("f-sales-select");
-  // f-sales input removed; sales value read from select only
-}
-
-function checkVacationWarn(){
-  // handled inline in renderModal
-}
-
 function selectReview(val){
   syncModalFields();
-  if(S.modal&&S.modal._preset) S.modal._preset.review=val;
-  else if(S.modal) S.modal.review=val;
+  if(S.modal._preset){ S.modal._preset.review=val; }
+  else if(S.modal){ S.modal.review=val; }
   render();
 }
 
 function saveCase(id){
-  const salesSel=document.getElementById("f-sales-select");
-  const sales=(salesSel&&salesSel.value)||"";
+  syncModalFields();
   const isNew=!id||S.modal._preset;
   const curDesigners = isNew ? toArr(S.modal._preset?.designers) : toArr(S.modal.designers);
   const curJobTypes  = isNew ? toArr(S.modal._preset?.jobTypes)  : toArr(S.modal.jobTypes);
   const curReview    = isNew ? (S.modal._preset?.review||"")     : (S.modal.review||"");
+  const sales=document.getElementById("f-sales-select")?.value||"";
+  const notionProject=document.getElementById("f-notion-project")?.value.trim()||"";
+  const notionPageId=(isNew?"":(S.modal.notionPageId||""));
   const c={
     id:id||uid(),
     date:document.getElementById("f-date").value,
@@ -1782,13 +1834,17 @@ function saveCase(id){
     sales,
     status:document.getElementById("f-status").value,
     note:document.getElementById("f-note").value,
-    emailLink:"",
+    emailLink:isNew?"":(S.modal.emailLink||""),
     review:curReview,
+    notionProject,
+    notionPageId,
+    designerStatus:isNew?{}:(S.modal.designerStatus||{}),
   };
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
   saveCase_db(c);
-  saveProjectLinks(c.market); // sync links to project_progress (shared with Timeline)
+  saveProjectLinks(c.market);
+  S.editingLinks={};
   S.modal=null; S.parseText=""; S.parseStatus="";
   render();
 }
@@ -1810,25 +1866,31 @@ function deleteCase(id){
   render();
 }
 
-// ── THUMBNAIL UPLOAD ───────────────────────────────────────────
-function openThumbUpload(id){
-  const inp=document.createElement("input");
-  inp.type="file"; inp.accept="image/*";
-  inp.onchange=e=>{
-    const file=e.target.files[0];
-    if(!file) return;
-    compressImage(file,dataUrl=>{
-      setThumb(id,dataUrl);
-      render();
-    });
-  };
-  inp.click();
+async function quickDesignerStatus(caseId,designer,nextStatus){
+  const idx=S.cases.findIndex(x=>x.id===caseId);
+  if(idx<0) return;
+  const c={...S.cases[idx]};
+  c.designerStatus={...c.designerStatus,[designer]:nextStatus};
+  S.cases[idx]=c;
+  render();
+  saveCase_db(c);
 }
 
-// ── EMAIL PARSER (rule-based) ──────────────────────────────────
+// ── SETTINGS ACTIONS ───────────────────────────────────────────
+function addMarket(){ const v=document.getElementById("new-market")?.value.trim(); if(!v) return; if(!S.settings.markets.includes(v)) S.settings.markets.push(v); saveSettings(S.settings); render(); }
+function removeMarket(i){ S.settings.markets.splice(i,1); saveSettings(S.settings); render(); }
+function addJobType(){ const v=document.getElementById("new-jobtype")?.value.trim(); if(!v) return; if(!S.settings.jobTypes.includes(v)) S.settings.jobTypes.push(v); saveSettings(S.settings); render(); }
+function removeJobType(i){ S.settings.jobTypes.splice(i,1); saveSettings(S.settings); render(); }
+function addDesigner(group){ const v=document.getElementById(`new-designer-${group}`)?.value.trim(); if(!v) return; if(!S.settings.designers[group]) S.settings.designers[group]=[]; if(!S.settings.designers[group].includes(v)) S.settings.designers[group].push(v); saveSettings(S.settings); render(); }
+function removeDesigner(group,i){ S.settings.designers[group].splice(i,1); saveSettings(S.settings); render(); }
+function addDesignerGroup(){ const v=document.getElementById("new-designer-group")?.value.trim(); if(!v) return; if(!S.settings.designers[v]) S.settings.designers[v]=[]; saveSettings(S.settings); render(); }
+function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(!v) return; if(!S.settings.sales.includes(v)) S.settings.sales.push(v); saveSettings(S.settings); render(); }
+function removeSales(i){ S.settings.sales.splice(i,1); saveSettings(S.settings); render(); }
+function renameSales(i,v){ if(v) S.settings.sales[i]=v; saveSettings(S.settings); }
+
+// ── EMAIL PARSER ───────────────────────────────────────────────
 function parseEmail(){
-  const text=document.getElementById("email-paste")?.value||"";
-  S.parseText=text;
+  const text=S.parseText||"";
   if(!text.trim()){ S.parseStatus="請貼上信件內容"; render(); return; }
   const txt=text.toUpperCase();
   const result={};
@@ -1860,6 +1922,33 @@ function parseEmail(){
 function openVacationModal(designer){ S.vacationModal={designer}; S.editingVacIdx=null; render(); }
 function closeVacationModal(){ S.vacationModal=null; S.editingVacIdx=null; render(); }
 
+function toggleNewVacHours(){
+  const sel=document.getElementById("vac-hours-sel");
+  const custom=document.getElementById("vac-hours-custom");
+  if(sel&&custom){ custom.style.display=sel.value==="custom"?"block":"none"; }
+}
+function toggleEditVacHours(i){
+  const sel=document.getElementById(`edit-vac-hours-sel-${i}`);
+  const custom=document.getElementById(`edit-vac-hours-custom-${i}`);
+  if(sel&&custom){ custom.style.display=sel.value==="custom"?"block":"none"; }
+}
+
+async function addVacation(designer){
+  const start=document.getElementById("vac-start")?.value;
+  const end=document.getElementById("vac-end")?.value;
+  const vacType=document.getElementById("vac-type")?.value||"特休";
+  const hoursSel=document.getElementById("vac-hours-sel")?.value||"";
+  const hoursCustom=document.getElementById("vac-hours-custom")?.value||"";
+  const note=document.getElementById("vac-note")?.value.trim()||"";
+  if(!start||!end){ alert("請選擇日期"); return; }
+  if(end<start){ alert("結束日期不能早於開始日期"); return; }
+  let hours=null;
+  if(hoursSel==="custom"&&hoursCustom) hours=parseFloat(hoursCustom);
+  else if(hoursSel) hours=parseFloat(hoursSel);
+  const v=await addVacationDb(designer,start,end,vacType,hours,note);
+  if(v){ S.vacations.push(v); render(); }
+}
+
 async function saveEditVacation(designer,idx){
   const list=S.vacations.filter(v=>v.designer===designer);
   const target=list[idx];
@@ -1874,169 +1963,80 @@ async function saveEditVacation(designer,idx){
   if(end<start){ alert("結束日期不能早於開始日期"); return; }
   let hours=null;
   if(hoursSel==="custom"&&hoursCustom) hours=parseFloat(hoursCustom);
-  else if(hoursSel&&hoursSel!=="") hours=parseFloat(hoursSel);
-  const updated={...target, start, end, vacType, hours, note};
-  await updateVacationDb(target._dbId, updated);
-  S.vacations=S.vacations.map(v=>v===target?updated:v);
+  else if(hoursSel) hours=parseFloat(hoursSel);
+  const globalIdx=S.vacations.indexOf(target);
+  const updated={...target,start,end,vacType,hours,note};
+  S.vacations[globalIdx]=updated;
+  await updateVacationDb(target._dbId,{start,end,vacType,hours,note});
   S.editingVacIdx=null;
   render();
 }
-async function addVacation(designer){
-  const start=document.getElementById("vac-start")?.value;
-  const end=document.getElementById("vac-end")?.value;
-  const vacType=document.getElementById("vac-type")?.value||"特休";
-  const hoursSel=document.getElementById("vac-hours-sel")?.value||"";
-  const hoursCustom=document.getElementById("vac-hours-custom")?.value||"";
-  const note=document.getElementById("vac-note")?.value.trim()||"";
-  let hours=null;
-  if(hoursSel==="custom"&&hoursCustom) hours=parseFloat(hoursCustom);
-  else if(hoursSel&&hoursSel!=="") hours=parseFloat(hoursSel);
-  if(!start||!end){ alert("請選擇開始與結束日期"); return; }
-  if(end<start){ alert("結束日期不能早於開始日期"); return; }
-  const row=await addVacationDb(designer,start,end,vacType,hours,note);
-  if(row) S.vacations=[...S.vacations,row];
-  render();
-}
-async function removeVacation(designer,idx){
+
+async function deleteVacation(designer,idx){
+  if(!confirm("確定刪除此休假記錄？")) return;
   const list=S.vacations.filter(v=>v.designer===designer);
   const target=list[idx];
   if(!target) return;
+  const globalIdx=S.vacations.indexOf(target);
+  S.vacations.splice(globalIdx,1);
   await removeVacationDb(target._dbId);
-  S.vacations=S.vacations.filter(v=>v!==target);
+  S.editingVacIdx=null;
   render();
 }
-
-// ── QUICK STATUS TOGGLE ────────────────────────────────────────
-function quickStatus(id,newStatus){
-  const c=S.cases.find(x=>x.id===id);
-  if(!c) return;
-  const updated={...c,status:newStatus};
-  S.cases=S.cases.map(x=>x.id===id?updated:x);
-  saveCase_db(updated);
-  render();
-}
-
-// Per-designer status toggle (only updates designerStatus map)
-// Also syncs main status: if all designers = 已完成 → status=已完成; if any active → status=進行中
-// 狀態循環：進行中 → 已閱 → 已完成 → 擱置 → 進行中
-function quickDesignerStatus(id,designer,newStatus){
-  const c=S.cases.find(x=>x.id===id);
-  if(!c) return;
-  const designerStatus={...(c.designerStatus||{}), [designer]:newStatus};
-  // Derive main status from all designers' statuses (已閱 不計入主狀態判斷，視同進行中)
-  const allDesignersOfCase=toArr(c.designers);
-  const allStatuses=allDesignersOfCase.map(d=>designerStatus[d]||c.status);
-  let mainStatus=c.status;
-  if(allStatuses.every(s=>s==="已完成")) mainStatus="已完成";
-  else if(allStatuses.some(s=>s==="進行中"||s==="已閱")) mainStatus="進行中";
-  else mainStatus="擱置";
-  const updated={...c,designerStatus,status:mainStatus};
-  S.cases=S.cases.map(x=>x.id===id?updated:x);
-  saveCase_db(updated);
-  render();
-}
-
-// ── SETTINGS ACTIONS ───────────────────────────────────────────
-function saveAndRender(){ saveSettings(S.settings); render(); }
-
-function removeMarket(i){ S.settings.markets.splice(i,1); saveAndRender(); }
-function addMarket(){ const v=document.getElementById("new-market")?.value.trim(); if(v&&!S.settings.markets.includes(v)){ S.settings.markets.push(v); saveAndRender(); } }
-
-function removeJobType(i){ S.settings.jobTypes.splice(i,1); saveAndRender(); }
-function addJobType(){ const v=document.getElementById("new-jobtype")?.value.trim(); if(v&&!S.settings.jobTypes.includes(v)){ S.settings.jobTypes.push(v); saveAndRender(); } }
-
-function removeDesigner(group,i){ S.settings.designers[group].splice(i,1); saveAndRender(); }
-function addDesigner(group){ const v=document.getElementById(`new-designer-${group}`)?.value.trim(); if(v&&!S.settings.designers[group].includes(v)){ S.settings.designers[group].push(v); saveAndRender(); } }
-function addDesignerGroup(){ const v=document.getElementById("new-designer-group")?.value.trim(); if(v&&!S.settings.designers[v]){ S.settings.designers[v]=[]; saveAndRender(); } }
-
-function removeSales(i){ S.settings.sales.splice(i,1); saveAndRender(); }
-function addSales(){ const v=document.getElementById("new-sales")?.value.trim(); if(v&&!S.settings.sales.includes(v)){ S.settings.sales.push(v); saveAndRender(); } }
-function renameSales(i,newName){ if(newName&&newName!==S.settings.sales[i]){ S.settings.sales[i]=newName; saveSettings(S.settings); } }
 
 // ── FREE ROW ACTIONS ───────────────────────────────────────────
-async function addFreeRow(){
+function addFreeRow(){
   const row={id:uid(),label:"備注列",cells:{}};
-  S.freeRows=[...S.freeRows,row];
-  await saveFreeRowDb(row);
+  S.freeRows.push(row);
+  saveFreeRowDb(row);
   render();
 }
-async function deleteFreeRow(id){
-  if(!confirm("確定刪除此列？")) return;
+function deleteFreeRow(id){
   S.freeRows=S.freeRows.filter(r=>r.id!==id);
-  await deleteFreeRowDb(id);
+  deleteFreeRowDb(id);
   render();
 }
-async function saveFreeRowLabel(id,label){
-  S.freeRows=S.freeRows.map(r=>r.id===id?{...r,label:label||"備注列"}:r);
+function saveFreeRowLabel(id,label){
   const row=S.freeRows.find(r=>r.id===id);
-  if(row) await saveFreeRowDb(row);
+  if(row){ row.label=label; saveFreeRowDb(row); }
 }
-// cells[date] 新格式：[{text:"...", struck:false}, ...]
-// 舊格式（字串）自動忽略，清空重來
-async function saveFreeCell(rowId, date, lineIdx, text){
-  S.freeRows=S.freeRows.map(r=>{
-    if(r.id!==rowId) return r;
-    const cells={...r.cells};
-    const lines=Array.isArray(cells[date])?[...cells[date]]:[];
-    if(lineIdx<lines.length){
-      if(text) lines[lineIdx]={...lines[lineIdx],text};
-      else lines.splice(lineIdx,1);
-    } else if(text){
-      lines.push({text,struck:false});
-    }
-    cells[date]=lines;
-    return {...r,cells};
-  });
+function addFreeCellLine(rowId,date){
   const row=S.freeRows.find(r=>r.id===rowId);
-  if(row) await saveFreeRowDb(row);
-}
-
-async function addFreeCellLine(rowId, date){
-  S.freeRows=S.freeRows.map(r=>{
-    if(r.id!==rowId) return r;
-    const cells={...r.cells};
-    const lines=Array.isArray(cells[date])?[...cells[date]]:[];
-    lines.push({text:"",struck:false});
-    cells[date]=lines;
-    return {...r,cells};
-  });
-  const row=S.freeRows.find(r=>r.id===rowId);
-  if(row) await saveFreeRowDb(row);
+  if(!row) return;
+  if(!row.cells[date]) row.cells[date]=[];
+  row.cells[date].push({text:"",struck:false});
+  saveFreeRowDb(row);
   render();
 }
-
-async function toggleFreeCellStrike(rowId, date, lineIdx){
-  S.freeRows=S.freeRows.map(r=>{
-    if(r.id!==rowId) return r;
-    const cells={...r.cells};
-    const lines=Array.isArray(cells[date])?[...cells[date]]:[];
-    if(lines[lineIdx]) lines[lineIdx]={...lines[lineIdx],struck:!lines[lineIdx].struck};
-    cells[date]=lines;
-    return {...r,cells};
-  });
+function saveFreeCell(rowId,date,idx,text){
   const row=S.freeRows.find(r=>r.id===rowId);
-  if(row) await saveFreeRowDb(row);
-  render();
+  if(!row) return;
+  if(!row.cells[date]) row.cells[date]=[];
+  if(!row.cells[date][idx]) row.cells[date][idx]={text:"",struck:false};
+  row.cells[date][idx].text=text;
+  saveFreeRowDb(row);
 }
-
-// ── LOADING SCREEN ─────────────────────────────────────────────
-function renderLoading(){
-  document.getElementById("app").innerHTML=`
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;color:#888">
-      <div style="font-size:32px">🎨</div>
-      <div style="font-size:14px;font-weight:600">Design Dispatch 載入中…</div>
-      <div style="width:200px;height:3px;background:#eee;border-radius:2px;overflow:hidden">
-        <div style="width:40%;height:100%;background:var(--accent);border-radius:2px;animation:loading-bar 1.2s ease-in-out infinite"></div>
-      </div>
-    </div>
-    <style>@keyframes loading-bar{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}</style>`;
+function toggleFreeCellStrike(rowId,date,idx){
+  const row=S.freeRows.find(r=>r.id===rowId);
+  if(!row||!row.cells[date]||!row.cells[date][idx]) return;
+  row.cells[date][idx].struck=!row.cells[date][idx].struck;
+  saveFreeRowDb(row);
+  render();
 }
 
 // ── INIT ───────────────────────────────────────────────────────
 async function initApp(){
-  renderLoading();
+  document.getElementById("app").innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;color:#888">
+      <div style="font-size:24px">🎨</div>
+      <div style="font-size:14px;font-weight:600">載入中...</div>
+      <div style="width:200px;height:3px;background:#eee;border-radius:2px;overflow:hidden">
+        <div style="height:100%;background:var(--accent);border-radius:2px;animation:load-bar 1.5s ease infinite" id="load-bar"></div>
+      </div>
+    </div>
+    <style>@keyframes load-bar{0%{width:0%}50%{width:70%}100%{width:100%}}</style>`;
   try {
-    const [cases, settings, vacations, freeRows] = await Promise.all([
+    const [cases,settings,vacations,freeRows]=await Promise.all([
       loadCases(), loadSettings(), loadVacations(), loadFreeRows()
     ]);
     S.cases=cases;
@@ -2046,13 +2046,14 @@ async function initApp(){
     cleanupOldThumbs();
     render();
   } catch(e) {
-    console.error("initApp failed",e);
+    console.error("initApp error",e);
     document.getElementById("app").innerHTML=`<div style="padding:40px;text-align:center;color:#E74C3C">
-      <div style="font-size:24px;margin-bottom:12px">⚠️ 連線失敗</div>
+      <div style="font-size:20px;margin-bottom:12px">❌ 載入失敗</div>
       <div style="font-size:13px;color:#888">無法連接到資料庫，請檢查網路後重新整理</div>
     </div>`;
   }
 }
+
 initApp();
 </script>
 </body>
