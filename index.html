@@ -309,6 +309,7 @@ async function loadProjectLinks(projectName){
 }
 async function onMarketChange(val){
   if(!val) return;
+  syncModalFields(); // 先存目前欄位（包含 notionProject）再 re-render
   if(!S.projectLinks) S.projectLinks={};
   if(S.projectLinks[val]===undefined){
     const {data,error}=await db.from("project_progress")
@@ -1779,6 +1780,7 @@ function syncModalFields(){
     market: document.getElementById("f-market")?.value,
     status: document.getElementById("f-status")?.value,
     note: document.getElementById("f-note")?.value,
+    notionProject: document.getElementById("f-notion-project")?.value||"",
     sales: document.getElementById("f-sales-select")?.value||"",
     review: reviewEl?reviewEl.value:(S.modal._preset?.review||S.modal.review||""),
   };
@@ -1871,9 +1873,14 @@ async function quickDesignerStatus(caseId,designer,nextStatus){
   if(idx<0) return;
   const c={...S.cases[idx]};
   c.designerStatus={...c.designerStatus,[designer]:nextStatus};
+  // 如果所有設計師都已完成，自動將 case-level status 升為已完成
+  const allDesignersInCase=toArr(c.designers);
+  const allDone=allDesignersInCase.length>0&&allDesignersInCase.every(d=>(c.designerStatus[d]||"進行中")==="已完成");
+  if(allDone) c.status="已完成";
+  else if(c.status==="已完成"&&!allDone) c.status="進行中"; // 有人取消完成則回退
   S.cases[idx]=c;
   render();
-  saveCase_db(c);
+  saveCase_db(c, false); // 僅更新狀態，不重新 sync Notion
 }
 
 // ── SETTINGS ACTIONS ───────────────────────────────────────────
