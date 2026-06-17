@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>🎨 Design Dispatch Mona</title>
+<title>Design Dispatch Mona</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -27,18 +27,18 @@
 body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
 
 /* ── HEADER ── */
-.header{background:var(--navy);padding:0 24px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.3)}
+.header{background:#fff;padding:0 24px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;position:sticky;top:0;z-index:100;box-shadow:0 1px 0 var(--border)}
 .logo{padding:14px 0;margin-right:auto;display:flex;align-items:baseline;gap:10px}
-.logo-title{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.3px}
-.logo-sub{font-size:10px;color:#6666aa;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase}
+.logo-title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase}
 .nav{display:flex;gap:2px}
-.nav-btn{background:none;color:#6666aa;border:none;border-radius:6px 6px 0 0;padding:12px 14px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s;letter-spacing:.3px;white-space:nowrap}
-.nav-btn.active{background:rgba(255,255,255,.12);color:#fff}
-.nav-btn:hover:not(.active){color:#aaaadd}
+.nav-btn{background:none;color:var(--text2);border:none;border-bottom:2px solid transparent;padding:12px 14px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s;letter-spacing:.3px;white-space:nowrap}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-btn:hover:not(.active){color:var(--text)}
 .hdr-actions{display:flex;gap:6px;padding:6px 0}
 .btn{border:none;border-radius:7px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
-.btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.18)}
-.btn-ghost:hover{background:rgba(255,255,255,.18)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:#F5F5F8}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-primary:hover{background:#3251dd}
 .btn-danger{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-family:inherit;padding:3px 6px}
@@ -111,13 +111,14 @@ td{padding:9px 12px;vertical-align:middle}
 .excel-th-date.today-col{background:#EEF0FF;color:var(--accent)}
 .excel-th-designer{background:#F0F0F8;position:sticky;left:0;z-index:5;padding:7px 10px;font-weight:700;font-size:11px;color:var(--text);min-width:90px;white-space:nowrap;border-right:2px solid #D0D0E8}
 .excel-cell{vertical-align:top;padding:4px;width:calc((100% - 90px)/5);background:var(--surface);position:relative}
-.excel-cell.today-col{background:#FFFBEA}
+.excel-cell.today-col{background:var(--surface)}
 .excel-chip{border-radius:5px;padding:3px 6px;margin-bottom:3px;cursor:pointer;transition:box-shadow .1s;border-left:3px solid transparent}
 .excel-chip:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .excel-chip-title{font-size:10px;font-weight:700;color:var(--text);line-height:1.3}
 .excel-chip-meta{font-size:9px;color:var(--text3);margin-top:1px}
-.excel-add-btn{display:block;width:100%;background:none;border:1px dashed #D0D0E0;border-radius:5px;padding:4px;font-size:10px;color:var(--text3);cursor:pointer;font-family:inherit;text-align:center;margin-top:2px}
-.excel-add-btn:hover{background:#F5F5FF;color:var(--accent);border-color:var(--accent)}
+.excel-add-btn{display:none;width:100%;background:none;border:none;border-radius:5px;padding:4px;font-size:10px;color:var(--text3);cursor:pointer;font-family:inherit;text-align:center;margin-top:2px}
+.excel-cell:hover .excel-add-btn{display:block}
+.excel-add-btn:hover{background:#F5F5FF;color:var(--accent)}
 
 /* ── STATS ── */
 .stats{display:flex;flex-direction:column;gap:20px}
@@ -358,11 +359,11 @@ function renderLinkField(fieldKey,val,placeholder,icon){
   const isEditing=!val||(S.editingLinks&&S.editingLinks[fieldKey]);
   if(!isEditing){
     return `<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg)">
-      <a href="${val}" target="_blank" style="flex:1;font-size:12px;color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${icon} ${shortUrl(val)}</a>
-      <button onclick="editLinkField('${fieldKey}')" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:.5;padding:2px 4px" title="修改">✏️</button>
+      <a href="${val}" target="_blank" style="flex:1;font-size:12px;color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${shortUrl(val)}</a>
+      <button onclick="editLinkField('${fieldKey}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:2px 4px" title="修改">編輯</button>
     </div>`;
   }
-  return `<input type="url" id="${inputId}" value="${val||""}" placeholder="${icon} ${placeholder}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg);width:100%"/>`;
+  return `<input type="url" id="${inputId}" value="${val||""}" placeholder="${placeholder}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:12px;color:var(--text);background:var(--bg);width:100%"/>`;
 }
 
 // Vacations
@@ -775,7 +776,7 @@ function renderList(cases){
       // 逾期但已完成：不顯示逾期標示，只顯示截止日期
       const isOverdue=c.deadline&&c.deadline<todayStr;
       const showDlPill=!(isDone&&isOverdue);
-      const reviewBadge=c.review?`<span class="review-badge review-${c.review==="良好"?"good":c.review==="混亂"?"chaos":"check"}">${c.review==="良好"?"✅":c.review==="混亂"?"⚠️":"🔴"} ${c.review}</span>`:"";
+      const reviewBadge=c.review?`<span class="review-badge review-${c.review==="良好"?"good":c.review==="混亂"?"chaos":"check"}">${c.review}</span>`:"";
       return `
       <tr style="${rowBg}">
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:#666;white-space:nowrap">${c.date}</td>
@@ -984,7 +985,7 @@ function renderExcel(cases){
 
       if(onVacation){
         return `<td class="excel-cell${isToday?" today-col":""}" style="background:#E3F2FD;position:relative">
-          <div style="text-align:center;padding:8px 4px;color:#1976D2;font-size:11px;font-weight:700">🏖 特休</div>
+          <div style="text-align:center;padding:8px 4px;color:#1976D2;font-size:11px;font-weight:700">特休</div>
         </td>`;
       }
 
@@ -993,7 +994,7 @@ function renderExcel(cases){
       const otherVacBadge=otherVacs.length
         ? otherVacs.map(v=>{
             const col=v.vacType==="病假"?"#F9844A":"#43BCCD";
-            return `<div style="background:${col}22;border:1px solid ${col};border-radius:4px;padding:2px 5px;font-size:9px;color:${col};font-weight:700;margin-bottom:2px">${v.vacType==="病假"?"🤒":"📋"} ${v.vacType}${v.hours?` ${v.hours}h`:""}</div>`;
+            return `<div style="background:${col}22;border:1px solid ${col};border-radius:4px;padding:2px 5px;font-size:9px;color:${col};font-weight:700;margin-bottom:2px">${v.vacType}${v.hours?` ${v.hours}h`:""}</div>`;
           }).join("")
         : "";
 
@@ -1034,7 +1035,8 @@ function renderExcel(cases){
         // Per-designer status cycle: 進行中 → 已閱 → 已完成 → 擱置 → 進行中
         const statusCycle={"進行中":"已閱","已閱":"已完成","已完成":"擱置","擱置":"進行中"};
         const nextDStatus=statusCycle[dStatus]||"進行中";
-        const statusIcon=dStatus==="已完成"?"✅":dStatus==="擱置"?"⏸":dStatus==="已閱"?"👁":"▶";
+        const dotColor=dStatus==="已完成"?"#27AE60":dStatus==="擱置"?"#D4AC0D":dStatus==="已閱"?"#90A4AE":null;
+        const statusIcon=dotColor?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor}"></span>`:"▶";
         return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
             <span style="font-size:10px;font-weight:700;color:${textColor};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
@@ -1273,9 +1275,9 @@ function renderStats(){
 
 // ── REVIEW VIEW ────────────────────────────────────────────────
 const REVIEW_COLS=[
-  {val:"良好",icon:"✅",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},
-  {val:"混亂",icon:"⚠️",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},
-  {val:"檢討",icon:"🔴",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},
+  {val:"良好",icon:"",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},
+  {val:"混亂",icon:"",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},
+  {val:"檢討",icon:"",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},
 ];
 function renderReview(){
   const f=S.reviewFilter;
@@ -1311,7 +1313,7 @@ function renderReview(){
       <div class="k-card" style="border-left-color:${col.border}" onclick="openEdit('${c.id}')">
         <div class="k-card-top">
           <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
-          <span class="review-badge review-${col.val==="良好"?"good":col.val==="混亂"?"chaos":"check"}">${col.icon}</span>
+          <span class="review-badge review-${col.val==="良好"?"good":col.val==="混亂"?"chaos":"check"}">${col.val}</span>
         </div>
         <div class="k-card-name">${arrLabel(c.designers)}</div>
         <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
@@ -1320,7 +1322,6 @@ function renderReview(){
       </div>`).join("");
     return `<div class="k-col">
       <div class="k-col-hdr">
-        <span style="font-size:16px">${col.icon}</span>
         <span class="k-col-title" style="color:${col.text}">${col.val}</span>
         <span class="k-col-count" style="background:${col.bg};color:${col.text}">${colCases.length}</span>
       </div>
@@ -1484,11 +1485,10 @@ function renderModal(){
         <div class="fg-modal"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
         <div class="fg-modal"><label>案件回顧 <span style="font-weight:400;color:#aaa">（選填）</span></label>
           <div style="display:flex;gap:6px;margin-top:4px">
-            ${[{val:"良好",icon:"✅",cls:"good"},{val:"混亂",icon:"⚠️",cls:"chaos"},{val:"檢討",icon:"🔴",cls:"check"},{val:"",icon:"—",cls:"none"}].map(r=>`
-            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex:1">
+            ${[{val:"良好",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},{val:"混亂",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},{val:"檢討",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},{val:"",bg:"#F5F5F5",border:"#DDD",text:"#999"}].map(r=>`
+            <label style="cursor:pointer;flex:1">
               <input type="radio" name="f-review" value="${r.val}" ${(c.review||"")===(r.val)?"checked":""} style="display:none" onchange=""/>
-              <div onclick="selectReview('${r.val}')" style="padding:6px 0;width:100%;text-align:center;border-radius:7px;border:1.5px solid ${(c.review||"")===(r.val)?"var(--accent)":"#E8E8F0"};background:${(c.review||"")===(r.val)?"#EEF0FF":"#FAFAFA"};font-size:13px;cursor:pointer;transition:all .15s">${r.icon}</div>
-              <span style="font-size:9px;color:${(c.review||"")===(r.val)?"var(--accent)":"#aaa"};font-weight:700">${r.val||"無"}</span>
+              <div onclick="selectReview('${r.val}')" style="padding:7px 4px;width:100%;text-align:center;border-radius:7px;border:1.5px solid ${(c.review||"")===(r.val)?r.border:"transparent"};background:${r.bg};font-size:11px;font-weight:700;color:${r.text};cursor:pointer;transition:all .15s">${r.val||"無"}</div>
             </label>`).join("")}
           </div>
         </div>
@@ -1538,8 +1538,8 @@ function renderVacationModal(){
             <div>
               <label style="font-size:10px;font-weight:700;color:#888;display:block;margin-bottom:3px">假別</label>
               <select id="edit-vac-type-${i}" style="width:100%;padding:6px 8px;border-radius:6px;border:1.5px solid #ddd;font-size:12px;font-family:inherit;outline:none">
-                <option value="特休" ${(v.vacType||"特休")==="特休"?"selected":""}>🌴 特休</option>
-                <option value="病假" ${v.vacType==="病假"?"selected":""}>🤒 病假</option>
+                <option value="特休" ${(v.vacType||"特休")==="特休"?"selected":""}>特休</option>
+                <option value="病假" ${v.vacType==="病假"?"selected":""}>病假</option>
                 <option value="其他" ${v.vacType==="其他"?"selected":""}>📋 其他</option>
               </select>
             </div>
@@ -1599,8 +1599,8 @@ function renderVacationModal(){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div><label style="font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px">假別</label>
             <select id="vac-type" style="width:100%;padding:7px 9px;border-radius:7px;border:1.5px solid #E8E8F0;font-size:13px;font-family:inherit;outline:none">
-              <option value="特休">🌴 特休</option>
-              <option value="病假">🤒 病假</option>
+              <option value="特休">特休</option>
+              <option value="病假">病假</option>
               <option value="其他">📋 其他</option>
             </select>
           </div>
@@ -1656,9 +1656,9 @@ function render(){
     main.innerHTML=`
       <div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
         <div class="header">
-          <div class="logo"><span class="logo-title">🎨 Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
+          <div class="logo"><span class="logo-title">Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
           <nav class="nav">
-            <button class="nav-btn" onclick="setView('timeline')" id="nav-timeline" style="${S.view==="timeline"?"background:rgba(255,255,255,.12);color:#fff":""}">🗓 時間軸</button>
+            <button class="nav-btn${S.view==="timeline"?" active":""}" onclick="setView('timeline')" id="nav-timeline">時間軸</button>
             ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
           </nav>
           <div class="hdr-actions">
@@ -1714,9 +1714,9 @@ function render(){
 
   main.innerHTML=`
     <div class="header">
-      <div class="logo"><span class="logo-title">🎨 Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
+      <div class="logo"><span class="logo-title">Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
       <nav class="nav">
-        <button class="nav-btn" onclick="setView('timeline')" id="nav-timeline">🗓 時間軸</button>
+        <button class="nav-btn${S.view==="timeline"?" active":""}" onclick="setView('timeline')" id="nav-timeline">時間軸</button>
         ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
       </nav>
       <div class="hdr-actions">
@@ -1842,6 +1842,10 @@ function saveCase(id){
     notionPageId,
     designerStatus:isNew?{}:(S.modal.designerStatus||{}),
   };
+  // 若 case-level status 設為已完成，所有設計師狀態一併升為已完成
+  if(c.status==="已完成"){
+    toArr(c.designers).forEach(d=>{ c.designerStatus[d]="已完成"; });
+  }
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
   saveCase_db(c);
