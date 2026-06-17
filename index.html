@@ -769,7 +769,7 @@ function renderList(cases){
   const sorted=[...undone,...done];
 
   const rows = sorted.length===0
-    ? `<tr><td colspan="9" class="empty">尚無派案記錄 — 點右上角「＋ 新增派案」開始</td></tr>`
+    ? `<tr><td colspan="9" class="empty">尚無派案記錄 — 點右上角「+ New Case」開始</td></tr>`
     : sorted.map(c=>{
       const isDone=c.status==="已完成";
       const rowBg=isDone?"background:#F5F5F5":"";
@@ -1012,13 +1012,13 @@ function renderExcel(cases){
         const isRead=dStatus==="已閱";
         // chip colours based on per-designer status
         let chipBg, chipBorder;
-        if(isDone){ chipBg="#F0F0F0"; chipBorder="#BBBBBB"; }
-        else if(isHold){ chipBg="#F5E87A"; chipBorder="#B8960C"; }
-        else if(isRead){ chipBg="#b8d4f0"; chipBorder="#1a5f8a"; }
+        if(isDone){ chipBg="#F0F0F0"; chipBorder=tc; }
+        else if(isHold){ chipBg="#F5E87A"; chipBorder=tc; }
+        else if(isRead){ chipBg="#b8d4f0"; chipBorder=tc; }
         else {
           const dlSt=deadlineStatus(c.deadline);
           chipBg=dlSt==="urgent"?"#FFF0EE":dlSt==="warn"?"#FFFDE7":"#fff";
-          chipBorder=dlSt==="urgent"?"#E74C3C":dlSt==="warn"?"#D4AC0D":tc;
+          chipBorder=tc;
         }
         const strikeStyle=isDone?"text-decoration:line-through;opacity:0.45":"";
         const textColor=isDone?"#AAAAAA":isRead?"#1a5f8a":""+tc;
@@ -1035,9 +1035,9 @@ function renderExcel(cases){
         const nextDStatus=statusCycle[dStatus]||"進行中";
         const dotColor=dStatus==="已完成"?"#BDBDBD":dStatus==="擱置"?"#D4AC0D":dStatus==="已閱"?"#90A4AE":null;
         const statusIcon=dotColor?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor}"></span>`:"▶";
-        return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
+        return `<div class="excel-chip" style="background:${chipBg};border-left:3px solid ${chipBorder};margin-bottom:3px;padding:4px 6px 4px 10px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
-            <span style="font-size:10px;font-weight:700;color:${textColor};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
+            <span style="font-size:10px;font-weight:500;color:${textColor};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
             <button onclick="event.stopPropagation();quickDesignerStatus('${c.id}','${designer}','${nextDStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
           </div>
           ${subHtml}
@@ -1447,18 +1447,18 @@ function renderModal(){
 
   return `<div class="overlay" onclick="if(event.target===this)closeModal()">
     <div class="modal" onclick="closeMsDropdownsOnOutside(event)">
-      <h3>${isNew?"＋ 新增派案":"✏️ 編輯案件"}</h3>
+      <h3>${isNew?"+ New Case":"✏️ Edit Case"}</h3>
       <div id="vac-warn">${vacationWarn}</div>
       <div class="form-row">
-        <div class="fg-modal"><label>派案日期</label><input type="date" id="f-date" value="${c.date}"/></div>
-        <div class="fg-modal"><label>截止日期</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
+        <div class="fg-modal"><label>Dispatch Date</label><input type="date" id="f-date" value="${c.date}"/></div>
+        <div class="fg-modal"><label>Deadline</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
       </div>
       <div class="form-row">
-        <div class="fg-modal"><label>截止時間 <span style="font-weight:400;color:#aaa">（如：中午前、17:00）</span></label><input type="text" id="f-deadline-time" placeholder="選填，如：中午前、EOD、17:00" value="${c.deadlineTime||""}"/></div>
+        <div class="fg-modal"><label>Time <span style="font-weight:400;color:#aaa">(e.g. noon, 17:00)</span></label><input type="text" id="f-deadline-time" placeholder="Optional, e.g. noon, EOD, 17:00" value="${c.deadlineTime||""}"/></div>
       </div>
       <div class="form-row single">
         <div class="fg-modal">
-          <label>📎 Notion 專案 <span style="font-weight:400;color:#aaa">（選填，同名自動歸入同一專案）</span></label>
+          <label>📎 Notion Project <span style="font-weight:400;color:#aaa">(optional — same name groups into one project)</span></label>
           <input type="text" id="f-notion-project" list="notion-project-list"
             placeholder="例：SBJ Holiday 2027 I&amp;II"
             value="${c.notionProject||""}"
@@ -1469,19 +1469,32 @@ function renderModal(){
           ${c.notionPageId?`<div style="margin-top:4px;font-size:10px;color:#27AE60">✅ 已連結 Notion 頁面</div>`:`<div style="margin-top:4px;font-size:10px;color:#aaa">填寫後，下次同步時自動建立或更新 Notion 專案</div>`}
         </div>
       </div>
-      <div class="form-row">
-        <div class="fg-modal"><label>市場</label><select id="f-market" onchange="onMarketChange(this.value)">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
-        <div class="fg-modal"><label>案件種類（可複選）</label>${msJobTypes()}</div>
-      </div>
-      <div class="form-row">
-        <div class="fg-modal"><label>設計師（可複選）</label>${msDesigners()}</div>
-        <div class="fg-modal"><label>業務來源</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="fg-modal"><label>Market</label><select id="f-market" onchange="onMarketChange(this.value)">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>Type</label>${msJobTypes()}</div>
+        <div class="fg-modal"><label>Account</label>
           <select id="f-sales-select">${["",  ...sales].map(s=>`<option${s===c.sales?" selected":""}>${s}</option>`).join("")}</select>
         </div>
       </div>
+      <div class="form-row single">
+        <div class="fg-modal"><label>Designer</label>${msDesigners()}</div>
+      </div>
+      <div class="form-row single">
+        <div class="fg-modal"><label>Notes</label><textarea id="f-note" placeholder="Project brief, references...">${c.note||""}</textarea></div>
+      </div>
+      <div class="form-row single">
+        <div class="fg-modal">
+          <label>🔗 Links <span style="font-weight:400;color:#aaa;font-size:11px">(synced to timeline — saved per market)</span></label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            ${renderLinkField("meeting", (S.projectLinks[c.market]||{}).meeting_link||"", "Meeting link", "🎥")}
+            ${renderLinkField("discussion", (S.projectLinks[c.market]||{}).discussion_link||"", "Discussion board", "💬")}
+            ${renderLinkField("brief", (S.projectLinks[c.market]||{}).brief_link||"", "Brief", "📄")}
+          </div>
+        </div>
+      </div>
       <div class="form-row">
-        <div class="fg-modal"><label>狀態</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
-        <div class="fg-modal"><label>案件回顧 <span style="font-weight:400;color:#aaa">（選填）</span></label>
+        <div class="fg-modal"><label>Status</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="fg-modal"><label>Review <span style="font-weight:400;color:#aaa">(optional)</span></label>
           <div style="display:flex;gap:6px;margin-top:4px">
             ${[{val:"良好",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},{val:"混亂",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},{val:"檢討",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},{val:"",bg:"#F5F5F5",border:"#DDD",text:"#999"}].map(r=>`
             <label style="cursor:pointer;flex:1">
@@ -1491,23 +1504,10 @@ function renderModal(){
           </div>
         </div>
       </div>
-      <div class="form-row single">
-        <div class="fg-modal"><label>備註</label><textarea id="f-note" placeholder="專案說明、參考資訊...">${c.note||""}</textarea></div>
-      </div>
-      <div class="form-row single">
-        <div class="fg-modal">
-          <label>🔗 連結 <span style="font-weight:400;color:#aaa;font-size:11px">（同步至時間軸 — 依市場儲存）</span></label>
-          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
-            ${renderLinkField("meeting", (S.projectLinks[c.market]||{}).meeting_link||"", "會議連結", "🎥")}
-            ${renderLinkField("discussion", (S.projectLinks[c.market]||{}).discussion_link||"", "討論板", "💬")}
-            ${renderLinkField("brief", (S.projectLinks[c.market]||{}).brief_link||"", "Brief", "📄")}
-          </div>
-        </div>
-      </div>
       <div class="modal-btns">
-        ${!isNew?`<button class="btn-danger" style="margin-right:auto;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;background:#FFF0EE;color:var(--red);border:1.5px solid #FFCDD2" onclick="deleteCaseFromModal('${c.id}')">🗑 刪除案件</button>`:""}
-        <button class="btn-cancel" onclick="closeModal()">取消</button>
-        <button class="btn-save" onclick="saveCase('${c.id}')">${isNew?"新增派案":"儲存變更"}</button>
+        ${!isNew?`<button class="btn-danger" style="margin-right:auto;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;background:#FFF0EE;color:var(--red);border:1.5px solid #FFCDD2" onclick="deleteCaseFromModal('${c.id}')">🗑 Delete</button>`:""}
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save" onclick="saveCase('${c.id}')">${isNew?"Add Case":"Save"}</button>
       </div>
     </div>
   </div>`;
@@ -1637,11 +1637,11 @@ function renderVacationModal(){
 
 // ── RENDER ─────────────────────────────────────────────────────
 const VIEWS=[
-  {key:"list",label:"列表"},
-  {key:"excel",label:"總覧表"},
-  {key:"stats",label:"統計"},
-  {key:"review",label:"回顧"},
-  {key:"settings",label:"設定"},
+  {key:"list",label:"List"},
+  {key:"excel",label:"Board"},
+  {key:"stats",label:"Stats"},
+  {key:"review",label:"Review"},
+  {key:"settings",label:"Settings"},
 ];
 
 function render(){
@@ -1656,11 +1656,11 @@ function render(){
         <div class="header">
           <div class="logo"><span class="logo-title">Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
           <nav class="nav">
-            <button class="nav-btn${S.view==="timeline"?" active":""}" onclick="setView('timeline')" id="nav-timeline">時間軸</button>
+            <button class="nav-btn${S.view==="timeline"?" active":""}" onclick="setView('timeline')" id="nav-timeline">Timeline</button>
             ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
           </nav>
           <div class="hdr-actions">
-            <button class="btn btn-ghost btn-sm" onclick="openNew()">＋ 新增派案</button>
+            <button class="btn btn-ghost btn-sm" onclick="openNew()">+ New Case</button>
           </div>
         </div>
         <div style="flex:1;overflow:hidden">
@@ -1714,13 +1714,13 @@ function render(){
     <div class="header">
       <div class="logo"><span class="logo-title">Design Dispatch</span><span class="logo-sub">Mona Studio</span></div>
       <nav class="nav">
-        <button class="nav-btn${S.view==="timeline"?" active":""}" onclick="setView('timeline')" id="nav-timeline">時間軸</button>
+        <button class="nav-btn${S.view==="timeline"?" active":""}" onclick="setView('timeline')" id="nav-timeline">Timeline</button>
         ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
       </nav>
       <div class="hdr-actions">
         ${S.view==="list"?`<button class="btn btn-ghost btn-sm" onclick="exportCSV(filtered())">⬇ CSV</button>`:""}
         ${S.view==="excel"?`<button class="btn btn-ghost btn-sm" onclick="openExcelExportModal()">⬇ Excel</button>`:""}
-        <button class="btn btn-primary btn-sm" onclick="openNew()">＋ 新增派案</button>
+        <button class="btn btn-primary btn-sm" onclick="openNew()">+ New Case</button>
       </div>
     </div>
     ${filterBar}
