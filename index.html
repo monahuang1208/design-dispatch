@@ -1285,15 +1285,15 @@ function renderReview(){
   // Filter bar
   function sel(key,opts,label){
     return `<div class="fg"><label>${label}</label><select onchange="S.reviewFilter['${key}']=this.value;render()">
-      <option value="">全部</option>
+      <option value="">All</option>
       ${opts.map(o=>`<option${o===f[key]?" selected":""}>${o}</option>`).join("")}
     </select></div>`;
   }
   const filterBar=`<div class="filter-bar" style="margin-bottom:14px">
-    ${sel("market",markets,"市場")}
-    ${sel("designer",designers,"設計師")}
-    ${sel("jobType",types,"種類")}
-    ${(f.market||f.designer||f.jobType)?`<button class="btn-clear-filter" onclick="S.reviewFilter={market:'',designer:'',jobType:''};render()">✕ 清除</button>`:""}
+    ${sel("market",markets,"Market")}
+    ${sel("designer",designers,"Designer")}
+    ${sel("jobType",types,"Type")}
+    ${(f.market||f.designer||f.jobType)?`<button class="btn-clear-filter" onclick="S.reviewFilter={market:'',designer:'',jobType:''};render()">✕ Clear</button>`:""}
   </div>`;
 
   const reviewedCases=S.cases.filter(c=>{
@@ -1308,13 +1308,12 @@ function renderReview(){
     const colCases=reviewedCases.filter(c=>c.review===col.val);
     const cards=colCases.map(c=>`
       <div class="k-card" style="border-left-color:${col.border}" onclick="openEdit('${c.id}')">
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${toArr(c.jobTypes).map(j=>`<span style="display:inline-block;background:${typeColor(j,types)}22;color:${typeColor(j,types)};border-radius:5px;padding:3px 8px;font-size:13px;font-weight:700;letter-spacing:.2px">${j}</span>`).join("")}</div>
         <div class="k-card-top">
-          <div style="display:flex;flex-wrap:wrap;gap:3px">${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join("")}</div>
+          <div class="k-card-name">${arrLabel(c.designers)}</div>
           <span class="review-badge review-${col.val==="良好"?"good":col.val==="混亂"?"chaos":"check"}">${col.val}</span>
         </div>
-        <div class="k-card-name">${arrLabel(c.designers)}</div>
         <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
-        ${c.deadline?`<div style="margin-top:5px">${dlPill(c.deadline)}</div>`:""}
         ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
       </div>`).join("");
     return `<div class="k-col">
@@ -1650,7 +1649,7 @@ function render(){
 
   // Timeline tab
   if(S.view==="timeline"){
-    const reviewCount=S.cases.filter(c=>!c.review&&c.status==="已完成").length;
+    const reviewCount=S.cases.filter(c=>c.review).length;
     main.innerHTML=`
       <div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
         <div class="header">
@@ -1673,7 +1672,7 @@ function render(){
   }
 
   const cases=filtered();
-  const reviewCount=S.cases.filter(c=>!c.review&&c.status==="已完成").length;
+  const reviewCount=S.cases.filter(c=>c.review).length;
 
   let content="";
   if(S.view==="list") content=renderList(cases);
@@ -1691,23 +1690,23 @@ function render(){
   const activeFilters=[f.market,f.designer,f.jobType,f.status,f.sales].filter(Boolean).length;
 
   const filterBar=showFilter?`<div class="filter-bar">
-    <div class="fg"><label>市場</label><select onchange="setFilter('market',this.value)">
-      <option value="">全部</option>${markets.map(m=>`<option${m===f.market?" selected":""}>${m}</option>`).join("")}
+    <div class="fg"><label>Market</label><select onchange="setFilter('market',this.value)">
+      <option value="">All</option>${markets.map(m=>`<option${m===f.market?" selected":""}>${m}</option>`).join("")}
     </select></div>
-    <div class="fg"><label>設計師</label><select onchange="setFilter('designer',this.value)">
-      <option value="">全部</option>${designers.map(d=>`<option${d===f.designer?" selected":""}>${d}</option>`).join("")}
+    <div class="fg"><label>Designer</label><select onchange="setFilter('designer',this.value)">
+      <option value="">All</option>${designers.map(d=>`<option${d===f.designer?" selected":""}>${d}</option>`).join("")}
     </select></div>
-    <div class="fg"><label>種類</label><select onchange="setFilter('jobType',this.value)">
-      <option value="">全部</option>${types.map(t=>`<option${t===f.jobType?" selected":""}>${t}</option>`).join("")}
+    <div class="fg"><label>Type</label><select onchange="setFilter('jobType',this.value)">
+      <option value="">All</option>${types.map(t=>`<option${t===f.jobType?" selected":""}>${t}</option>`).join("")}
     </select></div>
-    <div class="fg"><label>狀態</label><select onchange="setFilter('status',this.value)">
-      <option value="">全部</option>${STATUSES.map(s=>`<option${s===f.status?" selected":""}>${s}</option>`).join("")}
+    <div class="fg"><label>Status</label><select onchange="setFilter('status',this.value)">
+      <option value="">All</option>${STATUSES.map(s=>`<option${s===f.status?" selected":""}>${s}</option>`).join("")}
     </select></div>
-    <div class="fg"><label>業務</label><select onchange="setFilter('sales',this.value)">
-      <option value="">全部</option>${sales.map(s=>`<option${s===f.sales?" selected":""}>${s}</option>`).join("")}
+    <div class="fg"><label>Account</label><select onchange="setFilter('sales',this.value)">
+      <option value="">All</option>${sales.map(s=>`<option${s===f.sales?" selected":""}>${s}</option>`).join("")}
     </select></div>
-    <span class="filter-count">${cases.length} 件</span>
-    ${activeFilters?`<button class="btn-clear-filter" onclick="clearFilter()">✕ 清除篩選</button>`:""}
+    <span class="filter-count">${cases.length} cases</span>
+    ${activeFilters?`<button class="btn-clear-filter" onclick="clearFilter()">✕ Clear</button>`:""}
   </div>`:"";
 
   main.innerHTML=`
