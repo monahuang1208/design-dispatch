@@ -794,8 +794,8 @@ function renderList(cases){
         <td>${reviewBadge}</td>
         <td style="white-space:nowrap">
           ${c.emailLink?`<a href="${c.emailLink}" target="_blank" style="color:var(--accent);font-size:11px;margin-right:6px">📧</a>`:""}
-          <button class="td-actions btn-edit" onclick="openEdit('${c.id}')">編輯</button>
-          <button class="td-actions btn-del" onclick="deleteCase('${c.id}')">刪除</button>
+          <button onclick="openEdit('${c.id}')" title="Edit" style="background:none;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;font-size:13px;line-height:1;color:#999;transition:background .1s" onmouseover="this.style.background='#EEF0FF';this.style.color='var(--accent)'" onmouseout="this.style.background='none';this.style.color='#999'">✏</button>
+          <button onclick="deleteCase('${c.id}')" title="Delete" style="background:none;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;font-size:13px;line-height:1;color:#999;transition:background .1s" onmouseover="this.style.background='#FFF0EE';this.style.color='var(--red)'" onmouseout="this.style.background='none';this.style.color='#999'">🗑</button>
         </td>
       </tr>`;}).join("");
   return `<div class="table-wrap"><table>
