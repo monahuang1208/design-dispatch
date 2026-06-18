@@ -309,8 +309,12 @@ async function loadProjectLinks(projectName){
   render();
 }
 async function onMarketChange(val){
+  syncModalFields();
+  render();
+}
+async function onNotionProjectChange(val){
+  syncModalFields();
   if(!val) return;
-  syncModalFields(); // 先存目前欄位（包含 notionProject）再 re-render
   if(!S.projectLinks) S.projectLinks={};
   if(S.projectLinks[val]===undefined){
     const {data,error}=await db.from("project_progress")
@@ -318,11 +322,6 @@ async function onMarketChange(val){
       .eq("project_name",val).single();
     S.projectLinks[val]=(!error&&data)?data:{};
   }
-  const lk=S.projectLinks[val]||{};
-  ["meeting","discussion","brief"].forEach(k=>{
-    const el=document.getElementById("f-"+k+"-link");
-    if(el) el.value=lk[k+"_link"]||"";
-  });
   render();
 }
 async function saveProjectLinks(projectName){
@@ -1462,6 +1461,7 @@ function renderModal(){
           <input type="text" id="f-notion-project" list="notion-project-list"
             placeholder="例：SBJ Holiday 2027 I&amp;II"
             value="${c.notionProject||""}"
+            onchange="onNotionProjectChange(this.value)"
             style="width:100%"/>
           <datalist id="notion-project-list">
             ${[...new Set(S.cases.map(x=>x.notionProject).filter(Boolean))].map(p=>`<option value="${p}"/>`).join("")}
@@ -1484,11 +1484,11 @@ function renderModal(){
       </div>
       <div class="form-row single">
         <div class="fg-modal">
-          <label>🔗 Links <span style="font-weight:400;color:#aaa;font-size:11px">(synced to timeline — saved per market)</span></label>
+          <label>🔗 Links <span style="font-weight:400;color:#aaa;font-size:11px">(synced to timeline — saved per Notion Project)</span></label>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
-            ${renderLinkField("meeting", (S.projectLinks[c.market]||{}).meeting_link||"", "Meeting link", "🎥")}
-            ${renderLinkField("discussion", (S.projectLinks[c.market]||{}).discussion_link||"", "Discussion board", "💬")}
-            ${renderLinkField("brief", (S.projectLinks[c.market]||{}).brief_link||"", "Brief", "📄")}
+            ${renderLinkField("meeting", (S.projectLinks[c.notionProject||""]||{}).meeting_link||"", "Meeting link", "🎥")}
+            ${renderLinkField("discussion", (S.projectLinks[c.notionProject||""]||{}).discussion_link||"", "Discussion board", "💬")}
+            ${renderLinkField("brief", (S.projectLinks[c.notionProject||""]||{}).brief_link||"", "Brief", "📄")}
           </div>
         </div>
       </div>
@@ -1743,7 +1743,7 @@ function openEdit(id){
     // Normalize legacy single-value fields to arrays
     const normalized={...c, designers:toArr(c.designers||c.designer), jobTypes:toArr(c.jobTypes||c.jobType)};
     S.modal=normalized; S.parseText=""; S.parseStatus="";
-    loadProjectLinks(c.market);
+    loadProjectLinks(c.notionProject);
     S.editingLinks={};
     render();
   }
@@ -1847,7 +1847,7 @@ function saveCase(id){
   if(id&&!isNew){ S.cases=S.cases.map(x=>x.id===id?c:x); }
   else { S.cases=[c,...S.cases]; }
   saveCase_db(c);
-  saveProjectLinks(c.market);
+  saveProjectLinks(c.notionProject);
   S.editingLinks={};
   S.modal=null; S.parseText=""; S.parseStatus="";
   render();
