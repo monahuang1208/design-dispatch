@@ -16,28 +16,11 @@
     --text:     #1a1817;
     --text-mid: #5c5852;
     --text-dim: #9b9590;
-    --today:    #dc2626;
-    --label-w:  230px;
-    --header-h: 44px;
-
-    /* Pastel segment colors */
-    --c-jpg:           #9dd4b4;
-    --c-v1:            #b8a8e8;
-    --c-presentation:  #f0bc88;
-    --c-kv:            #88c8e8;
-    --c-moodboard:     #e8b8d4;
-    --c-revision:      #e8d888;
-    --c-m1:            #e8a0b8;
-    --c-revised-maker: #b8a8d8;
-    --c-other:         #bcc4cc;
-
-    /* Pastel phase colors */
-    --ph-初步討論: #a8c8f5;
-    --ph-草稿:     #f5d888;
-    --ph-合成:     #c0b0f5;
-    --ph-修改:     #f5b898;
-    --ph-上版:     #8cd4b0;
-    --ph-其他:     #b8c4cc;
+    --today:    #4361EE;
+    --row-h:    74px;
+    --hdr-band: 19px;
+    --ph-band:  40px;
+    --bar-pad:  7px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -49,74 +32,165 @@
 
   /* ── Top bar ── */
   #topbar {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 8px 16px; background: var(--surface);
-    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 7px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 30;
   }
-  #topbar h1 { font-size: 14px; font-weight: 700; margin-right: 4px; }
+  #topbar h1 { font-size: 14px; font-weight: 700; margin-right: 2px; }
   .btn {
-    padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+    padding: 4px 11px; border-radius: 6px; border: 1px solid var(--border);
     background: var(--surface); color: var(--text-mid); cursor: pointer;
     font-size: 12px; font-family: inherit; transition: all .15s; white-space: nowrap;
   }
-  .btn:hover { background: var(--surface2); border-color: #ccc9c2; color: var(--text); }
+  .btn:hover { background: var(--surface2); color: var(--text); border-color: #ccc9c2; }
   .btn.active { background: #1a1817; border-color: #1a1817; color: #fff; }
   .sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
-  .zoom-label { color: var(--text-dim); font-size: 11px; }
+  .grp-label { font-size: 11px; color: var(--text-dim); }
   #status-msg { margin-left: auto; font-size: 11px; color: var(--text-dim); }
 
-  /* ── Legend ── */
-  #legend {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 5px 16px; background: var(--surface);
-    border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
-  .legend-grp { display: flex; align-items: center; gap: 6px; }
-  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-  .legend-sep { width: 1px; height: 14px; background: var(--border); }
-  .legend-lbl { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-right: 2px; }
+  /* ── Main scroll ── */
+  #main-scroll { flex: 1; overflow: auto; position: relative; }
+  #content-wrap { position: relative; }
 
-  /* ── Timeline ── */
-  #timeline-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
-  #header-scroll { overflow: hidden; flex-shrink: 0; }
-  #header-inner  { display: flex; }
-  #header-label {
-    width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
-    background: var(--surface); border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border); height: var(--header-h);
-    display: flex; align-items: center; padding: 0 12px;
-    font-size: 11px; color: var(--text-dim); font-weight: 600; letter-spacing: .03em;
-  }
-  #header-dates {
-    flex: 1; height: var(--header-h); position: relative; overflow: hidden;
-    border-bottom: 1px solid var(--border); background: var(--surface);
-  }
-  #header-dates-inner { position: absolute; top: 0; left: 0; height: 100%; will-change: transform; }
-
-  #body-scroll { flex: 1; overflow: auto; display: flex; min-height: 0; }
-
-  /* ── Label column ── */
-  #label-col {
-    width: var(--label-w); min-width: var(--label-w); flex-shrink: 0;
-    background: var(--surface); border-right: 1px solid var(--border);
-    position: sticky; left: 0; z-index: 10;
-  }
-  .row-label {
-    display: flex; align-items: center; padding: 0 8px; gap: 4px;
-    border-bottom: 1px solid var(--border); transition: background .12s;
-    cursor: pointer;
-  }
-  .row-label:hover { background: var(--surface2); }
-
-  /* Group divider in label col */
-  .divider-label {
-    height: 24px; display: flex; align-items: center;
-    padding: 0 12px; background: var(--surface2);
+  /* ── Date header (sticky) ── */
+  #date-hdr {
+    position: sticky; top: 0; z-index: 15;
+    display: flex; background: var(--surface);
     border-bottom: 1px solid var(--border);
-    font-size: 10px; font-weight: 700; color: var(--text-dim);
-    letter-spacing: .06em; text-transform: uppercase;
+    height: 40px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
   }
+  .day-cell {
+    flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-right: 1px solid var(--border);
+    font-size: 10px; color: var(--text-dim); position: relative;
+    gap: 1px;
+  }
+  .day-cell.today   { color: var(--today); font-weight: 700; }
+  .day-cell.weekend { color: #bbb5ac; }
+  .day-cell.mon     { border-right-color: #d4cfc8; }
+  .day-cell .day-date { font-size: 10px; }
+  .day-cell .day-dow  { font-size: 9px; opacity: .75; }
+  .day-cell .today-dot {
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--today);
+  }
+
+  /* ── Rows ── */
+  #rows-wrap { position: relative; }
+  .proj-row {
+    height: var(--row-h); position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .proj-row:nth-child(even) { background: rgba(0,0,0,.013); }
+
+  /* Grid lines */
+  .grid-line {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: rgba(0,0,0,.055); pointer-events: none;
+  }
+  .grid-line.mon { background: rgba(0,0,0,.11); }
+
+  /* Today line */
+  .today-line {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--today); opacity: .5;
+    pointer-events: none; z-index: 6;
+  }
+
+  /* ── Project bar ── */
+  .proj-bar {
+    position: absolute;
+    top: var(--bar-pad);
+    height: calc(var(--hdr-band) + var(--ph-band));
+    border-radius: 6px; overflow: hidden;
+    z-index: 3; box-shadow: 0 1px 4px rgba(0,0,0,.10);
+  }
+
+  /* Name header band */
+  .bar-header {
+    height: var(--hdr-band);
+    display: flex; align-items: center; gap: 0;
+    padding: 0 8px; overflow: hidden;
+    cursor: pointer; user-select: none;
+    white-space: nowrap;
+  }
+  .bar-header:hover { filter: brightness(.93); }
+  .bar-hdr-name { font-size: 10px; font-weight: 600; color: #fff; }
+  .bar-hdr-type { font-size: 9px; color: rgba(255,255,255,.78); margin-left: 4px; }
+  .bar-hdr-link {
+    margin-left: auto; font-size: 10px; color: rgba(255,255,255,.8);
+    text-decoration: none; flex-shrink: 0; padding-left: 6px;
+  }
+  .bar-hdr-link:hover { color: #fff; }
+
+  /* Phase band */
+  .bar-phases {
+    height: var(--ph-band);
+    position: relative; overflow: hidden;
+  }
+
+  /* Phase segment */
+  .phase-seg {
+    position: absolute; top: 0; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; overflow: hidden; white-space: nowrap;
+    border-right: 1.5px solid rgba(0,0,0,.08);
+    user-select: none; transition: filter .1s;
+  }
+  .phase-seg:last-child { border-right: none; }
+  .phase-seg:hover { filter: brightness(.93); }
+  .phase-seg.past { background: #EBEBEB !important; color: #AAAAAA !important; }
+  .phase-seg.current { box-shadow: inset 0 0 0 2px currentColor; }
+  .seg-label {
+    padding: 0 5px; pointer-events: none;
+    overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    font-weight: 500;
+  }
+  /* Resize handle hint */
+  .phase-seg .resize-handle {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+    cursor: ew-resize;
+  }
+
+  /* Empty bar (no phases) */
+  .bar-empty {
+    height: var(--ph-band);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; cursor: crosshair;
+    border-top: 1px dashed rgba(255,255,255,.3);
+  }
+
+  /* ── Popup ── */
+  .popup {
+    position: fixed; z-index: 200; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.13); min-width: 300px; max-width: 360px;
+    display: none; max-height: 88vh; overflow-y: auto;
+  }
+  .popup.visible { display: block; }
+  .popup-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .popup-meta  { font-size: 11px; color: var(--text-mid); margin-bottom: 10px; }
+  .popup-divider { height: 1px; background: var(--border); margin: 11px 0; }
+  .popup-section {
+    font-size: 10px; color: var(--text-dim); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
+  }
+
+  .phase-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 7px; border-radius: 7px; margin-bottom: 4px;
+    background: var(--bg); font-size: 11px; cursor: pointer;
+  }
+  .phase-item:hover { background: var(--surface2); }
+  .phase-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .phase-name-lbl  { font-weight: 600; flex: 1; }
+  .phase-dates-lbl { font-size: 10px; color: var(--text-mid); white-space: nowrap; }
+  .phase-del {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 0 2px; flex-shrink: 0;
+  }
+  .phase-del:hover { color: #dc2626; }
 
   .reorder-btns { display: flex; flex-direction: column; flex-shrink: 0; }
   .reorder-btn {
@@ -124,74 +198,39 @@
     font-size: 7px; line-height: 1.3; padding: 1px 2px; font-family: inherit;
   }
   .reorder-btn:hover { color: var(--text); }
-  .proj-name {
-    font-size: 11px; font-weight: 600; flex: 1; min-width: 0;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    color: var(--text);
-  }
-  .notion-link {
-    font-size: 11px; color: var(--text-dim); text-decoration: none; flex-shrink: 0;
-    padding: 2px 4px; border-radius: 4px; transition: background .1s; line-height: 1;
-  }
-  .notion-link:hover { background: var(--surface2); color: var(--text); }
 
-  /* ── Gantt ── */
-  #gantt-col { flex: 1; position: relative; }
-  .gantt-row { border-bottom: 1px solid var(--border); position: relative; }
-  .gantt-row:nth-child(even) { background: rgba(0,0,0,.014); }
-  .gantt-divider {
-    height: 24px; background: var(--surface2);
-    border-bottom: 1px solid var(--border); position: relative;
+  #add-phase-toggle {
+    width: 100%; padding: 6px; border-radius: 7px; margin-top: 4px;
+    border: 1px dashed var(--border); background: none; color: var(--text-dim);
+    cursor: pointer; font-size: 11px; font-family: inherit; text-align: left;
   }
+  #add-phase-toggle:hover { background: var(--surface2); border-style: solid; color: var(--text); }
+  #add-phase-form { display: none; margin-top: 8px; }
+  #add-phase-form.open { display: block; }
+  .form-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .form-field { flex: 1; }
+  .form-field label { font-size: 10px; color: var(--text-dim); display: block; margin-bottom: 3px; }
+  .form-field select, .form-field input[type="date"], .form-field input[type="text"] {
+    width: 100%; padding: 5px 8px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 11px; font-family: inherit;
+  }
+  .form-field select:focus, .form-field input:focus { outline: none; border-color: #6b9cf5; }
+  #custom-phase-input { display: none; margin-top: 4px; }
+  #custom-phase-input input {
+    width: 100%; padding: 5px 8px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 11px; font-family: inherit;
+  }
+  .add-btn {
+    width: 100%; padding: 6px; border-radius: 7px; border: none;
+    background: #1a1817; color: #fff; font-size: 11px; font-weight: 600;
+    cursor: pointer; font-family: inherit; margin-top: 2px;
+  }
+  .add-btn:hover { background: #2d2926; }
 
-  .grid-line {
-    position: absolute; top: 0; bottom: 0; width: 1px;
-    background: rgba(0,0,0,.06); pointer-events: none;
-  }
-  .grid-line-mon {
-    position: absolute; top: 0; bottom: 0; width: 1px;
-    background: rgba(0,0,0,.12); pointer-events: none;
-  }
-
-  /* Dispatch segments — pastel with dark text */
-  .segment {
-    position: absolute; height: 22px; border-radius: 5px;
-    cursor: pointer; display: flex; align-items: center;
-    font-size: 11px; font-weight: 600; color: #3a3530;
-    overflow: hidden; white-space: nowrap; z-index: 3;
-    box-shadow: 0 1px 2px rgba(0,0,0,.08);
-    transition: filter .12s, box-shadow .1s; user-select: none;
-  }
-  .segment:hover { filter: brightness(.92); box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 20; }
-
-  /* Job type label (leftmost chunk in the bar) */
-  .seg-type-label {
-    padding: 0 8px; font-weight: 700; flex-shrink: 0; pointer-events: none;
-    border-right: 1px solid rgba(0,0,0,.12);
-  }
-
-  /* Phase label chunks inside the bar */
-  .seg-phase-chunk {
-    display: flex; align-items: center; justify-content: center;
-    padding: 0 6px; font-size: 10px; font-weight: 500; flex-shrink: 0;
-    overflow: hidden; pointer-events: none;
-    border-right: 1px solid rgba(0,0,0,.1);
-    height: 100%; color: rgba(40,32,26,.75);
-  }
-  .seg-phase-chunk:last-child { border-right: none; }
-  .seg-jpg           { background: var(--c-jpg); }
-  .seg-v1            { background: var(--c-v1); }
-  .seg-presentation  { background: var(--c-presentation); }
-  .seg-kv            { background: var(--c-kv); }
-  .seg-moodboard     { background: var(--c-moodboard); }
-  .seg-revision      { background: var(--c-revision); }
-  .seg-m1            { background: var(--c-m1); }
-  .seg-revised-maker { background: var(--c-revised-maker); }
-  .seg-other         { background: var(--c-other); }
-
-  /* ── Leader row ── */
   .leader-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
-  .leader-label { font-size: 10px; color: var(--text-dim); font-weight: 700; width: 82px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em; }
+  .leader-label { font-size: 10px; color: var(--text-dim); font-weight: 700; width: 82px; flex-shrink: 0; }
   .leader-input {
     flex: 1; padding: 5px 8px; border-radius: 7px;
     border: 1px solid var(--border); background: var(--bg);
@@ -199,114 +238,36 @@
   }
   .leader-input:focus { outline: none; border-color: #6b9cf5; }
 
-  /* ── Scheduler popup ── */
-  .popup {
-    position: fixed; z-index: 200; background: #fff;
-    border: 1px solid var(--border); border-radius: 12px; padding: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.12); min-width: 300px; max-width: 360px;
-    display: none; max-height: 90vh; overflow-y: auto;
+  .link-row { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+  .link-lbl { font-size: 10px; color: var(--text-dim); font-weight: 600; width: 56px; flex-shrink: 0; }
+  .link-val { flex: 1; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link-val a { color: #3b82f6; text-decoration: none; }
+  .link-val a:hover { text-decoration: underline; }
+  .link-val.empty { color: var(--text-dim); }
+  .link-edit-btn {
+    display: block; width: 100%; margin-top: 4px; padding: 5px;
+    border-radius: 7px; border: 1px solid var(--border); background: none;
+    color: var(--text-dim); cursor: pointer; font-size: 11px; font-family: inherit;
   }
-  .popup.visible { display: block; }
-  .popup-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-  .popup-meta  { font-size: 11px; color: var(--text-mid); margin-bottom: 8px; }
-  .popup-divider { height: 1px; background: var(--border); margin: 12px 0; }
-  .popup-section {
-    font-size: 10px; color: var(--text-dim); font-weight: 700;
-    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
-  }
-
-  /* Phase list */
-  .phase-item {
-    display: flex; align-items: center; gap: 6px;
-    padding: 5px 7px; border-radius: 7px; margin-bottom: 4px;
-    background: var(--bg); font-size: 11px;
-  }
-  .phase-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .phase-name { font-weight: 600; color: var(--text); flex: 1; }
-  .phase-dates { font-size: 10px; color: var(--text-mid); white-space: nowrap; }
-  .phase-del {
-    background: none; border: none; color: var(--text-dim); cursor: pointer;
-    font-size: 13px; line-height: 1; padding: 0 2px; flex-shrink: 0;
-    transition: color .1s;
-  }
-  .phase-del:hover { color: #dc2626; }
-
-  /* Add phase form */
-  #add-phase-toggle {
-    width: 100%; padding: 6px; border-radius: 7px;
-    border: 1px dashed var(--border); background: none;
-    color: var(--text-dim); cursor: pointer; font-size: 11px;
-    font-family: inherit; transition: all .15s; text-align: left;
-    margin-top: 4px;
-  }
-  #add-phase-toggle:hover { background: var(--surface2); color: var(--text); border-style: solid; }
-  #add-phase-form { display: none; margin-top: 8px; }
-  #add-phase-form.open { display: block; }
-  .form-row { display: flex; gap: 6px; margin-bottom: 6px; }
-  .form-field { flex: 1; }
-  .form-field label { font-size: 10px; color: var(--text-dim); display: block; margin-bottom: 3px; }
-  .form-field select,
-  .form-field input[type="date"],
-  .form-field input[type="text"] {
-    width: 100%; padding: 5px 8px; border-radius: 7px;
-    border: 1px solid var(--border); background: var(--bg);
-    color: var(--text); font-size: 11px; font-family: inherit;
-  }
-  .form-field select:focus,
-  .form-field input:focus { outline: none; border-color: #6b9cf5; }
-  #custom-phase-input { display: none; margin-top: 4px; }
-  #custom-phase-input input {
-    width: 100%; padding: 5px 8px; border-radius: 7px;
-    border: 1px solid var(--border); background: var(--bg);
-    color: var(--text); font-size: 11px; font-family: inherit;
-  }
-  #custom-phase-input input:focus { outline: none; border-color: #6b9cf5; }
-  .add-btn {
-    width: 100%; padding: 6px; border-radius: 7px; border: none;
-    background: #1a1817; color: #fff; font-size: 11px; font-weight: 600;
-    cursor: pointer; font-family: inherit; margin-top: 2px;
-    transition: background .15s;
-  }
-  .add-btn:hover { background: #2d2926; }
-
-  /* Link display (saved state) */
-  .link-display-row {
-    display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
-  }
-  .link-display-label { font-size: 10px; color: var(--text-dim); font-weight: 600; width: 56px; flex-shrink: 0; }
-  .link-display-val {
-    flex: 1; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .link-display-val a { color: #3b82f6; text-decoration: none; }
-  .link-display-val a:hover { text-decoration: underline; }
-  .link-display-val.empty { color: var(--text-dim); }
-  .link-edit-all-btn {
-    display: block; width: 100%; margin-top: 4px; padding: 5px; border-radius: 7px;
-    border: 1px solid var(--border); background: none; color: var(--text-dim);
-    cursor: pointer; font-size: 11px; font-family: inherit;
-  }
-  .link-edit-all-btn:hover { background: var(--surface2); color: var(--text); }
-
-  /* Link fields */
+  .link-edit-btn:hover { background: var(--surface2); color: var(--text); }
   .link-field { margin-bottom: 8px; }
   .link-field label { font-size: 11px; color: var(--text-mid); display: block; margin-bottom: 3px; font-weight: 500; }
   .link-field input {
     width: 100%; padding: 6px 9px; border-radius: 7px;
     border: 1px solid var(--border); background: var(--bg);
-    color: var(--text); font-size: 11px; font-family: inherit; transition: border-color .15s;
+    color: var(--text); font-size: 11px; font-family: inherit;
   }
   .link-field input:focus { outline: none; border-color: #6b9cf5; }
-
   .save-btn {
-    width: 100%; padding: 7px; border-radius: 8px; border: none;
-    background: #1a1817; color: #fff; font-size: 12px; font-weight: 600;
-    cursor: pointer; font-family: inherit; margin-top: 4px; transition: background .15s;
+    width: 100%; padding: 6px; border-radius: 7px; border: none;
+    background: #1a1817; color: #fff; font-size: 11px; font-weight: 600;
+    cursor: pointer; font-family: inherit; margin-top: 4px;
   }
   .save-btn:hover { background: #2d2926; }
   .popup-close {
-    margin-top: 8px; width: 100%; padding: 5px; border-radius: 7px;
-    border: 1px solid var(--border); background: none;
-    color: var(--text-dim); cursor: pointer; font-size: 11px; font-family: inherit;
+    width: 100%; padding: 5px; border-radius: 7px; margin-top: 6px;
+    border: 1px solid var(--border); background: none; color: var(--text-dim);
+    cursor: pointer; font-size: 11px; font-family: inherit;
   }
   .popup-close:hover { background: var(--surface2); color: var(--text); }
 
@@ -322,14 +283,21 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   #loading p { color: var(--text-dim); font-size: 13px; }
+
+  /* ── Drag ghost ── */
+  #drag-ghost {
+    position: fixed; pointer-events: none; z-index: 100; display: none;
+    background: rgba(67,97,238,.16); border: 2px dashed #4361EE;
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
 
 <div id="loading"><div class="spinner"></div><p>載入資料中…</p></div>
 
-<!-- Scheduler popup (segment click or project name click) -->
-<div id="scheduler-popup" class="popup">
+<!-- Popup -->
+<div id="sch-popup" class="popup">
   <div id="sch-title" class="popup-title"></div>
   <div id="sch-meta"  class="popup-meta"></div>
   <div class="leader-row">
@@ -340,22 +308,23 @@
   <div class="popup-divider"></div>
   <div class="popup-section">時程規劃</div>
   <div id="sch-phases"></div>
-
   <button id="add-phase-toggle" onclick="toggleAddForm()">＋ 新增時程</button>
   <div id="add-phase-form">
     <div class="form-row">
       <div class="form-field" style="flex:1.4">
         <label>階段名稱</label>
         <select id="phase-name-select" onchange="onPhaseNameChange()">
-          <option value="初步討論">初步討論</option>
-          <option value="草稿">草稿</option>
-          <option value="合成">合成</option>
-          <option value="修改">修改</option>
-          <option value="上版">上版</option>
+          <option>討論</option>
+          <option>3D草稿/2D包現有型體</option>
+          <option>草稿/彩稿</option>
+          <option>合成</option>
+          <option>微調</option>
+          <option>上版/完成</option>
+          <option>找資料</option>
           <option value="__custom__">自訂…</option>
         </select>
         <div id="custom-phase-input">
-          <input id="custom-phase-text" type="text" placeholder="自訂名稱" maxlength="20">
+          <input id="custom-phase-text" type="text" placeholder="自訂名稱" maxlength="30">
         </div>
       </div>
     </div>
@@ -374,24 +343,13 @@
 
   <div class="popup-divider"></div>
   <div class="popup-section">連結</div>
-  <div id="links-display-mode">
-    <!-- Shown when links already exist -->
-  </div>
+  <div id="links-display-mode"></div>
   <div id="links-edit-mode" style="display:none">
-    <div class="link-field">
-      <label>會議連結</label>
-      <input id="link-meeting" type="url" placeholder="https://…">
-    </div>
-    <div class="link-field">
-      <label>討論板</label>
-      <input id="link-discussion" type="url" placeholder="https://…">
-    </div>
-    <div class="link-field">
-      <label>Brief 連結</label>
-      <input id="link-brief" type="url" placeholder="https://…">
-    </div>
+    <div class="link-field"><label>會議連結</label><input id="link-meeting" type="url" placeholder="https://…"></div>
+    <div class="link-field"><label>討論板</label><input id="link-discussion" type="url" placeholder="https://…"></div>
+    <div class="link-field"><label>Brief</label><input id="link-brief" type="url" placeholder="https://…"></div>
     <button class="save-btn" onclick="saveLinks()">儲存連結</button>
-    <button class="popup-close" style="margin-top:6px" onclick="showLinksDisplay()">取消</button>
+    <button class="popup-close" onclick="showLinksDisplay()">取消</button>
   </div>
   <button class="popup-close" onclick="closePopup()">關閉</button>
 </div>
@@ -400,837 +358,797 @@
 <div id="topbar">
   <h1>Project Timeline</h1>
   <div class="sep"></div>
-  <span class="zoom-label">縮放：</span>
-  <button class="btn" id="z-week"   onclick="setZoom('week')">週</button>
-  <button class="btn active" id="z-biweek" onclick="setZoom('biweek')">雙週</button>
-  <button class="btn" id="z-month"  onclick="setZoom('month')">月</button>
+  <span class="grp-label">顯示：</span>
+  <button class="btn active" id="f-week"   onclick="setFilter('week')">本週</button>
+  <button class="btn"        id="f-biweek" onclick="setFilter('biweek')">雙週</button>
+  <button class="btn"        id="f-all"    onclick="setFilter('all')">全部</button>
+  <div class="sep"></div>
+  <span class="grp-label">縮放：</span>
+  <button class="btn"        id="z-sm" onclick="setDayPx(48)">小</button>
+  <button class="btn active" id="z-md" onclick="setDayPx(64)">中</button>
+  <button class="btn"        id="z-lg" onclick="setDayPx(88)">大</button>
   <div class="sep"></div>
   <button class="btn" onclick="scrollToToday()">今天</button>
   <button class="btn" onclick="loadData()">重新整理</button>
   <span id="status-msg"></span>
 </div>
 
-<!-- Legend -->
-<div id="legend">
-  <span class="legend-lbl">G1：</span>
-  <div class="legend-grp">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-presentation)"></div>Presentation</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-v1)"></div>V1</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-kv)"></div>KV</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-moodboard)"></div>Moodboard</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-revision)"></div>Revision</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-jpg)"></div>JPG</div>
-  </div>
-  <div class="legend-sep"></div>
-  <span class="legend-lbl">G2：</span>
-  <div class="legend-grp">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-m1)"></div>M1</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--c-revised-maker)"></div>Revised Maker</div>
+<!-- Timeline -->
+<div id="main-scroll">
+  <div id="content-wrap">
+    <div id="date-hdr"></div>
+    <div id="rows-wrap"></div>
   </div>
 </div>
 
-<!-- Timeline -->
-<div id="timeline-wrap">
-  <div id="header-scroll">
-    <div id="header-inner">
-      <div id="header-label">專案</div>
-      <div id="header-dates"><div id="header-dates-inner"></div></div>
-    </div>
-  </div>
-  <div id="body-scroll" onscroll="syncScroll(this)">
-    <div id="label-col"></div>
-    <div id="gantt-col"></div>
-  </div>
-</div>
+<div id="drag-ghost"></div>
 
 <script>
-// ── Config ──────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────────
 const SUPABASE  = 'https://lczpbtkoxsvlsucbqoxp.supabase.co';
 const ANON_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBidGtveHN2bHN1Y2Jxb3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDgzNzUsImV4cCI6MjA5NDY4NDM3NX0.KtA-AwVW2ecHajexiKsiM-ZKLgG3wC8pcpq4vPp3SHw';
 const NOTION_FN = `${SUPABASE}/functions/v1/get-timeline`;
 const START_DATE = '2026-06-08';
 
-// Group definitions
-const GROUP1 = new Set(['Presentation','V1','KV','Moodboard','Revision','JPG']);
-const GROUP2 = new Set(['M1','Revised Maker']);
-
-const JOB_CLASS = {
-  JPG:            'seg-jpg',
-  V1:             'seg-v1',
-  Presentation:   'seg-presentation',
-  KV:             'seg-kv',
-  Moodboard:      'seg-moodboard',
-  Revision:       'seg-revision',
-  M1:             'seg-m1',
-  'Revised Maker':'seg-revised-maker',
+// Type → hex color
+const TYPE_COLOR = {
+  Presentation:   '#C97A3A',
+  KV:             '#6455C0',
+  Moodboard:      '#C05080',
+  Revision:       '#9A8220',
+  V1:             '#3858D8',
+  JPG:            '#208848',
+  M1:             '#C02858',
+  'Revised Maker':'#5858A8',
 };
+function typeColor(t) { return TYPE_COLOR[t] || '#707888'; }
+function hexRgb(hex) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
 
-const PHASE_COLORS = {
-  '初步討論': '#a8c8f5',
-  '草稿':     '#f5d888',
-  '合成':     '#c0b0f5',
-  '修改':     '#f5b898',
-  '上版':     '#8cd4b0',
-};
-function phaseColor(name) { return PHASE_COLORS[name] || '#b8c4cc'; }
+const PHASE_OPTS = ['討論','3D草稿/2D包現有型體','草稿/彩稿','合成','微調','上版/完成','找資料'];
 
-const PHASE_OPTS = ['初步討論','草稿','合成','修改','上版'];
+// ── State ────────────────────────────────────────────────────────
+let allCases    = [];
+let notionMap   = {};
+let progressMap = {};
+let phasesMap   = {};
+let filterMode  = 'week';
+let dayPx       = 64;
+let tlMinDate   = null;
+let tlTotalDays = 0;
 
-// ── State ───────────────────────────────────────────────────
-let allCases     = [];
-let notionMap    = {};   // project_name → url
-let progressMap  = {};   // project_name → {meeting_link, discussion_link, brief_link}
-let phasesMap    = {};   // project_name → [{id, phase, start_date, end_date}, …]
-let zoomDays     = 14;
-let dayPx        = 60;
-let timelineMinDate = null;
+let currentProj = null;   // project name currently open in popup
 
-let currentPopupProject = null;
-let currentPopupMeta    = null;  // {jobType, date, deadline, designers} from segment click
-
-// ── Headers ─────────────────────────────────────────────────
 const H = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
 
-// ── Data loading ─────────────────────────────────────────────
+// ── Data loading ──────────────────────────────────────────────────
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
-  document.getElementById('status-msg').textContent = '';
   try {
-    const [casesRes, progressRes, phasesRes, notionRes] = await Promise.all([
-      fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, { headers: H }),
-      fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, { headers: H }),
-      fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, { headers: H }),
-      fetch(NOTION_FN, { headers: H }).catch(() => null),
+    const [cR, prR, phR, nR] = await Promise.all([
+      fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, {headers:H}),
+      fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, {headers:H}),
+      fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, {headers:H}),
+      fetch(NOTION_FN, {headers:H}).catch(()=>null),
     ]);
-
-    allCases = await casesRes.json();
-    if (!Array.isArray(allCases)) allCases = [];
-
-    const progressRows = await progressRes.json();
-    progressMap = {};
-    for (const r of (progressRows || [])) progressMap[r.project_name] = r;
-
-    const phaseRows = await phasesRes.json();
-    phasesMap = {};
-    for (const r of (phaseRows || [])) {
-      if (!phasesMap[r.project_name]) phasesMap[r.project_name] = [];
-      phasesMap[r.project_name].push(r);
-    }
-
-    notionMap = {};
-    if (notionRes?.ok) {
-      try {
-        const { items } = await notionRes.json();
-        for (const it of (items || [])) {
-          if (it.name && it.url) notionMap[it.name.trim()] = it.url;
-        }
-      } catch (_) {}
-    }
-
+    allCases = await cR.json().catch(()=>[]); if (!Array.isArray(allCases)) allCases=[];
+    const prs = await prR.json().catch(()=>[]); progressMap={};
+    for (const r of (prs||[])) progressMap[r.project_name]=r;
+    const phs = await phR.json().catch(()=>[]); phasesMap={};
+    for (const r of (phs||[])) { if (!phasesMap[r.project_name]) phasesMap[r.project_name]=[]; phasesMap[r.project_name].push(r); }
+    notionMap={};
+    if (nR?.ok) { const {items=[]}=await nR.json().catch(()=>({})); for (const it of items) if(it.name&&it.url) notionMap[it.name.trim()]=it.url; }
     buildTimeline();
-
-    const projNames = new Set(allCases.map(c => c.notion_project));
-    document.getElementById('status-msg').textContent =
-      `${allCases.length} 筆派案 · ${projNames.size} 個專案`;
-  } catch (e) {
-    document.getElementById('status-msg').textContent = '載入失敗：' + e.message;
-  }
-  document.getElementById('loading').style.display = 'none';
+    const ps=new Set(allCases.map(c=>c.notion_project));
+    showMsg(`${allCases.length} 筆派案 · ${ps.size} 個專案`);
+  } catch(e) { showMsg('載入失敗：'+e.message); }
+  document.getElementById('loading').style.display='none';
 }
 
-// ── Build rows (dual-group) ───────────────────────────────────
-function buildRows() {
-  // Gather all cases per project
-  const byCases = {};
+// ── Filter: which projects to show ───────────────────────────────
+function getFilteredProjects() {
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayMs=today.getTime();
+  const dow=today.getDay();
+  const weekMon=new Date(today); weekMon.setDate(today.getDate()-(dow===0?6:dow-1));
+  const weekMonMs=weekMon.getTime();
+  const weekSunMs=weekMonMs+7*86400000;
+  const biweekEndMs=weekMonMs+14*86400000;
+
+  // Aggregate by project
+  const byProj={};
   for (const c of allCases) {
-    const p = c.notion_project;
-    if (!byCases[p]) byCases[p] = [];
-    byCases[p].push(c);
+    if (!byProj[c.notion_project]) byProj[c.notion_project]=[];
+    byProj[c.notion_project].push(c);
   }
 
-  // For each project, determine which groups it belongs to and which cases go in each
-  const g1Map = new Map(); // proj → cases matching GROUP1
-  const g2Map = new Map();
+  const result=[];
+  for (const [proj, cases] of Object.entries(byProj)) {
+    let minMs=Infinity, maxMs=-Infinity;
+    for (const c of cases) {
+      if (c.date)     minMs=Math.min(minMs,dateMs(c.date));
+      if (c.deadline) maxMs=Math.max(maxMs,dateMs(c.deadline));
+      else if (c.date) maxMs=Math.max(maxMs,dateMs(c.date));
+    }
+    for (const ph of (phasesMap[proj]||[])) {
+      if (ph.start_date) minMs=Math.min(minMs,dateMs(ph.start_date));
+      if (ph.end_date)   maxMs=Math.max(maxMs,dateMs(ph.end_date));
+    }
+    if (minMs===Infinity) continue;
+    const mainType=(cases[0].job_types?.[0])||'Other';
 
-  for (const [proj, cases] of Object.entries(byCases)) {
-    const g1 = cases.filter(c => (c.job_types || []).some(t => GROUP1.has(t)));
-    const g2 = cases.filter(c => (c.job_types || []).some(t => GROUP2.has(t)));
-    if (g1.length) g1Map.set(proj, g1);
-    if (g2.length) g2Map.set(proj, g2);
+    let inc=false;
+    if      (filterMode==='all')    inc=true;
+    else if (filterMode==='week')   inc=minMs<weekSunMs&&maxMs>=weekMonMs;
+    else if (filterMode==='biweek') inc=minMs<biweekEndMs&&maxMs>=weekMonMs;
+    if (inc) result.push({proj,cases,minMs,maxMs,mainType});
   }
-
-  // Sort each group by earliest date
-  const sortMap = m => [...m.entries()].sort((a, b) => {
-    const aMin = Math.min(...a[1].map(c => dateMs(c.date)));
-    const bMin = Math.min(...b[1].map(c => dateMs(c.date)));
-    return aMin - bMin;
-  });
-
-  const rows = [];
-  for (const [proj, cases] of sortMap(g1Map)) rows.push({ type:'row', proj, groupId:1, cases });
-  if (g1Map.size && g2Map.size) rows.push({ type:'divider' });
-  for (const [proj, cases] of sortMap(g2Map)) rows.push({ type:'row', proj, groupId:2, cases });
-
-  return rows;
+  return result.sort((a,b)=>a.minMs-b.minMs);
 }
 
-// ── Build timeline ────────────────────────────────────────────
+// ── Build timeline ────────────────────────────────────────────────
 function buildTimeline() {
-  const rows = buildRows();
+  const projs=getFilteredProjects();
+  const rw=document.getElementById('rows-wrap');
+  const dh=document.getElementById('date-hdr');
 
-  const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
-  if (!allMs.length) return;
-
-  const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
-  const maxDate = new Date(Math.max(...allMs)); maxDate.setDate(maxDate.getDate() + 10);
-  const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
-  timelineMinDate = minDate;
-
-  const visW = Math.max(600, window.innerWidth - 230);
-  dayPx = Math.max(16, visW / zoomDays);
-  const totalWidth = totalDays * dayPx;
-
-  renderHeader(minDate, totalDays, totalWidth);
-
-  const labelCol = document.getElementById('label-col');
-  const ganttCol = document.getElementById('gantt-col');
-  labelCol.innerHTML = '';
-  ganttCol.innerHTML = '';
-  ganttCol.style.width = ganttCol.style.minWidth = totalWidth + 'px';
-
-  // Grid lines for every date (Mondays slightly darker; no today line)
-  const todayD = new Date(); todayD.setHours(0,0,0,0);
-  let gd = new Date(minDate);
-  for (let i = 0; i < totalDays; i++) {
-    const isMon = gd.getDay() === 1;
-    // Only draw every-day lines when zoomed in enough; otherwise just Mondays
-    if (dayPx >= 28 || isMon) {
-      const gl = mk('div', isMon ? 'grid-line-mon' : 'grid-line');
-      gl.style.left = (i * dayPx) + 'px';
-      ganttCol.appendChild(gl);
-    }
-    gd.setDate(gd.getDate() + 1);
+  if (!projs.length) {
+    dh.innerHTML=''; rw.innerHTML='';
+    rw.innerHTML='<div style="padding:32px 24px;font-size:12px;color:var(--text-dim);text-align:center;">此時間範圍內無進行中專案</div>';
+    return;
   }
 
-  for (const row of rows) {
-    if (row.type === 'divider') {
-      labelCol.appendChild(mk('div', 'divider-label')).textContent = 'M1 ／ Revised Maker';
-      ganttCol.appendChild(mk('div', 'gantt-divider'));
-      continue;
-    }
-    buildRow(row, minDate, totalWidth, labelCol, ganttCol);
-  }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayMs=today.getTime();
+
+  // Date range
+  let minMs=Math.min(...projs.map(p=>p.minMs));
+  let maxMs=Math.max(...projs.map(p=>p.maxMs));
+  const minDate=new Date(minMs); minDate.setDate(minDate.getDate()-4);
+  const maxDate=new Date(maxMs); maxDate.setDate(maxDate.getDate()+10);
+  tlMinDate=minDate;
+  tlTotalDays=Math.ceil((maxDate-minDate)/86400000)+1;
+  const totalW=tlTotalDays*dayPx;
+
+  document.getElementById('content-wrap').style.width=totalW+'px';
+
+  // Date header
+  renderDateHeader(minDate, totalW);
+
+  // Rows
+  rw.innerHTML='';
+  for (const p of projs) rw.appendChild(buildRow(p, minDate, today, todayMs));
 
   setTimeout(scrollToToday, 50);
 }
 
-function buildRow({ proj, groupId, cases }, minDate, totalWidth, labelCol, ganttCol) {
-  const lanes  = assignLanes(cases);
-  const nLanes = Math.max(1, lanes.length);
-  const rowH   = Math.max(48, nLanes * 28 + 16);
+// ── Date header ───────────────────────────────────────────────────
+function renderDateHeader(minDate, totalW) {
+  const hdr=document.getElementById('date-hdr');
+  hdr.innerHTML='';
+  hdr.style.width=totalW+'px';
+  const today=new Date(); today.setHours(0,0,0,0);
+  let d=new Date(minDate);
+  for (let i=0;i<tlTotalDays;i++) {
+    const cell=mk('div','day-cell');
+    cell.style.width=dayPx+'px';
+    const dow=d.getDay();
+    const isTod=sameDay(d,today);
+    if (dow===1) cell.classList.add('mon');
+    if (!isTod&&(dow===0||dow===6)) cell.classList.add('weekend');
+    if (isTod) cell.classList.add('today');
+    const DOWS=['日','一','二','三','四','五','六'];
+    const ds=mk('span','day-date'); ds.textContent=`${d.getMonth()+1}/${d.getDate()}`;
+    const dw=mk('span','day-dow');  dw.textContent=DOWS[dow];
+    cell.append(ds,dw);
+    if (isTod) { const dot=mk('div','today-dot'); cell.appendChild(dot); }
+    hdr.appendChild(cell);
+    d.setDate(d.getDate()+1);
+  }
+}
 
-  // ── Label ──
-  const label = mk('div', 'row-label');
-  label.style.height = rowH + 'px';
-  label.onclick = () => openScheduler(proj, null);
+// ── Build one project row ─────────────────────────────────────────
+function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs) {
+  const tc=typeColor(mainType);
+  const rgb=hexRgb(tc);
 
-  const rbtns = mk('div', 'reorder-btns');
-  const up = mk('button', 'reorder-btn'); up.textContent = '▲';
-  up.onclick = e => { e.stopPropagation(); };
-  const dn = mk('button', 'reorder-btn'); dn.textContent = '▼';
-  dn.onclick = e => { e.stopPropagation(); };
-  rbtns.append(up, dn);
+  const row=mk('div','proj-row');
 
-  const pname = mk('span', 'proj-name');
-  pname.textContent = proj; pname.title = proj;
-  label.append(rbtns, pname);
+  // Grid lines
+  let d=new Date(minDate);
+  for (let i=0;i<tlTotalDays;i++) {
+    const gl=mk('div','grid-line');
+    if (d.getDay()===1) gl.classList.add('mon');
+    gl.style.left=(i*dayPx)+'px';
+    row.appendChild(gl);
+    d.setDate(d.getDate()+1);
+  }
 
+  // Today line
+  const tOff=daysBetween(minDate,today);
+  if (tOff>=0&&tOff<tlTotalDays) {
+    const tl=mk('div','today-line');
+    tl.style.left=(tOff*dayPx+dayPx/2-1)+'px';
+    row.appendChild(tl);
+  }
+
+  // Phases sorted
+  const phases=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
+
+  // Bar range: encompass cases + phases
+  let barMinMs=minMs, barMaxMs=maxMs;
+  if (phases.length) {
+    barMinMs=Math.min(barMinMs,...phases.map(p=>dateMs(p.start_date)));
+    barMaxMs=Math.max(barMaxMs,...phases.map(p=>p.end_date?dateMs(p.end_date):todayMs));
+  }
+
+  const barStartDay=daysBetween(minDate,new Date(barMinMs));
+  const barEndDay=daysBetween(minDate,new Date(barMaxMs))+1;
+  const barX=barStartDay*dayPx;
+  const barW=Math.max(dayPx*2,(barEndDay-barStartDay)*dayPx);
+
+  const bar=mk('div','proj-bar');
+  bar.style.left=barX+'px';
+  bar.style.width=barW+'px';
+
+  // ── Name header band ──
+  const header=mk('div','bar-header');
+  header.style.background=tc;
+  header.title=`${proj} · ${mainType}`;
+  const nm=mk('span','bar-hdr-name'); nm.textContent=proj;
+  const ty=mk('span','bar-hdr-type'); ty.textContent=`· ${mainType}`;
+  header.append(nm,ty);
   if (notionMap[proj]) {
-    const a = mk('a', 'notion-link');
-    a.href = notionMap[proj]; a.target = '_blank';
-    a.textContent = '↗'; a.title = 'Notion 頁面';
-    a.onclick = e => e.stopPropagation();
-    label.appendChild(a);
+    const a=mk('a','bar-hdr-link');
+    a.href=notionMap[proj]; a.target='_blank'; a.rel='noopener noreferrer';
+    a.textContent='↗'; a.title='Notion';
+    a.onclick=e=>e.stopPropagation();
+    header.appendChild(a);
   }
-  labelCol.appendChild(label);
+  header.addEventListener('click', e=>{e.stopPropagation(); openScheduler(proj);});
+  bar.appendChild(header);
 
-  // ── Gantt row ──
-  const row = mk('div', 'gantt-row');
-  row.style.height = rowH + 'px';
+  // ── Phase band ──
+  const band=mk('div','bar-phases');
+  band.style.background=`rgba(${rgb},.08)`;
 
-  // Dispatch segments (phase labels rendered inside each segment)
-  const sortedPhases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
-  for (let li = 0; li < lanes.length; li++) {
-    for (const c of lanes[li]) {
-      const seg = buildSegment(c, minDate, li, nLanes, rowH, sortedPhases);
-      if (seg) row.appendChild(seg);
+  if (phases.length) {
+    for (let i=0;i<phases.length;i++) {
+      const ph=phases[i];
+      const phStartMs=dateMs(ph.start_date);
+      const phEndMs=ph.end_date?dateMs(ph.end_date)+86400000:todayMs+86400000;
+      const segLeft=Math.max(0,Math.round((phStartMs-barMinMs)/86400000))*dayPx;
+      const segW=Math.max(dayPx*0.5,Math.round((phEndMs-phStartMs)/86400000)*dayPx);
+
+      const isPast=phEndMs<=todayMs;
+      const isCurr=phStartMs<=todayMs&&phEndMs>todayMs;
+
+      const seg=mk('div','phase-seg');
+      seg.dataset.id=ph.id;
+      seg.dataset.proj=proj;
+      seg.style.left=segLeft+'px';
+      seg.style.width=segW+'px';
+      if (isPast) {
+        seg.classList.add('past');
+      } else {
+        seg.style.background=`rgba(${rgb},${isCurr?.28:.16})`;
+        seg.style.color=tc;
+        if (isCurr) seg.classList.add('current');
+      }
+
+      const lbl=mk('span','seg-label');
+      lbl.textContent=ph.phase;
+      if (segW<50) lbl.style.fontSize='8px';
+      seg.appendChild(lbl);
+
+      // Resize handle (right 6px)
+      const rh=mk('div','resize-handle');
+      seg.appendChild(rh);
+
+      // Events
+      seg.addEventListener('mouseenter',()=>{ if (!dragging) seg.style.cursor='grab'; });
+      seg.addEventListener('mousemove', e=>{
+        if (dragging) return;
+        const rect=seg.getBoundingClientRect();
+        seg.style.cursor=(rect.right-e.clientX<=8)?'ew-resize':'grab';
+      });
+      seg.addEventListener('mousedown', e=>{
+        e.stopPropagation(); e.preventDefault();
+        const rect=seg.getBoundingClientRect();
+        if (rect.right-e.clientX<=8) startResize(e,ph,proj,bar,barMinMs,seg);
+        else startMove(e,ph,proj,bar,barMinMs,seg);
+      });
+      seg.addEventListener('click',e=>{
+        if (didDrag) return;
+        e.stopPropagation();
+        openScheduler(proj);
+      });
+
+      band.appendChild(seg);
     }
-  }
-
-  ganttCol.appendChild(row);
-}
-
-// ── Build one dispatch segment (with phase labels inside) ────────
-function buildSegment(c, minDate, laneIdx, numLanes, rowH, phases) {
-  if (!c.date) return null;
-  const segStart = new Date(c.date + 'T00:00:00');
-  const endD     = c.deadline || c.date;
-  const segEnd   = new Date(endD + 'T00:00:00');
-  const x        = daysBetween(minDate, segStart) * dayPx;
-  const span     = Math.max(1, daysBetween(segStart, segEnd) + 1);
-  const w        = Math.max(dayPx * .7, span * dayPx - 3);
-
-  const SEG_H = 22;
-  const laneH = numLanes > 1 ? (rowH - 18) / numLanes : rowH - 12;
-  const top   = 4 + laneIdx * laneH + (laneH - SEG_H) / 2;
-
-  const jobType = (Array.isArray(c.job_types) && c.job_types[0]) || 'Other';
-  const cls     = JOB_CLASS[jobType] || 'seg-other';
-
-  const seg = mk('div', `segment ${cls}`);
-  seg.style.cssText = `left:${x}px;width:${w}px;top:${top}px;`;
-
-  // Job type label (leftmost)
-  const typeLbl = mk('span', 'seg-type-label');
-  typeLbl.textContent = jobType;
-  seg.appendChild(typeLbl);
-
-  // Phase chunks: phases that overlap this segment's date range
-  const today = new Date(); today.setHours(0,0,0,0);
-  const segStartMs = dateMs(c.date);
-  const segEndMs   = dateMs(endD);
-
-  // Build ordered phase chunks covering the segment's span
-  // Each phase that overlaps [segStart, segEnd] contributes a chunk
-  const chunks = []; // {phaseName, startMs, endMs, widthPx}
-  for (const ph of (phases || [])) {
-    const phStartMs = dateMs(ph.start_date);
-    const phEndMs   = ph.end_date ? dateMs(ph.end_date) : today.getTime() + 86400000; // null = through today
-    // Overlap check
-    if (phEndMs <= segStartMs || phStartMs >= segEndMs + 86400000) continue;
-    const clampStart = Math.max(phStartMs, segStartMs);
-    const clampEnd   = Math.min(phEndMs, segEndMs + 86400000);
-    const chunkDays  = Math.max(0, Math.round((clampEnd - clampStart) / 86400000));
-    if (chunkDays <= 0) continue;
-    const chunkW = chunkDays * dayPx;
-    chunks.push({ name: ph.phase, chunkW });
-  }
-
-  // Only show phase text if bar is wide enough and there are phases
-  if (chunks.length > 0 && w > 60) {
-    for (const ch of chunks) {
-      const chunk = mk('span', 'seg-phase-chunk');
-      chunk.style.width = ch.chunkW + 'px';
-      chunk.style.minWidth = '0';
-      // Show text only if chunk is wide enough
-      chunk.textContent = ch.chunkW > 30 ? ch.name : '';
-      chunk.title = ch.name;
-      seg.appendChild(chunk);
-    }
-  }
-
-  seg.onclick = e => { e.stopPropagation(); openScheduler(c.notion_project, c); };
-  return seg;
-}
-
-// ── Scheduler popup ───────────────────────────────────────────
-function openScheduler(proj, caseObj) {
-  currentPopupProject = proj;
-  currentPopupMeta    = caseObj;
-
-  // Title + meta
-  document.getElementById('sch-title').textContent = proj;
-  if (caseObj) {
-    const jt  = (Array.isArray(caseObj.job_types) ? caseObj.job_types : []).join(', ') || '—';
-    const des = (Array.isArray(caseObj.designers)  ? caseObj.designers  : []).join(', ') || '—';
-    const dl  = caseObj.deadline || caseObj.date;
-    document.getElementById('sch-meta').innerHTML =
-      `<b>${jt}</b> · ${caseObj.date}${dl !== caseObj.date ? ' → ' + dl : ''}<br>設計師：${des}`;
   } else {
-    document.getElementById('sch-meta').textContent = '';
+    const empty=mk('div','bar-empty');
+    empty.style.color=`rgba(${rgb},.7)`;
+    empty.style.background=`rgba(${rgb},.06)`;
+    empty.style.borderTop=`1px dashed rgba(${rgb},.3)`;
+    empty.textContent='拖曳新增時程，或點擊規劃';
+    empty.addEventListener('click',e=>{e.stopPropagation(); openScheduler(proj);});
+    band.appendChild(empty);
   }
 
-  // Phases list
+  // Drag on band background to create phase
+  band.addEventListener('mousedown', e=>{
+    if (e.target!==band) return;
+    e.preventDefault();
+    startCreate(e, proj, band, barMinMs);
+  });
+
+  bar.appendChild(band);
+  row.appendChild(bar);
+  return row;
+}
+
+// ── Drag state ────────────────────────────────────────────────────
+let dragging=false, didDrag=false;
+let dragCleanup=null;
+
+function startCreate(e, proj, band, barMinMs) {
+  dragging=true; didDrag=false;
+  const bandRect=band.getBoundingClientRect();
+  const startRelX=e.clientX-bandRect.left;
+  const startDay=Math.floor(startRelX/dayPx);
+
+  const ghost=document.getElementById('drag-ghost');
+  ghost.style.display='block';
+  ghost.style.top=bandRect.top+'px';
+  ghost.style.height=bandRect.height+'px';
+  updateGhost(ghost, bandRect.left+startDay*dayPx, dayPx);
+
+  let curDay=startDay;
+
+  function onMove(ev) {
+    didDrag=true;
+    const rect=band.getBoundingClientRect();
+    const relX=ev.clientX-rect.left;
+    curDay=Math.floor(relX/dayPx);
+    const left=rect.left+Math.min(startDay,curDay)*dayPx;
+    const w=(Math.abs(curDay-startDay)+1)*dayPx;
+    ghost.style.top=rect.top+'px';
+    ghost.style.height=rect.height+'px';
+    updateGhost(ghost,left,w);
+  }
+
+  function onUp(ev) {
+    cleanup();
+    if (!didDrag) { openScheduler(proj); return; }
+    const s=Math.min(startDay,curDay), en=Math.max(startDay,curDay);
+    const sd=addDays(barMinMs,s), ed=addDays(barMinMs,en);
+    openScheduler(proj,{startDate:sd,endDate:ed});
+  }
+
+  function cleanup() {
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    ghost.style.display='none';
+    dragging=false;
+  }
+  dragCleanup=cleanup;
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+function startMove(e, ph, proj, bar, barMinMs, seg) {
+  dragging=true; didDrag=false;
+  const startX=e.clientX;
+  const origLeft=parseFloat(seg.style.left);
+  const origStartMs=dateMs(ph.start_date);
+  const origEndMs=ph.end_date?dateMs(ph.end_date):origStartMs;
+
+  seg.style.opacity='.65';
+  document.body.style.cursor='grabbing';
+
+  function onMove(ev) {
+    didDrag=true;
+    const dx=ev.clientX-startX;
+    seg.style.left=Math.max(0,origLeft+dx)+'px';
+  }
+  function onUp(ev) {
+    cleanup();
+    const daysDelta=Math.round((ev.clientX-startX)/dayPx);
+    seg.style.left=origLeft+'px';
+    if (!didDrag||daysDelta===0) return;
+    const newStart=new Date(origStartMs+daysDelta*86400000).toISOString().slice(0,10);
+    const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
+    updatePhase(ph.id,proj,{start_date:newStart,end_date:newEnd});
+  }
+  function cleanup() {
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    seg.style.opacity='';
+    document.body.style.cursor='';
+    dragging=false;
+  }
+  dragCleanup=cleanup;
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+function startResize(e, ph, proj, bar, barMinMs, seg) {
+  dragging=true; didDrag=false;
+  const startX=e.clientX;
+  const origW=parseFloat(seg.style.width);
+  const origEndMs=ph.end_date?dateMs(ph.end_date):dateMs(ph.start_date);
+
+  document.body.style.cursor='ew-resize';
+
+  function onMove(ev) {
+    didDrag=true;
+    const dx=ev.clientX-startX;
+    seg.style.width=Math.max(dayPx*0.5,origW+dx)+'px';
+  }
+  function onUp(ev) {
+    cleanup();
+    const daysDelta=Math.round((ev.clientX-startX)/dayPx);
+    seg.style.width=origW+'px';
+    if (!didDrag||daysDelta===0) return;
+    const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
+    updatePhase(ph.id,proj,{end_date:newEnd});
+  }
+  function cleanup() {
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    document.body.style.cursor='';
+    dragging=false;
+  }
+  dragCleanup=cleanup;
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+function updateGhost(ghost, left, w) {
+  ghost.style.left=left+'px';
+  ghost.style.width=w+'px';
+}
+
+// ── Phase CRUD ────────────────────────────────────────────────────
+async function updatePhase(id, proj, fields) {
+  try {
+    const res=await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${id}`,{
+      method:'PATCH',
+      headers:{...H,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(fields),
+    });
+    if (res.ok||res.status===204) {
+      if (phasesMap[proj]) { const i=phasesMap[proj].findIndex(p=>p.id===id); if(i>=0) Object.assign(phasesMap[proj][i],fields); }
+      showMsg('✓ 已更新'); buildTimeline(); if(currentProj===proj) rerenderPopup();
+    } else showMsg('✗ 更新失敗');
+  } catch { showMsg('✗ 更新失敗'); }
+}
+
+async function addPhase() {
+  if (!currentProj) return;
+  const sel=document.getElementById('phase-name-select').value;
+  const name=sel==='__custom__'?document.getElementById('custom-phase-text').value.trim():sel;
+  const start=document.getElementById('phase-start').value;
+  const end=document.getElementById('phase-end').value;
+  if (!name||!start) { showMsg('請填寫名稱和開始日期'); return; }
+  try {
+    const body={project_name:currentProj,phase:name,start_date:start,end_date:end||null};
+    const res=await fetch(`${SUPABASE}/rest/v1/project_phases`,{
+      method:'POST',
+      headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body),
+    });
+    if (res.ok||res.status===201) {
+      const data=await res.json();
+      if (!phasesMap[currentProj]) phasesMap[currentProj]=[];
+      phasesMap[currentProj].push(Array.isArray(data)?data[0]:data||body);
+      document.getElementById('add-phase-form').classList.remove('open');
+      document.getElementById('add-phase-toggle').textContent='＋ 新增時程';
+      renderPhaseList(currentProj); showMsg('✓ 已新增'); buildTimeline();
+    } else showMsg('✗ 新增失敗');
+  } catch { showMsg('✗ 新增失敗'); }
+}
+
+async function deletePhase(id, proj) {
+  if (!confirm('確定刪除這個時程？')) return;
+  try {
+    const res=await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${id}`,{
+      method:'DELETE', headers:{...H,'Prefer':'return=minimal'},
+    });
+    if (res.ok||res.status===204) {
+      if (phasesMap[proj]) phasesMap[proj]=phasesMap[proj].filter(p=>p.id!==id);
+      renderPhaseList(proj); showMsg('✓ 已刪除'); buildTimeline();
+    } else showMsg('✗ 刪除失敗');
+  } catch { showMsg('✗ 刪除失敗'); }
+}
+
+function reorderPhase(proj, idx, dir) {
+  const phases=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
+  const ni=idx+dir;
+  if (ni<0||ni>=phases.length) return;
+  const a=phases[idx], b=phases[ni];
+  const tS=a.start_date, tE=a.end_date;
+  a.start_date=b.start_date; a.end_date=b.end_date;
+  b.start_date=tS; b.end_date=tE;
+  const hdrs={...H,'Content-Type':'application/json','Prefer':'return=minimal'};
+  Promise.all([
+    fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${a.id}`,{method:'PATCH',headers:hdrs,body:JSON.stringify({start_date:a.start_date,end_date:a.end_date})}),
+    fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${b.id}`,{method:'PATCH',headers:hdrs,body:JSON.stringify({start_date:b.start_date,end_date:b.end_date})}),
+  ]).then(()=>{buildTimeline();renderPhaseList(proj);});
+}
+
+// ── Popup ─────────────────────────────────────────────────────────
+function openScheduler(proj, prefillDates) {
+  currentProj=proj;
+  const cases=allCases.filter(c=>c.notion_project===proj);
+  const mt=(cases[0]?.job_types?.[0])||'Other';
+  document.getElementById('sch-title').textContent=proj;
+  document.getElementById('sch-meta').textContent=mt+(cases.length>1?` · ${cases.length} 個派案`:'');
+  document.getElementById('leader-input').value=(progressMap[proj]?.project_leader)||'';
   renderPhaseList(proj);
 
   // Reset add form
-  document.getElementById('add-phase-form').classList.remove('open');
-  document.getElementById('add-phase-toggle').textContent = '＋ 新增時程';
-  document.getElementById('phase-name-select').value = '初步討論';
-  document.getElementById('custom-phase-input').style.display = 'none';
-  document.getElementById('custom-phase-text').value = '';
-  const todayStr = new Date().toISOString().slice(0, 10);
-  document.getElementById('phase-start').value = todayStr;
-  document.getElementById('phase-end').value   = todayStr;
+  const form=document.getElementById('add-phase-form');
+  form.classList.remove('open');
+  document.getElementById('add-phase-toggle').textContent='＋ 新增時程';
+  document.getElementById('phase-name-select').value='討論';
+  document.getElementById('custom-phase-input').style.display='none';
+  document.getElementById('custom-phase-text').value='';
 
-  // Project Leader
-  const prog = progressMap[proj] || {};
-  document.getElementById('leader-input').value = prog.project_leader || '';
+  if (prefillDates) {
+    document.getElementById('phase-start').value=prefillDates.startDate;
+    document.getElementById('phase-end').value=prefillDates.endDate;
+    form.classList.add('open');
+    document.getElementById('add-phase-toggle').textContent='收起';
+  } else {
+    const t=new Date().toISOString().slice(0,10);
+    document.getElementById('phase-start').value=t;
+    document.getElementById('phase-end').value=t;
+  }
 
-  // Links — show display mode first
   renderLinksDisplay(proj);
 
-  // Position & show
-  const popup = document.getElementById('scheduler-popup');
-  popup.style.top  = '80px';
-  popup.style.left = Math.max(10, (window.innerWidth - 370) / 2) + 'px';
-  popup.classList.add('visible');
+  const pop=document.getElementById('sch-popup');
+  pop.style.top='80px';
+  pop.style.left=Math.max(10,(window.innerWidth-370)/2)+'px';
+  pop.classList.add('visible');
 }
 
+function rerenderPopup() { if (currentProj) renderPhaseList(currentProj); }
+
 function renderPhaseList(proj) {
-  const container = document.getElementById('sch-phases');
-  container.innerHTML = '';
-  const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
+  const c=document.getElementById('sch-phases'); c.innerHTML='';
+  const phases=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
   if (!phases.length) {
-    const empty = mk('div');
-    empty.style.cssText = 'font-size:11px;color:var(--text-dim);margin-bottom:8px;';
-    empty.textContent = '尚無時程規劃';
-    container.appendChild(empty);
-    return;
+    const em=mk('div'); em.style.cssText='font-size:11px;color:var(--text-dim);margin-bottom:8px;';
+    em.textContent='尚無時程規劃'; c.appendChild(em); return;
   }
-  for (let i = 0; i < phases.length; i++) {
-    container.appendChild(buildPhaseRow(phases[i], proj, i, phases.length));
-  }
+  for (let i=0;i<phases.length;i++) c.appendChild(buildPhaseRow(phases[i],proj,i,phases.length));
 }
 
 function buildPhaseRow(ph, proj, idx, total) {
-  const item = mk('div', 'phase-item');
+  const item=mk('div','phase-item');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const endMs=ph.end_date?dateMs(ph.end_date):today.getTime();
+  const isPast=endMs<today.getTime();
 
-  // ▲/▼ reorder buttons
-  const rbtns = mk('div'); rbtns.style.cssText = 'display:flex;flex-direction:column;flex-shrink:0;gap:0;';
-  const up = mk('button', 'reorder-btn'); up.textContent = '▲'; up.title = '上移';
-  up.style.opacity = idx === 0 ? '0.2' : '1';
-  up.onclick = e => { e.stopPropagation(); if (idx > 0) reorderPhase(proj, idx, -1); };
-  const dn = mk('button', 'reorder-btn'); dn.textContent = '▼'; dn.title = '下移';
-  dn.style.opacity = idx === total - 1 ? '0.2' : '1';
-  dn.onclick = e => { e.stopPropagation(); if (idx < total - 1) reorderPhase(proj, idx, 1); };
-  rbtns.append(up, dn);
+  const rbtns=mk('div','reorder-btns');
+  const up=mk('button','reorder-btn'); up.textContent='▲'; up.title='上移';
+  up.style.opacity=idx===0?'.25':'1';
+  up.onclick=e=>{e.stopPropagation(); if(idx>0)reorderPhase(proj,idx,-1);};
+  const dn=mk('button','reorder-btn'); dn.textContent='▼'; dn.title='下移';
+  dn.style.opacity=idx===total-1?'.25':'1';
+  dn.onclick=e=>{e.stopPropagation(); if(idx<total-1)reorderPhase(proj,idx,1);};
+  rbtns.append(up,dn);
 
-  // Display mode (date first → name)
-  const dot   = mk('div', 'phase-dot'); dot.style.background = phaseColor(ph.phase);
-  const dates = mk('span', 'phase-dates');
-  dates.textContent = fmtDate(ph.start_date) + (ph.end_date ? ' → ' + fmtDate(ph.end_date) : ' → 今天');
-  const name = mk('span', 'phase-name'); name.textContent = ph.phase;
-  const del  = mk('button', 'phase-del'); del.textContent = '×'; del.title = '刪除';
-  del.onclick = e => { e.stopPropagation(); deletePhase(ph.id, proj); };
+  const dot=mk('div','phase-dot');
+  dot.style.background=isPast?'#bbb':typeColor((allCases.find(c=>c.notion_project===proj)?.job_types?.[0])||'Other');
+  const dates=mk('span','phase-dates-lbl');
+  dates.textContent=fmtDate(ph.start_date)+(ph.end_date?' → '+fmtDate(ph.end_date):' → 今天');
+  const name=mk('span','phase-name-lbl'); name.textContent=ph.phase;
+  const del=mk('button','phase-del'); del.textContent='×'; del.title='刪除';
+  del.onclick=e=>{e.stopPropagation(); deletePhase(ph.id,proj);};
+  item.append(rbtns,dot,dates,name,del);
 
-  item.append(rbtns, dot, dates, name, del);
-
-  // Click row (not buttons) → switch to inline edit
-  item.onclick = e => {
-    if (e.target === del || e.target === up || e.target === dn) return;
-    item.innerHTML = '';
-    item.style.cssText = '';
-    buildPhaseEditInline(item, ph, proj);
+  item.onclick=e=>{
+    if(e.target===del||e.target===up||e.target===dn) return;
+    item.innerHTML=''; item.style.cssText='';
+    buildPhaseEditInline(item,ph,proj);
   };
-
   return item;
 }
 
 function buildPhaseEditInline(container, ph, proj) {
-  // Name select
-  const selWrap = mk('div'); selWrap.style.cssText = 'flex:1.2;min-width:0;';
-  const sel = mk('select'); sel.style.cssText = 'width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;';
+  const selWrap=mk('div'); selWrap.style.cssText='flex:1.2;min-width:0;';
+  const sel=mk('select'); sel.style.cssText='width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;';
   for (const opt of PHASE_OPTS) {
-    const o = mk('option'); o.value = opt; o.textContent = opt;
-    if (opt === ph.phase) o.selected = true;
-    sel.appendChild(o);
+    const o=mk('option'); o.value=opt; o.textContent=opt;
+    if(opt===ph.phase) o.selected=true; sel.appendChild(o);
   }
-  const customOpt = mk('option'); customOpt.value = '__custom__'; customOpt.textContent = '自訂…';
-  if (!PHASE_OPTS.includes(ph.phase)) customOpt.selected = true;
-  sel.appendChild(customOpt);
+  const co=mk('option'); co.value='__custom__'; co.textContent='自訂…';
+  if (!PHASE_OPTS.includes(ph.phase)) co.selected=true; sel.appendChild(co);
   selWrap.appendChild(sel);
+  const ci=mk('input'); ci.type='text'; ci.maxLength=30;
+  ci.style.cssText='width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;margin-top:3px;display:none;';
+  if (!PHASE_OPTS.includes(ph.phase)) { ci.style.display='block'; ci.value=ph.phase; }
+  sel.onchange=()=>{ ci.style.display=sel.value==='__custom__'?'block':'none'; };
+  selWrap.appendChild(ci);
 
-  const customInput = mk('input'); customInput.type = 'text'; customInput.maxLength = 20;
-  customInput.style.cssText = 'width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;margin-top:3px;display:none;';
-  if (!PHASE_OPTS.includes(ph.phase)) {
-    customInput.style.display = 'block';
-    customInput.value = ph.phase;
-  }
-  sel.onchange = () => {
-    customInput.style.display = sel.value === '__custom__' ? 'block' : 'none';
-  };
-  selWrap.appendChild(customInput);
+  const sIn=mk('input'); sIn.type='date'; sIn.value=ph.start_date||'';
+  sIn.style.cssText='padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:112px;';
+  const eIn=mk('input'); eIn.type='date'; eIn.value=ph.end_date||'';
+  eIn.style.cssText=sIn.style.cssText;
 
-  // Date inputs
-  const startIn = mk('input'); startIn.type = 'date'; startIn.value = ph.start_date || '';
-  startIn.style.cssText = 'padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:112px;';
-  const endIn = mk('input'); endIn.type = 'date'; endIn.value = ph.end_date || '';
-  endIn.style.cssText = 'padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:112px;';
+  const saveB=mk('button'); saveB.textContent='✓';
+  saveB.style.cssText='background:#1a1817;color:#fff;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;';
+  const cancelB=mk('button'); cancelB.textContent='✕';
+  cancelB.style.cssText='background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--text-dim);';
 
-  // Buttons
-  const saveB = mk('button'); saveB.textContent = '✓';
-  saveB.style.cssText = 'background:#1a1817;color:#fff;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:12px;font-family:inherit;';
-  const cancelB = mk('button'); cancelB.textContent = '✕';
-  cancelB.style.cssText = 'background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--text-dim);font-family:inherit;';
+  const r1=mk('div'); r1.style.cssText='display:flex;gap:5px;width:100%;margin-bottom:5px;';
+  const r2=mk('div'); r2.style.cssText='display:flex;gap:5px;align-items:center;width:100%;flex-wrap:wrap;';
+  r1.appendChild(selWrap); r2.append(sIn,eIn,saveB,cancelB);
+  container.style.cssText='flex-direction:column;background:var(--surface2);border-radius:7px;padding:7px 8px;cursor:default;gap:0;';
+  container.append(r1,r2);
 
-  // Layout: two-row inline form
-  const row1 = mk('div'); row1.style.cssText = 'display:flex;gap:5px;align-items:flex-start;width:100%;flex-wrap:wrap;';
-  const row2 = mk('div'); row2.style.cssText = 'display:flex;gap:5px;align-items:center;margin-top:5px;width:100%;flex-wrap:wrap;';
-  row1.appendChild(selWrap);
-  const dateLabel = mk('span'); dateLabel.style.cssText = 'font-size:10px;color:var(--text-dim);align-self:center;';
-  row2.append(startIn, dateLabel, endIn, saveB, cancelB);
-  container.style.cssText = 'flex-direction:column;background:var(--surface2);border-radius:7px;padding:7px 8px;cursor:default;';
-  container.append(row1, row2);
-
-  cancelB.onclick = e => {
+  cancelB.onclick=e=>{e.stopPropagation(); container.replaceWith(buildPhaseRow(ph,proj,0,1));};
+  saveB.onclick=async e=>{
     e.stopPropagation();
-    container.replaceWith(buildPhaseRow(ph, proj));
+    const nn=sel.value==='__custom__'?ci.value.trim():sel.value;
+    if (!nn) return;
+    await updatePhase(ph.id,proj,{phase:nn,start_date:sIn.value,end_date:eIn.value||null});
+    renderPhaseList(proj);
   };
-
-  saveB.onclick = async e => {
-    e.stopPropagation();
-    const newName = sel.value === '__custom__' ? customInput.value.trim() : sel.value;
-    if (!newName) return;
-    const newStart = startIn.value;
-    const newEnd   = endIn.value || null;
-    try {
-      const res = await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${ph.id}`, {
-        method: 'PATCH',
-        headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ phase: newName, start_date: newStart, end_date: newEnd }),
-      });
-      if (res.ok || res.status === 204) {
-        if (phasesMap[proj]) {
-          const idx = phasesMap[proj].findIndex(p => p.id === ph.id);
-          if (idx >= 0) phasesMap[proj][idx] = { ...ph, phase: newName, start_date: newStart, end_date: newEnd };
-        }
-        showMsg('✓ 已更新');
-        buildTimeline();
-        openScheduler(currentPopupProject, currentPopupMeta);
-      } else { showMsg('✗ 儲存失敗'); }
-    } catch { showMsg('✗ 儲存失敗'); }
-  };
-}
-
-function fmtDate(s) {
-  if (!s) return '';
-  const [, m, d] = s.split('-');
-  return `${parseInt(m)}/${parseInt(d)}`;
 }
 
 function toggleAddForm() {
-  const form = document.getElementById('add-phase-form');
-  const btn  = document.getElementById('add-phase-toggle');
-  const open = form.classList.toggle('open');
-  btn.textContent = open ? '收起' : '＋ 新增時程';
+  const f=document.getElementById('add-phase-form');
+  const btn=document.getElementById('add-phase-toggle');
+  const open=f.classList.toggle('open');
+  btn.textContent=open?'收起':'＋ 新增時程';
 }
-
 function onPhaseNameChange() {
-  const val = document.getElementById('phase-name-select').value;
-  document.getElementById('custom-phase-input').style.display =
-    val === '__custom__' ? 'block' : 'none';
+  const v=document.getElementById('phase-name-select').value;
+  document.getElementById('custom-phase-input').style.display=v==='__custom__'?'block':'none';
 }
+function closePopup() {
+  document.getElementById('sch-popup').classList.remove('visible');
+  currentProj=null;
+}
+document.addEventListener('click',e=>{
+  const p=document.getElementById('sch-popup');
+  if (p.classList.contains('visible')&&!p.contains(e.target)) closePopup();
+});
 
-async function addPhase() {
-  if (!currentPopupProject) return;
-  const sel    = document.getElementById('phase-name-select').value;
-  const name   = sel === '__custom__'
-    ? document.getElementById('custom-phase-text').value.trim()
-    : sel;
-  const start  = document.getElementById('phase-start').value;
-  const end    = document.getElementById('phase-end').value;
-
-  if (!name) { showMsg('請填寫階段名稱'); return; }
-  if (!start) { showMsg('請填寫開始日期'); return; }
-
+// ── Links ─────────────────────────────────────────────────────────
+function renderLinksDisplay(proj) {
+  const prog=progressMap[proj]||{};
+  const links=[
+    {label:'會議連結',val:prog.meeting_link||''},
+    {label:'討論板',  val:prog.discussion_link||''},
+    {label:'Brief',   val:prog.brief_link||''},
+  ];
+  const hasAny=links.some(l=>l.val);
+  const disp=document.getElementById('links-display-mode'); disp.innerHTML='';
+  for (const {label,val} of links) {
+    const row=mk('div','link-row');
+    const lbl=mk('span','link-lbl'); lbl.textContent=label;
+    const v=mk('div','link-val'+(val?'':' empty'));
+    if (val) {
+      const a=mk('a'); a.href=val; a.target='_blank'; a.rel='noopener noreferrer';
+      a.textContent=val.replace(/^https?:\/\//,'').slice(0,40)+(val.length>47?'…':'');
+      a.onclick=e=>e.stopPropagation(); v.appendChild(a);
+    } else v.textContent='—';
+    row.append(lbl,v); disp.appendChild(row);
+  }
+  const btn=mk('button','link-edit-btn');
+  btn.textContent=hasAny?'編輯連結':'新增連結';
+  btn.onclick=()=>showLinksEdit(proj);
+  disp.appendChild(btn);
+  document.getElementById('links-display-mode').style.display='block';
+  document.getElementById('links-edit-mode').style.display='none';
+}
+function showLinksDisplay() { renderLinksDisplay(currentProj); }
+function showLinksEdit(proj) {
+  const prog=progressMap[proj]||{};
+  document.getElementById('link-meeting').value=prog.meeting_link||'';
+  document.getElementById('link-discussion').value=prog.discussion_link||'';
+  document.getElementById('link-brief').value=prog.brief_link||'';
+  document.getElementById('links-display-mode').style.display='none';
+  document.getElementById('links-edit-mode').style.display='block';
+}
+async function saveLinks() {
+  if (!currentProj) return;
+  const body={
+    project_name:currentProj,
+    meeting_link:document.getElementById('link-meeting').value.trim()||null,
+    discussion_link:document.getElementById('link-discussion').value.trim()||null,
+    brief_link:document.getElementById('link-brief').value.trim()||null,
+    updated_at:new Date().toISOString(),
+  };
   try {
-    const body = {
-      project_name: currentPopupProject,
-      phase:        name,
-      start_date:   start,
-      end_date:     end || null,
-    };
-    const res = await fetch(`${SUPABASE}/rest/v1/project_phases`, {
-      method: 'POST',
-      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify(body),
+    const res=await fetch(`${SUPABASE}/rest/v1/project_progress`,{
+      method:'POST',
+      headers:{...H,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify(body),
     });
-    if (res.ok || res.status === 201) {
-      const data = await res.json();
-      const newRow = Array.isArray(data) ? data[0] : data;
-      if (!phasesMap[currentPopupProject]) phasesMap[currentPopupProject] = [];
-      phasesMap[currentPopupProject].push(newRow || body);
-      renderPhaseList(currentPopupProject);
-      document.getElementById('add-phase-form').classList.remove('open');
-      document.getElementById('add-phase-toggle').textContent = '＋ 新增時程';
-      showMsg('✓ 時程已新增');
-      buildTimeline();
-      // Re-open popup (buildTimeline clears DOM)
-      openScheduler(currentPopupProject, currentPopupMeta);
-    } else {
-      showMsg('✗ 新增失敗');
-    }
-  } catch (e) { showMsg('✗ 新增失敗'); }
+    if (res.ok||res.status===204||res.status===201) {
+      if (!progressMap[currentProj]) progressMap[currentProj]={};
+      Object.assign(progressMap[currentProj],body);
+      showMsg('✓ 連結已儲存'); renderLinksDisplay(currentProj);
+    } else showMsg('✗ 儲存失敗');
+  } catch { showMsg('✗ 儲存失敗'); }
 }
 
-function reorderPhase(proj, idx, dir) {
-  const phases = (phasesMap[proj] || []).sort((a, b) => dateMs(a.start_date) - dateMs(b.start_date));
-  const ni = idx + dir;
-  if (ni < 0 || ni >= phases.length) return;
-  // Swap start_dates between the two phases
-  const a = phases[idx], b = phases[ni];
-  const tmpStart = a.start_date, tmpEnd = a.end_date;
-  a.start_date = b.start_date; a.end_date = b.end_date;
-  b.start_date = tmpStart; b.end_date = tmpEnd;
-  // Persist both via PATCH
-  const headers = { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-  Promise.all([
-    fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${a.id}`, {
-      method: 'PATCH', headers,
-      body: JSON.stringify({ start_date: a.start_date, end_date: a.end_date }),
-    }),
-    fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${b.id}`, {
-      method: 'PATCH', headers,
-      body: JSON.stringify({ start_date: b.start_date, end_date: b.end_date }),
-    }),
-  ]).then(() => {
-    buildTimeline();
-    openScheduler(currentPopupProject, currentPopupMeta);
-  });
-}
-
-async function deletePhase(id, proj) {
-  try {
-    const res = await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${id}`, {
-      method: 'DELETE',
-      headers: { ...H, 'Prefer': 'return=minimal' },
-    });
-    if (res.ok || res.status === 204) {
-      if (phasesMap[proj]) {
-        phasesMap[proj] = phasesMap[proj].filter(p => p.id !== id);
-      }
-      renderPhaseList(proj);
-      showMsg('✓ 已刪除');
-      buildTimeline();
-      openScheduler(currentPopupProject, currentPopupMeta);
-    } else {
-      showMsg('✗ 刪除失敗');
-    }
-  } catch (e) { showMsg('✗ 刪除失敗'); }
-}
-
-// ── Project Leader ────────────────────────────────────────────
+// ── Project Leader ────────────────────────────────────────────────
 async function saveLeader() {
-  if (!currentPopupProject) return;
-  const leader = document.getElementById('leader-input').value.trim();
+  if (!currentProj) return;
+  const leader=document.getElementById('leader-input').value.trim();
   try {
-    const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
-      method: 'POST',
-      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({
-        project_name: currentPopupProject,
-        project_leader: leader || null,
-        updated_at: new Date().toISOString(),
-      }),
+    const res=await fetch(`${SUPABASE}/rest/v1/project_progress`,{
+      method:'POST',
+      headers:{...H,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({project_name:currentProj,project_leader:leader||null,updated_at:new Date().toISOString()}),
     });
-    if (res.ok || res.status === 204 || res.status === 201) {
-      if (!progressMap[currentPopupProject]) progressMap[currentPopupProject] = {};
-      progressMap[currentPopupProject].project_leader = leader || null;
+    if (res.ok||res.status===204||res.status===201) {
+      if (!progressMap[currentProj]) progressMap[currentProj]={};
+      progressMap[currentProj].project_leader=leader||null;
       showMsg('✓ 已儲存');
     }
   } catch {}
 }
 
-// ── Link display helpers ───────────────────────────────────────
-function renderLinksDisplay(proj) {
-  const prog = progressMap[proj] || {};
-  const links = [
-    { label: '會議連結', val: prog.meeting_link    || '' },
-    { label: '討論板',   val: prog.discussion_link || '' },
-    { label: 'Brief',   val: prog.brief_link      || '' },
-  ];
-  const hasAny = links.some(l => l.val);
-
-  const disp = document.getElementById('links-display-mode');
-  disp.innerHTML = '';
-  for (const { label, val } of links) {
-    const row = mk('div', 'link-display-row');
-    const lbl = mk('span', 'link-display-label'); lbl.textContent = label;
-    const valEl = mk('div', 'link-display-val' + (val ? '' : ' empty'));
-    if (val) {
-      const a = mk('a');
-      a.href = val; a.target = '_blank'; a.rel = 'noopener noreferrer';
-      a.textContent = val.replace(/^https?:\/\//, '').slice(0, 40) + (val.length > 47 ? '…' : '');
-      a.onclick = e => e.stopPropagation();
-      valEl.appendChild(a);
-    } else {
-      valEl.textContent = '—';
-    }
-    row.append(lbl, valEl);
-    disp.appendChild(row);
-  }
-  const editBtn = mk('button', 'link-edit-all-btn');
-  editBtn.textContent = hasAny ? '編輯連結' : '新增連結';
-  editBtn.onclick = () => showLinksEdit(proj);
-  disp.appendChild(editBtn);
-
-  document.getElementById('links-display-mode').style.display = 'block';
-  document.getElementById('links-edit-mode').style.display    = 'none';
-}
-
-function showLinksDisplay() {
-  renderLinksDisplay(currentPopupProject);
-}
-
-function showLinksEdit(proj) {
-  const prog = progressMap[proj] || {};
-  document.getElementById('link-meeting').value    = prog.meeting_link    || '';
-  document.getElementById('link-discussion').value = prog.discussion_link || '';
-  document.getElementById('link-brief').value      = prog.brief_link      || '';
-  document.getElementById('links-display-mode').style.display = 'none';
-  document.getElementById('links-edit-mode').style.display    = 'block';
-}
-
-async function saveLinks() {
-  if (!currentPopupProject) return;
-  const meeting    = document.getElementById('link-meeting').value.trim();
-  const discussion = document.getElementById('link-discussion').value.trim();
-  const brief      = document.getElementById('link-brief').value.trim();
-  try {
-    const body = {
-      project_name:    currentPopupProject,
-      meeting_link:    meeting    || null,
-      discussion_link: discussion || null,
-      brief_link:      brief      || null,
-      updated_at:      new Date().toISOString(),
-    };
-    const res = await fetch(`${SUPABASE}/rest/v1/project_progress`, {
-      method: 'POST',
-      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify(body),
-    });
-    if (res.ok || res.status === 204 || res.status === 201) {
-      if (!progressMap[currentPopupProject]) progressMap[currentPopupProject] = {};
-      Object.assign(progressMap[currentPopupProject], {
-        meeting_link: meeting || null, discussion_link: discussion || null, brief_link: brief || null,
-      });
-      showMsg('✓ 連結已儲存');
-      renderLinksDisplay(currentPopupProject);
-    } else {
-      showMsg('✗ 儲存失敗');
-    }
-  } catch (e) { showMsg('✗ 儲存失敗'); }
-}
-
-function closePopup() {
-  document.getElementById('scheduler-popup').classList.remove('visible');
-  currentPopupProject = null;
-  currentPopupMeta    = null;
-}
-document.addEventListener('click', e => {
-  const popup = document.getElementById('scheduler-popup');
-  if (popup.classList.contains('visible') && !popup.contains(e.target)) closePopup();
-});
-
-// ── Lane assignment ───────────────────────────────────────────
-function assignLanes(cases) {
-  const lanes = [], ends = [];
-  const sorted = [...cases].sort((a, b) => dateMs(a.date) - dateMs(b.date));
-  for (const c of sorted) {
-    const s = dateMs(c.date), e = dateMs(c.deadline || c.date);
-    let placed = false;
-    for (let i = 0; i < lanes.length; i++) {
-      if (ends[i] < s) { lanes[i].push(c); ends[i] = e; placed = true; break; }
-    }
-    if (!placed) { lanes.push([c]); ends.push(e); }
-  }
-  return lanes.length ? lanes : [[]];
-}
-
-// ── Header ────────────────────────────────────────────────────
-function renderHeader(minDate, totalDays, totalWidth) {
-  const canvas = document.getElementById('header-dates-inner');
-  canvas.style.width = totalWidth + 'px';
-  canvas.innerHTML = '';
-  let d = new Date(minDate), lastMonth = -1;
-  for (let i = 0; i < totalDays; i++) {
-    const x = i * dayPx;
-    if (d.getMonth() !== lastMonth) {
-      lastMonth = d.getMonth();
-      const ml = mk('div');
-      ml.style.cssText = `position:absolute;left:${x+4}px;top:3px;font-size:10px;color:var(--text-mid);font-weight:700;white-space:nowrap;pointer-events:none;`;
-      ml.textContent = d.toLocaleDateString('zh-TW', { year:'numeric', month:'long' });
-      canvas.appendChild(ml);
-    }
-    const dow = d.getDay();
-    if (dayPx >= 36 || dow === 1 || dow === 0) {
-      const isToday = sameDay(d, new Date());
-      const dl = mk('div');
-      dl.style.cssText = `position:absolute;left:${x}px;bottom:3px;width:${dayPx}px;text-align:center;pointer-events:none;display:flex;align-items:center;justify-content:center;`;
-      if (isToday) {
-        const chip = mk('span');
-        chip.style.cssText = `font-size:10px;font-weight:700;color:#fff;background:#ea580c;border-radius:5px;padding:1px 5px;`;
-        chip.textContent = `${d.getMonth()+1}/${d.getDate()}`;
-        dl.appendChild(chip);
-      } else {
-        const lbl = mk('span');
-        lbl.style.cssText = `font-size:10px;color:${dow === 0 || dow === 6 ? '#b0b8c4' : 'var(--text-dim)'};`;
-        lbl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
-        dl.appendChild(lbl);
-      }
-      canvas.appendChild(dl);
-    }
-    d.setDate(d.getDate() + 1);
-  }
-  // Apply current scroll
-  const bs = document.getElementById('body-scroll');
-  document.getElementById('header-dates-inner').style.transform = `translateX(-${bs.scrollLeft}px)`;
-}
-
-// ── Zoom / scroll ──────────────────────────────────────────────
-function setZoom(mode) {
-  zoomDays = mode === 'week' ? 7 : mode === 'month' ? 30 : 14;
-  document.querySelectorAll('.btn[id^="z-"]').forEach(b => b.classList.remove('active'));
-  document.getElementById('z-' + (mode === 'biweek' ? 'biweek' : mode)).classList.add('active');
+// ── Controls ──────────────────────────────────────────────────────
+function setFilter(mode) {
+  filterMode=mode;
+  document.querySelectorAll('.btn[id^="f-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('f-'+mode)?.classList.add('active');
   buildTimeline();
 }
-
+function setDayPx(px) {
+  dayPx=px;
+  const map={48:'z-sm',64:'z-md',88:'z-lg'};
+  document.querySelectorAll('.btn[id^="z-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById(map[px])?.classList.add('active');
+  buildTimeline();
+}
 function scrollToToday() {
-  const bs = document.getElementById('body-scroll');
-  const allMs = allCases.flatMap(c => [dateMs(c.date), dateMs(c.deadline || c.date)]).filter(Boolean);
-  if (!allMs.length) return;
-  const minDate = new Date(Math.min(...allMs)); minDate.setDate(minDate.getDate() - 3);
-  const today   = new Date(); today.setHours(0,0,0,0);
-  const tx = daysBetween(minDate, today) * dayPx;
-  bs.scrollLeft = Math.max(0, tx - (bs.clientWidth - 230) / 3);
-  syncScroll(bs);
+  const ms=document.getElementById('main-scroll');
+  if (!tlMinDate) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const offset=daysBetween(tlMinDate,today)*dayPx;
+  ms.scrollLeft=Math.max(0,offset-ms.clientWidth/3);
 }
 
-function syncScroll(el) {
-  // Translate header-dates-inner so dates align with gantt-col
-  document.getElementById('header-dates-inner').style.transform = `translateX(-${el.scrollLeft}px)`;
-}
-
-// ── Utilities ─────────────────────────────────────────────────
+// ── Utils ─────────────────────────────────────────────────────────
 function dateMs(s) {
   if (!s) return 0;
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d).getTime();
+  const [y,m,d]=s.split('-').map(Number);
+  return new Date(y,m-1,d).getTime();
 }
-function daysBetween(a, b) {
-  const am = a instanceof Date ? new Date(a).setHours(0,0,0,0) : dateMs(a);
-  const bm = b instanceof Date ? new Date(b).setHours(0,0,0,0) : dateMs(b);
-  return Math.round((bm - am) / 86400000);
+function addDays(baseMs, days) {
+  return new Date(baseMs+days*86400000).toISOString().slice(0,10);
 }
-function sameDay(a, b) {
-  return a.getFullYear() === b.getFullYear() &&
-         a.getMonth()    === b.getMonth()    &&
-         a.getDate()     === b.getDate();
+function daysBetween(a,b) {
+  const am=a instanceof Date?new Date(a).setHours(0,0,0,0):dateMs(a);
+  const bm=b instanceof Date?new Date(b).setHours(0,0,0,0):dateMs(b);
+  return Math.round((bm-am)/86400000);
 }
-function mk(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function sameDay(a,b) {
+  return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+}
+function mk(tag,cls) { const e=document.createElement(tag); if(cls)e.className=cls; return e; }
+function fmtDate(s) { if(!s) return ''; const [,m,d]=s.split('-'); return `${parseInt(m)}/${parseInt(d)}`; }
 function showMsg(txt) {
-  const m = document.getElementById('status-msg');
-  m.textContent = txt;
-  setTimeout(() => {
-    const ps = new Set(allCases.map(c => c.notion_project));
-    m.textContent = `${allCases.length} 筆派案 · ${ps.size} 個專案`;
-  }, 2500);
+  const el=document.getElementById('status-msg'); el.textContent=txt;
+  setTimeout(()=>{ const ps=new Set(allCases.map(c=>c.notion_project)); el.textContent=`${allCases.length} 筆派案 · ${ps.size} 個專案`; }, 2500);
 }
 
-// ── Init ──────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────
 loadData();
-window.addEventListener('resize', () => buildTimeline());
+window.addEventListener('resize',()=>buildTimeline());
 </script>
 </body>
 </html>
