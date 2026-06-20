@@ -83,7 +83,7 @@
     height: var(--row-h); position: relative;
     border-bottom: 1px solid var(--border);
   }
-  .proj-row:nth-child(even) { background: rgba(0,0,0,.013); }
+  .proj-row.even { background: rgba(0,0,0,.013); }
 
   /* Grid lines */
   .grid-line {
@@ -162,10 +162,28 @@
     border-top: 1px dashed rgba(255,255,255,.3);
   }
 
+  /* Market group header */
+  .market-group-hdr {
+    height: 26px;
+    display: flex; align-items: center;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    border-top: 2px solid rgba(0,0,0,.09);
+    z-index: 2;
+    flex-shrink: 0;
+  }
+  .mkt-lbl {
+    font-size: 10px; font-weight: 700; color: var(--text-mid);
+    letter-spacing: .07em; text-transform: uppercase;
+    padding: 0 14px;
+    position: sticky; left: 0; z-index: 1;
+    pointer-events: none;
+  }
+
   /* Deadline bar (Revision / M1 / Revised Maker) */
   .bar-deadline-band {
     height: var(--ph-band);
-    position: relative; overflow: hidden; cursor: pointer;
+    position: relative; overflow: hidden; cursor: default;
     display: flex; align-items: center;
     /* diagonal stripe pattern */
     background-image: repeating-linear-gradient(
@@ -440,6 +458,30 @@ const PHASE_OPTS = ['討論','3D草稿/2D包現有型體','草稿/彩稿','合�
 // Types that show deadline chip instead of phase tracking
 const DEADLINE_TYPES = new Set(['Revision','M1','Revised Maker']);
 
+// Market groups (left-side fixed categories)
+const MARKET_GROUPS = [
+  { label: 'AP / INT',    markets: new Set(['AP','INT','HK','INT Other']) },
+  { label: 'GC',          markets: new Set(['GC','GC Roastery']) },
+  { label: 'SBJ',         markets: new Set(['SBJ','SBJ Roastery']) },
+  { label: 'EMEA / MENA', markets: new Set(['EMEA','MENA','Milano Roastery']) },
+  { label: 'TW',          markets: new Set(['TW']) },
+  { label: 'RNA',         markets: new Set(['RNA']) },
+  { label: 'SCK',         markets: new Set(['SCK']) },
+  { label: 'Other',       markets: new Set(['Other']) },
+];
+function getMarketGroup(market) {
+  for (const g of MARKET_GROUPS) { if (g.markets.has(market)) return g.label; }
+  return 'Other';
+}
+
+// Type sort order within each market group
+const TYPE_ORDER = ['KV','Moodboard','Presentation','V1','Revision','M1','Revised Maker'];
+function typeSort(a, b) {
+  const ai = TYPE_ORDER.indexOf(a.mainType);
+  const bi = TYPE_ORDER.indexOf(b.mainType);
+  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+}
+
 // ── State ────────────────────────────────────────────────────────
 let allCases    = [];
 let notionMap   = {};
@@ -511,6 +553,7 @@ function getFilteredProjects() {
     }
     if (minMs===Infinity) continue;
     const mainType=(cases[0].job_types?.[0])||'Other';
+    const market=cases[0].market||'Other';
 
     // Designer filter
     if (filterDesigner) {
@@ -522,9 +565,9 @@ function getFilteredProjects() {
     if      (filterMode==='all')    inc=true;
     else if (filterMode==='week')   inc=minMs<weekSunMs&&maxMs>=weekMonMs;
     else if (filterMode==='biweek') inc=minMs<biweekEndMs&&maxMs>=weekMonMs;
-    if (inc) result.push({proj,cases,minMs,maxMs,mainType});
+    if (inc) result.push({proj,cases,minMs,maxMs,mainType,market});
   }
-  return result.sort((a,b)=>a.minMs-b.minMs);
+  return result;
 }
 
 // ── Build timeline ────────────────────────────────────────────────
@@ -556,9 +599,35 @@ function buildTimeline() {
   // Date header
   renderDateHeader(minDate, totalW);
 
-  // Rows
+  // Group by market, sort each group by type
+  const grouped = {};
+  for (const p of projs) {
+    const grp = getMarketGroup(p.market);
+    if (!grouped[grp]) grouped[grp] = [];
+    grouped[grp].push(p);
+  }
+
   rw.innerHTML='';
-  for (const p of projs) rw.appendChild(buildRow(p, minDate, today, todayMs));
+  let rowIdx = 0;
+  for (const g of MARKET_GROUPS) {
+    const items = grouped[g.label];
+    if (!items || !items.length) continue;
+    items.sort(typeSort);
+    // Group header row
+    const hdr = mk('div','market-group-hdr');
+    hdr.style.width = totalW + 'px';
+    const lbl = mk('span','mkt-lbl');
+    lbl.textContent = g.label;
+    hdr.appendChild(lbl);
+    rw.appendChild(hdr);
+    // Project rows
+    for (const p of items) {
+      const row = buildRow(p, minDate, today, todayMs);
+      if (rowIdx % 2 === 1) row.classList.add('even');
+      rowIdx++;
+      rw.appendChild(row);
+    }
+  }
 
   setTimeout(scrollToToday, 50);
 }
@@ -680,7 +749,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
       else if (daysLeft <= 6)  chip.classList.add('warn');
       band.appendChild(chip);
     }
-    band.addEventListener('click', e=>{ e.stopPropagation(); openScheduler(proj); });
+    // Deadline band is read-only — no click/drag interaction
     bar.appendChild(band);
     row.appendChild(bar);
     return row;
