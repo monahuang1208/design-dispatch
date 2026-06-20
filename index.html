@@ -211,7 +211,7 @@ const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 // ── CONSTANTS ──────────────────────────────────────────────────
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DEFAULT_JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout","care card","Note"];
-const DEFAULT_MARKETS = ["AP","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
+const DEFAULT_MARKETS = ["AP","INT","INT Other","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
 const DEFAULT_DESIGNERS = {
   "2D": ["Faye","Alan","Avis","Carol","Roy","Jou"],
   "插畫": ["Mona","Cathy","Emilia","Echo","Heiwin"],
@@ -243,8 +243,14 @@ const TYPE_COLOR_MAP = {
 
 function typeColor(t,types){ return TYPE_COLOR_MAP[t] || TYPE_COLORS[types ? types.indexOf(t) % TYPE_COLORS.length : 0] || "#888"; }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function today(){ return new Date().toISOString().slice(0,10); }
-function allDesigners(dObj){ return Object.values(dObj).flat(); }
+function localDateStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function today(){ return localDateStr(new Date()); }
+const DESIGNER_GROUP_ORDER = ["2D","插畫","3D"];
+function allDesigners(dObj){
+  const ordered = DESIGNER_GROUP_ORDER.filter(g=>dObj[g]).flatMap(g=>dObj[g]||[]);
+  const others  = Object.entries(dObj).filter(([g])=>!DESIGNER_GROUP_ORDER.includes(g)).flatMap(([,v])=>v||[]);
+  return [...ordered,...others];
+}
 
 // Deadline helpers
 function deadlineStatus(dl){
@@ -708,6 +714,7 @@ let S = {
   parseStatus: "",
   projectLinks: {},
   editingLinks: {},
+  hideCompleted: true,
 };
 
 function filtered(){
@@ -746,11 +753,11 @@ function renderList(cases){
   const sevenDaysAgo=new Date(todayStr); sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
   const sevenDaysAgoStr=sevenDaysAgo.toISOString().slice(0,10);
 
-  // Filter: hide completed cases with deadline older than 7 days ago
+  // Filter: hide completed cases
   const filtered=cases.filter(c=>{
+    if(S.hideCompleted && c.status==="已完成") return false;
     if(!c.deadline) return true;
     if(c.deadline>=sevenDaysAgoStr) return true;
-    // deadline < 7 days ago: only show if NOT completed
     return c.status!=="已完成";
   });
 
@@ -872,7 +879,7 @@ function getWeekDates(offset, span){
     for(let i=0;i<5;i++){
       const d=new Date(mon);
       d.setDate(mon.getDate()+w*7+i);
-      dates.push(d.toISOString().slice(0,10));
+      dates.push(localDateStr(d));
     }
   }
   return dates;
@@ -1308,6 +1315,7 @@ function renderReview(){
     const colCases=reviewedCases.filter(c=>c.review===col.val);
     const cards=colCases.map(c=>`
       <div class="k-card" style="border-left-color:${col.border}" onclick="openEdit('${c.id}')">
+        ${c.notionProject?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.3">${c.notionProject}</div>`:""}
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${toArr(c.jobTypes).map(j=>`<span style="display:inline-block;background:${typeColor(j,types)}22;color:${typeColor(j,types)};border-radius:5px;padding:3px 8px;font-size:13px;font-weight:700;letter-spacing:.2px">${j}</span>`).join("")}</div>
         <div class="k-card-top">
           <div class="k-card-name">${arrLabel(c.designers)}</div>
@@ -1369,7 +1377,7 @@ function renderSettings(){
     </div>
     <div class="setting-card">
       <div class="setting-title">👤 設計師</div>
-      ${Object.entries(s.designers).map(([g,list])=>designerSection(g,list)).join("")}
+      ${[...DESIGNER_GROUP_ORDER.filter(g=>s.designers[g]!==undefined),...Object.keys(s.designers).filter(g=>!DESIGNER_GROUP_ORDER.includes(g))].map(g=>designerSection(g,s.designers[g]||[])).join("")}
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:7px">新增群組</div>
         <div class="add-tag-row">
@@ -1706,6 +1714,10 @@ function render(){
       <option value="">All</option>${sales.map(s=>`<option${s===f.sales?" selected":""}>${s}</option>`).join("")}
     </select></div>
     <span class="filter-count">${cases.length} cases</span>
+    <button onclick="S.hideCompleted=!S.hideCompleted;render()"
+      style="padding:4px 10px;border-radius:6px;border:1.5px solid ${S.hideCompleted?'var(--accent)':'var(--border)'};background:${S.hideCompleted?'#EEF0FF':'transparent'};color:${S.hideCompleted?'var(--accent)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">
+      ${S.hideCompleted?'已完成已隱藏':'顯示已完成'}
+    </button>
     ${activeFilters?`<button class="btn-clear-filter" onclick="clearFilter()">✕ Clear</button>`:""}
   </div>`:"";
 

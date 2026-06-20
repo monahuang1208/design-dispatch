@@ -17,8 +17,8 @@
     --text-mid: #5c5852;
     --text-dim: #9b9590;
     --today:    #4361EE;
-    --row-h:    74px;
-    --hdr-band: 19px;
+    --row-h:    84px;
+    --hdr-band: 30px;
     --ph-band:  40px;
     --bar-pad:  7px;
   }
@@ -193,14 +193,15 @@
     );
   }
   .deadline-chip {
-    position: absolute; right: 6px;
-    background: rgba(0,0,0,.55); color: #fff;
-    font-size: 10px; font-weight: 600;
-    padding: 2px 7px; border-radius: 10px;
+    position: absolute; right: 14px;
+    color: rgba(255,255,255,.95);
+    font-size: 22px; font-weight: 700;
     white-space: nowrap; pointer-events: none;
+    text-shadow: 0 1px 4px rgba(0,0,0,.25);
+    letter-spacing: -.5px;
   }
-  .deadline-chip.urgent { background: #C8382A; }
-  .deadline-chip.warn   { background: #B07A18; }
+  .deadline-chip.urgent { color: #FFCBC5; }
+  .deadline-chip.warn   { color: #FFE8A0; }
 
   /* ── Popup ── */
   .popup {
@@ -312,6 +313,16 @@
   }
   .popup-close:hover { background: var(--surface2); color: var(--text); }
 
+  /* Note textarea in deadline popup */
+  .note-textarea {
+    width: 100%; min-height: 80px; padding: 8px 10px;
+    border-radius: 7px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text);
+    font-size: 11px; font-family: inherit;
+    resize: vertical; line-height: 1.6;
+  }
+  .note-textarea:focus { outline: none; border-color: #6b9cf5; }
+
   /* ── Loading ── */
   #loading {
     position: fixed; inset: 0; background: var(--bg);
@@ -341,57 +352,72 @@
 <div id="sch-popup" class="popup">
   <div id="sch-title" class="popup-title"></div>
   <div id="sch-meta"  class="popup-meta"></div>
-  <div class="leader-row">
-    <span class="leader-label">Project Leader</span>
-    <input id="leader-input" type="text" class="leader-input" placeholder="輸入負責人…" onblur="saveLeader()">
+  <div id="sch-designers-row" style="display:none;font-size:11px;color:var(--text-mid);margin:2px 0 8px;line-height:1.5"></div>
+
+  <div id="sch-leader-section">
+    <div class="leader-row">
+      <span class="leader-label">Project Leader</span>
+      <input id="leader-input" type="text" class="leader-input" placeholder="輸入負責人…" onblur="saveLeader()">
+    </div>
   </div>
 
-  <div class="popup-divider"></div>
-  <div class="popup-section">時程規劃</div>
-  <div id="sch-phases"></div>
-  <button id="add-phase-toggle" onclick="toggleAddForm()">＋ 新增時程</button>
-  <div id="add-phase-form">
-    <div class="form-row">
-      <div class="form-field" style="flex:1.4">
-        <label>階段名稱</label>
-        <select id="phase-name-select" onchange="onPhaseNameChange()">
-          <option>討論</option>
-          <option>3D草稿/2D包現有型體</option>
-          <option>草稿/彩稿</option>
-          <option>合成</option>
-          <option>微調</option>
-          <option>上版/完成</option>
-          <option>找資料</option>
-          <option value="__custom__">自訂…</option>
-        </select>
-        <div id="custom-phase-input">
-          <input id="custom-phase-text" type="text" placeholder="自訂名稱" maxlength="30">
+  <div id="sch-phase-section">
+    <div class="popup-divider"></div>
+    <div class="popup-section">時程規劃</div>
+    <div id="sch-phases"></div>
+    <button id="add-phase-toggle" onclick="toggleAddForm()">＋ 新增時程</button>
+    <div id="add-phase-form">
+      <div class="form-row">
+        <div class="form-field" style="flex:1.4">
+          <label>階段名稱</label>
+          <select id="phase-name-select" onchange="onPhaseNameChange()">
+            <option>討論</option>
+            <option>3D草稿/2D包現有型體</option>
+            <option>草稿/彩稿</option>
+            <option>合成</option>
+            <option>微調</option>
+            <option>上版/完成</option>
+            <option>找資料</option>
+            <option value="__custom__">自訂…</option>
+          </select>
+          <div id="custom-phase-input">
+            <input id="custom-phase-text" type="text" placeholder="自訂名稱" maxlength="30">
+          </div>
         </div>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>開始日期</label>
-        <input id="phase-start" type="date">
+      <div class="form-row">
+        <div class="form-field">
+          <label>開始日期</label>
+          <input id="phase-start" type="date">
+        </div>
+        <div class="form-field">
+          <label>結束日期</label>
+          <input id="phase-end" type="date">
+        </div>
       </div>
-      <div class="form-field">
-        <label>結束日期</label>
-        <input id="phase-end" type="date">
-      </div>
+      <button class="add-btn" onclick="addPhase()">新增</button>
     </div>
-    <button class="add-btn" onclick="addPhase()">新增</button>
   </div>
 
-  <div class="popup-divider"></div>
-  <div class="popup-section">連結</div>
-  <div id="links-display-mode"></div>
-  <div id="links-edit-mode" style="display:none">
-    <div class="link-field"><label>會議連結</label><input id="link-meeting" type="url" placeholder="https://…"></div>
-    <div class="link-field"><label>討論板</label><input id="link-discussion" type="url" placeholder="https://…"></div>
-    <div class="link-field"><label>Brief</label><input id="link-brief" type="url" placeholder="https://…"></div>
-    <button class="save-btn" onclick="saveLinks()">儲存連結</button>
-    <button class="popup-close" onclick="showLinksDisplay()">取消</button>
+  <div id="sch-links-section">
+    <div class="popup-divider"></div>
+    <div class="popup-section">連結</div>
+    <div id="links-display-mode"></div>
+    <div id="links-edit-mode" style="display:none">
+      <div class="link-field"><label>會議連結</label><input id="link-meeting" type="url" placeholder="https://…"></div>
+      <div class="link-field"><label>討論板</label><input id="link-discussion" type="url" placeholder="https://…"></div>
+      <div class="link-field"><label>Brief</label><input id="link-brief" type="url" placeholder="https://…"></div>
+      <button class="save-btn" onclick="saveLinks()">儲存連結</button>
+      <button class="popup-close" onclick="showLinksDisplay()">取消</button>
+    </div>
   </div>
+
+  <div id="sch-note-section" style="display:none">
+    <div class="popup-divider"></div>
+    <div class="popup-section">備註</div>
+    <textarea id="sch-note-input" class="note-textarea" placeholder="記錄截止相關備註…" onblur="saveNote()"></textarea>
+  </div>
+
   <button class="popup-close" onclick="closePopup()">關閉</button>
 </div>
 
@@ -463,10 +489,10 @@ const MARKET_GROUPS = [
   { label: 'AP / INT',    markets: new Set(['AP','INT','HK','INT Other']) },
   { label: 'GC',          markets: new Set(['GC','GC Roastery']) },
   { label: 'SBJ',         markets: new Set(['SBJ','SBJ Roastery']) },
+  { label: 'SCK',         markets: new Set(['SCK']) },
   { label: 'EMEA / MENA', markets: new Set(['EMEA','MENA','Milano Roastery']) },
   { label: 'TW',          markets: new Set(['TW']) },
   { label: 'RNA',         markets: new Set(['RNA']) },
-  { label: 'SCK',         markets: new Set(['SCK']) },
   { label: 'Other',       markets: new Set(['Other']) },
 ];
 function getMarketGroup(market) {
@@ -1030,31 +1056,52 @@ function openScheduler(proj, prefillDates) {
   currentProj=proj;
   const cases=allCases.filter(c=>c.notion_project===proj);
   const mt=(cases[0]?.job_types?.[0])||'Other';
+  const isDeadline=DEADLINE_TYPES.has(mt);
+
   document.getElementById('sch-title').textContent=proj;
   document.getElementById('sch-meta').textContent=mt+(cases.length>1?` · ${cases.length} 個派案`:'');
-  document.getElementById('leader-input').value=(progressMap[proj]?.project_leader)||'';
-  renderPhaseList(proj);
 
-  // Reset add form
-  const form=document.getElementById('add-phase-form');
-  form.classList.remove('open');
-  document.getElementById('add-phase-toggle').textContent='＋ 新增時程';
-  document.getElementById('phase-name-select').value='討論';
-  document.getElementById('custom-phase-input').style.display='none';
-  document.getElementById('custom-phase-text').value='';
+  // Designers row
+  const designers=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))].join('  ·  ');
+  const dRow=document.getElementById('sch-designers-row');
+  dRow.textContent=designers;
+  dRow.style.display=designers?'':'none';
 
-  if (prefillDates) {
-    document.getElementById('phase-start').value=prefillDates.startDate;
-    document.getElementById('phase-end').value=prefillDates.endDate;
-    form.classList.add('open');
-    document.getElementById('add-phase-toggle').textContent='收起';
+  // Toggle sections based on type
+  document.getElementById('sch-leader-section').style.display=isDeadline?'none':'';
+  document.getElementById('sch-phase-section').style.display=isDeadline?'none':'';
+  document.getElementById('sch-links-section').style.display=isDeadline?'none':'';
+  document.getElementById('sch-note-section').style.display=isDeadline?'':'none';
+
+  if (!isDeadline) {
+    document.getElementById('leader-input').value=(progressMap[proj]?.project_leader)||'';
+    renderPhaseList(proj);
   } else {
-    const t=new Date().toISOString().slice(0,10);
-    document.getElementById('phase-start').value=t;
-    document.getElementById('phase-end').value=t;
+    document.getElementById('sch-note-input').value=(progressMap[proj]?.custom_label)||'';
   }
 
-  renderLinksDisplay(proj);
+  if (!isDeadline) {
+    // Reset add form
+    const form=document.getElementById('add-phase-form');
+    form.classList.remove('open');
+    document.getElementById('add-phase-toggle').textContent='＋ 新增時程';
+    document.getElementById('phase-name-select').value='討論';
+    document.getElementById('custom-phase-input').style.display='none';
+    document.getElementById('custom-phase-text').value='';
+
+    if (prefillDates) {
+      document.getElementById('phase-start').value=prefillDates.startDate;
+      document.getElementById('phase-end').value=prefillDates.endDate;
+      form.classList.add('open');
+      document.getElementById('add-phase-toggle').textContent='收起';
+    } else {
+      const t=new Date().toISOString().slice(0,10);
+      document.getElementById('phase-start').value=t;
+      document.getElementById('phase-end').value=t;
+    }
+
+    renderLinksDisplay(proj);
+  }
 
   const pop=document.getElementById('sch-popup');
   pop.style.top='80px';
@@ -1241,6 +1288,24 @@ async function saveLeader() {
       if (!progressMap[currentProj]) progressMap[currentProj]={};
       progressMap[currentProj].project_leader=leader||null;
       showMsg('✓ 已儲存');
+    }
+  } catch {}
+}
+
+// ── Deadline type note ────────────────────────────────────────────
+async function saveNote() {
+  if (!currentProj) return;
+  const note=document.getElementById('sch-note-input').value.trim();
+  try {
+    const res=await fetch(`${SUPABASE}/rest/v1/project_progress`,{
+      method:'POST',
+      headers:{...H,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({project_name:currentProj,custom_label:note||null,updated_at:new Date().toISOString()}),
+    });
+    if (res.ok||res.status===204||res.status===201) {
+      if (!progressMap[currentProj]) progressMap[currentProj]={};
+      progressMap[currentProj].custom_label=note||null;
+      showMsg('✓ 備註已儲存');
     }
   } catch {}
 }
