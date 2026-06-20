@@ -465,14 +465,14 @@ const START_DATE = '2026-06-08';
 
 // Type → hex color
 const TYPE_COLOR = {
-  Presentation:   '#C97A3A',
-  KV:             '#6455C0',
-  Moodboard:      '#C05080',
-  Revision:       '#9A8220',
-  V1:             '#3858D8',
-  JPG:            '#208848',
-  M1:             '#C02858',
-  'Revised Maker':'#5858A8',
+  KV:             '#FF6584',  // Board pink
+  Moodboard:      '#FF6584',  // Board pink
+  Presentation:   '#666666',  // Board gray
+  V1:             '#666666',  // Board gray
+  Revision:       '#666666',  // Board gray
+  JPG:            '#208848',  // keep green
+  M1:             '#2A9D8F',  // Board teal
+  'Revised Maker':'#2A9D8F',  // Board teal
 };
 function typeColor(t) { return TYPE_COLOR[t] || '#707888'; }
 function hexRgb(hex) {
