@@ -166,18 +166,18 @@
   .market-group-hdr {
     height: 26px;
     display: flex; align-items: center;
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    border-top: 2px solid rgba(0,0,0,.09);
+    background: #F5F5FC;
+    border-bottom: 1px solid #DDDDF0;
+    border-top: 2px solid #DDDDF0;
     z-index: 2;
     flex-shrink: 0;
   }
   .mkt-lbl {
-    font-size: 10px; font-weight: 700; color: var(--text-mid);
+    font-size: 10px; font-weight: 700; color: #4361EE;
     letter-spacing: .07em; text-transform: uppercase;
     padding: 0 14px;
     position: sticky; left: 0; z-index: 1;
-    pointer-events: none;
+    pointer-events: none; background: #F5F5FC;
   }
 
   /* .bar-deadline-band — removed; deadline chip now sits on the header band */
@@ -753,22 +753,9 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   header.addEventListener('click', e=>{e.stopPropagation(); openScheduler(proj);});
   bar.appendChild(header);
 
-  // ── Deadline type: chip on header band, no phase band below ──
+  // ── Deadline type: header band only, no phase band, no chip ──
   if (isDeadlineType) {
     bar.style.height = 'var(--hdr-band)';
-    const latestDeadline = cases.reduce((mx,c) => {
-      const d = dateMs(c.deadline||c.date);
-      return d > mx ? d : mx;
-    }, 0);
-    if (latestDeadline) {
-      const dlDate = new Date(latestDeadline);
-      const daysLeft = Math.round((latestDeadline - todayMs) / 86400000);
-      const chip = mk('div','deadline-chip');
-      chip.textContent = `${dlDate.getMonth()+1}/${dlDate.getDate()}`;
-      if (daysLeft <= 2)       chip.classList.add('urgent');
-      else if (daysLeft <= 6)  chip.classList.add('warn');
-      bar.appendChild(chip);  // absolute positioned in bar (header area)
-    }
     row.appendChild(bar);
     return row;
   }
