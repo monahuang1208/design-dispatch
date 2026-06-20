@@ -68,6 +68,7 @@
   }
   .day-cell.today   { color: var(--today); font-weight: 700; }
   .day-cell.weekend { color: #bbb5ac; }
+  .day-cell.weekend { background: rgba(0,0,0,.03); }
   .day-cell.mon     { border-right-color: #d4cfc8; }
   .day-cell .day-date { font-size: 10px; }
   .day-cell .day-dow  { font-size: 9px; opacity: .75; }
@@ -160,6 +161,28 @@
     font-size: 10px; cursor: crosshair;
     border-top: 1px dashed rgba(255,255,255,.3);
   }
+
+  /* Deadline bar (Revision / M1 / Revised Maker) */
+  .bar-deadline-band {
+    height: var(--ph-band);
+    position: relative; overflow: hidden; cursor: pointer;
+    display: flex; align-items: center;
+    /* diagonal stripe pattern */
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 5px,
+      rgba(255,255,255,.13) 5px, rgba(255,255,255,.13) 6px
+    );
+  }
+  .deadline-chip {
+    position: absolute; right: 6px;
+    background: rgba(0,0,0,.55); color: #fff;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 10px;
+    white-space: nowrap; pointer-events: none;
+  }
+  .deadline-chip.urgent { background: #C8382A; }
+  .deadline-chip.warn   { background: #B07A18; }
 
   /* ── Popup ── */
   .popup {
@@ -368,6 +391,12 @@
   <button class="btn active" id="z-md" onclick="setDayPx(64)">中</button>
   <button class="btn"        id="z-lg" onclick="setDayPx(88)">大</button>
   <div class="sep"></div>
+  <span class="grp-label">設計師：</span>
+  <select id="designer-filter" onchange="setDesignerFilter(this.value)"
+    style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;max-width:130px;">
+    <option value="">全部</option>
+  </select>
+  <div class="sep"></div>
   <button class="btn" onclick="scrollToToday()">今天</button>
   <button class="btn" onclick="loadData()">重新整理</button>
   <span id="status-msg"></span>
@@ -408,14 +437,17 @@ function hexRgb(hex) {
 }
 
 const PHASE_OPTS = ['討論','3D草稿/2D包現有型體','草稿/彩稿','合成','微調','上版/完成','找資料'];
+// Types that show deadline chip instead of phase tracking
+const DEADLINE_TYPES = new Set(['Revision','M1','Revised Maker']);
 
 // ── State ────────────────────────────────────────────────────────
 let allCases    = [];
 let notionMap   = {};
 let progressMap = {};
 let phasesMap   = {};
-let filterMode  = 'week';
-let dayPx       = 64;
+let filterMode    = 'week';
+let filterDesigner= '';     // '' = all designers
+let dayPx         = 64;
 let tlMinDate   = null;
 let tlTotalDays = 0;
 
@@ -440,6 +472,7 @@ async function loadData() {
     for (const r of (phs||[])) { if (!phasesMap[r.project_name]) phasesMap[r.project_name]=[]; phasesMap[r.project_name].push(r); }
     notionMap={};
     if (nR?.ok) { const {items=[]}=await nR.json().catch(()=>({})); for (const it of items) if(it.name&&it.url) notionMap[it.name.trim()]=it.url; }
+    populateDesignerFilter();
     buildTimeline();
     const ps=new Set(allCases.map(c=>c.notion_project));
     showMsg(`${allCases.length} 筆派案 · ${ps.size} 個專案`);
@@ -478,6 +511,12 @@ function getFilteredProjects() {
     }
     if (minMs===Infinity) continue;
     const mainType=(cases[0].job_types?.[0])||'Other';
+
+    // Designer filter
+    if (filterDesigner) {
+      const hasDesigner=cases.some(c=>(Array.isArray(c.designers)?c.designers:[]).includes(filterDesigner));
+      if (!hasDesigner) continue;
+    }
 
     let inc=false;
     if      (filterMode==='all')    inc=true;
@@ -556,11 +595,17 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
 
   const row=mk('div','proj-row');
 
-  // Grid lines
+  // Grid lines + weekend background
   let d=new Date(minDate);
   for (let i=0;i<tlTotalDays;i++) {
+    const dow=d.getDay();
+    if (dow===0||dow===6) {
+      const wk=mk('div');
+      wk.style.cssText=`position:absolute;left:${i*dayPx}px;top:0;width:${dayPx}px;height:100%;background:rgba(0,0,0,.032);pointer-events:none;z-index:0;`;
+      row.appendChild(wk);
+    }
     const gl=mk('div','grid-line');
-    if (d.getDay()===1) gl.classList.add('mon');
+    if (dow===1) gl.classList.add('mon');
     gl.style.left=(i*dayPx)+'px';
     row.appendChild(gl);
     d.setDate(d.getDate()+1);
@@ -594,12 +639,17 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   bar.style.width=barW+'px';
 
   // ── Name header band ──
+  const designers=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))].join(', ');
   const header=mk('div','bar-header');
   header.style.background=tc;
-  header.title=`${proj} · ${mainType}`;
+  header.title=`${proj} · ${mainType}${designers?' · '+designers:''}`;
   const nm=mk('span','bar-hdr-name'); nm.textContent=proj;
   const ty=mk('span','bar-hdr-type'); ty.textContent=`· ${mainType}`;
   header.append(nm,ty);
+  if (designers) {
+    const ds=mk('span','bar-hdr-type'); ds.textContent=`· ${designers}`;
+    header.appendChild(ds);
+  }
   if (notionMap[proj]) {
     const a=mk('a','bar-hdr-link');
     a.href=notionMap[proj]; a.target='_blank'; a.rel='noopener noreferrer';
@@ -610,9 +660,31 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   header.addEventListener('click', e=>{e.stopPropagation(); openScheduler(proj);});
   bar.appendChild(header);
 
-  // ── Phase band ──
-  const band=mk('div','bar-phases');
+  // ── Phase band (or deadline band for Revision/M1/Revised Maker) ──
+  const isDeadlineType = DEADLINE_TYPES.has(mainType);
+  const band=mk('div', isDeadlineType ? 'bar-deadline-band' : 'bar-phases');
   band.style.background=`rgba(${rgb},.08)`;
+
+  if (isDeadlineType) {
+    // Show deadline chip at right edge
+    const latestDeadline = cases.reduce((mx,c) => {
+      const d = dateMs(c.deadline||c.date);
+      return d > mx ? d : mx;
+    }, 0);
+    if (latestDeadline) {
+      const dlDate = new Date(latestDeadline);
+      const daysLeft = Math.round((latestDeadline - todayMs) / 86400000);
+      const chip = mk('div','deadline-chip');
+      chip.textContent = `${dlDate.getMonth()+1}/${dlDate.getDate()}`;
+      if (daysLeft <= 2)       chip.classList.add('urgent');
+      else if (daysLeft <= 6)  chip.classList.add('warn');
+      band.appendChild(chip);
+    }
+    band.addEventListener('click', e=>{ e.stopPropagation(); openScheduler(proj); });
+    bar.appendChild(band);
+    row.appendChild(bar);
+    return row;
+  }
 
   if (phases.length) {
     for (let i=0;i<phases.length;i++) {
@@ -670,19 +742,23 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
     }
   } else {
     const empty=mk('div','bar-empty');
-    empty.style.color=`rgba(${rgb},.7)`;
     empty.style.background=`rgba(${rgb},.06)`;
-    empty.style.borderTop=`1px dashed rgba(${rgb},.3)`;
-    empty.textContent='拖曳新增時程，或點擊規劃';
-    empty.addEventListener('click',e=>{e.stopPropagation(); openScheduler(proj);});
+    empty.style.cursor='crosshair';
     band.appendChild(empty);
   }
 
-  // Drag on band background to create phase
+  // Drag on band background or empty div to create phase; plain click opens popup
   band.addEventListener('mousedown', e=>{
-    if (e.target!==band) return;
+    const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
+    if (!isValidTarget) return;
     e.preventDefault();
     startCreate(e, proj, band, barMinMs);
+  });
+  band.addEventListener('click', e=>{
+    const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
+    if (!isValidTarget||didDrag) return;
+    e.stopPropagation();
+    openScheduler(proj);
   });
 
   bar.appendChild(band);
@@ -722,7 +798,7 @@ function startCreate(e, proj, band, barMinMs) {
 
   function onUp(ev) {
     cleanup();
-    if (!didDrag) { openScheduler(proj); return; }
+    if (!didDrag) return; // band's own click listener handles the popup
     const s=Math.min(startDay,curDay), en=Math.max(startDay,curDay);
     const sd=addDays(barMinMs,s), ed=addDays(barMinMs,en);
     openScheduler(proj,{startDate:sd,endDate:ed});
@@ -1101,6 +1177,23 @@ async function saveLeader() {
 }
 
 // ── Controls ──────────────────────────────────────────────────────
+function populateDesignerFilter() {
+  const sel=document.getElementById('designer-filter');
+  const current=sel.value;
+  const designers=[...new Set(allCases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))].sort((a,b)=>a.localeCompare(b,'zh-TW'));
+  // Keep "全部" option, rebuild the rest
+  sel.innerHTML='<option value="">全部</option>';
+  for (const d of designers) {
+    const opt=document.createElement('option');
+    opt.value=d; opt.textContent=d;
+    if (d===current) opt.selected=true;
+    sel.appendChild(opt);
+  }
+}
+function setDesignerFilter(val) {
+  filterDesigner=val;
+  buildTimeline();
+}
 function setFilter(mode) {
   filterMode=mode;
   document.querySelectorAll('.btn[id^="f-"]').forEach(b=>b.classList.remove('active'));
