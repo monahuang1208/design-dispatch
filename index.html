@@ -1689,7 +1689,7 @@ function render(){
   else if(S.view==="review") content=renderReview();
   else if(S.view==="settings") content=renderSettings();
 
-  const showFilter=S.view==="list"||S.view==="excel";
+  const showFilter=S.view==="list";
   const f=S.filter;
   const markets=S.settings.markets;
   const types=S.settings.jobTypes;

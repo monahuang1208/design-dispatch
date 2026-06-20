@@ -136,7 +136,7 @@
     position: absolute; top: 0; height: 100%;
     display: flex; align-items: center; justify-content: center;
     font-size: 10px; overflow: hidden; white-space: nowrap;
-    border-right: 0.5px solid rgba(0,0,0,.10);
+    border-right: 1px solid rgba(255,255,255,.30);
     user-select: none; transition: filter .1s;
   }
   .phase-seg:last-child { border-right: none; }
@@ -180,23 +180,13 @@
     pointer-events: none;
   }
 
-  /* Deadline bar (Revision / M1 / Revised Maker) */
-  .bar-deadline-band {
-    position: relative; overflow: hidden; cursor: default;
-    display: flex; align-items: center;
-    /* diagonal stripe pattern */
-    background-image: repeating-linear-gradient(
-      -45deg,
-      transparent, transparent 5px,
-      rgba(255,255,255,.13) 5px, rgba(255,255,255,.13) 6px
-    );
-  }
+  /* .bar-deadline-band — removed; deadline chip now sits on the header band */
   .deadline-chip {
-    position: absolute; right: 14px; top: 3px;
+    position: absolute; right: 14px; top: 7px;
     color: rgba(255,255,255,.95);
-    font-size: 17px; font-weight: 700;
+    font-size: 16px; font-weight: 700;
     white-space: nowrap; pointer-events: none;
-    text-shadow: 0 1px 4px rgba(0,0,0,.25);
+    text-shadow: 0 1px 3px rgba(0,0,0,.20);
     letter-spacing: -.5px;
   }
   .deadline-chip.urgent { color: #FFCBC5; }
@@ -440,6 +430,8 @@
     <option value="">全部</option>
   </select>
   <div class="sep"></div>
+  <button class="btn active" id="hide-done-btn" onclick="toggleHideCompleted()">已完成已隱藏</button>
+  <div class="sep"></div>
   <button class="btn" onclick="scrollToToday()">今天</button>
   <button class="btn" onclick="loadData()">重新整理</button>
   <span id="status-msg"></span>
@@ -514,6 +506,7 @@ let progressMap = {};
 let phasesMap   = {};
 let filterMode    = 'week';
 let filterDesigner= '';     // '' = all designers
+let hideCompleted = true;   // hide 已完成 cases by default
 let dayPx         = 64;
 let tlMinDate   = null;
 let tlTotalDays = 0;
@@ -557,9 +550,10 @@ function getFilteredProjects() {
   const weekSunMs=weekMonMs+7*86400000;
   const biweekEndMs=weekMonMs+14*86400000;
 
-  // Aggregate by project
+  // Aggregate by project (skip 已完成 if hideCompleted)
   const byProj={};
   for (const c of allCases) {
+    if (hideCompleted && c.status==='已完成') continue;
     if (!byProj[c.notion_project]) byProj[c.notion_project]=[];
     byProj[c.notion_project].push(c);
   }
@@ -731,6 +725,9 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   bar.style.left=barX+'px';
   bar.style.width=barW+'px';
 
+  // Determine type early — controls bar structure
+  const isDeadlineType = DEADLINE_TYPES.has(mainType);
+
   // ── Name header band ──
   const designers=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))].join(', ');
   const header=mk('div','bar-header');
@@ -738,14 +735,15 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   header.title=`${proj} · ${mainType}${designers?' · '+designers:''}`;
   const nm=mk('span','bar-hdr-name'); nm.textContent=proj;
   const ty=mk('span','bar-hdr-type'); ty.textContent=`· ${mainType}`;
-  // Give Revision / Revised Maker a warm amber type-text to distinguish from V1/Presentation gray
+  // Revision / Revised Maker: amber type text to distinguish from other gray bars
   if (mainType==='Revision'||mainType==='Revised Maker') ty.style.color='#FFD580';
   header.append(nm,ty);
   if (designers) {
     const ds=mk('span','bar-hdr-type'); ds.textContent=`· ${designers}`;
     header.appendChild(ds);
   }
-  if (notionMap[proj]) {
+  // Notion link: only for non-deadline types (deadline bars show chip there instead)
+  if (notionMap[proj] && !isDeadlineType) {
     const a=mk('a','bar-hdr-link');
     a.href=notionMap[proj]; a.target='_blank'; a.rel='noopener noreferrer';
     a.textContent='↗'; a.title='Notion';
@@ -755,17 +753,9 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   header.addEventListener('click', e=>{e.stopPropagation(); openScheduler(proj);});
   bar.appendChild(header);
 
-  // ── Phase band (or deadline band for Revision/M1/Revised Maker) ──
-  const isDeadlineType = DEADLINE_TYPES.has(mainType);
-  const band=mk('div', isDeadlineType ? 'bar-deadline-band' : 'bar-phases');
-  band.style.background=`rgba(${rgb},.08)`;
-
+  // ── Deadline type: chip on header band, no phase band below ──
   if (isDeadlineType) {
-    // Compact height for deadline bars (no phase content)
-    const dlBandH = 20;
-    band.style.height = dlBandH + 'px';
-    bar.style.height = `calc(var(--hdr-band) + ${dlBandH}px)`;
-    // Show deadline chip at right edge
+    bar.style.height = 'var(--hdr-band)';
     const latestDeadline = cases.reduce((mx,c) => {
       const d = dateMs(c.deadline||c.date);
       return d > mx ? d : mx;
@@ -777,13 +767,15 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
       chip.textContent = `${dlDate.getMonth()+1}/${dlDate.getDate()}`;
       if (daysLeft <= 2)       chip.classList.add('urgent');
       else if (daysLeft <= 6)  chip.classList.add('warn');
-      band.appendChild(chip);
+      bar.appendChild(chip);  // absolute positioned in bar (header area)
     }
-    // Deadline band is read-only — no click/drag interaction
-    bar.appendChild(band);
     row.appendChild(bar);
     return row;
   }
+
+  // ── Phase band (non-deadline types only) ──
+  const band=mk('div','bar-phases');
+  band.style.background=`rgba(${rgb},.08)`;
 
   if (phases.length) {
     for (let i=0;i<phases.length;i++) {
@@ -1330,6 +1322,13 @@ function populateDesignerFilter() {
 }
 function setDesignerFilter(val) {
   filterDesigner=val;
+  buildTimeline();
+}
+function toggleHideCompleted() {
+  hideCompleted=!hideCompleted;
+  const btn=document.getElementById('hide-done-btn');
+  btn.textContent=hideCompleted?'已完成已隱藏':'顯示已完成';
+  btn.classList.toggle('active', hideCompleted);
   buildTimeline();
 }
 function setFilter(mode) {
