@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:       #f7f6f3;
+    --bg:       #ffffff;
     --surface:  #ffffff;
     --surface2: #f0eee9;
     --border:   #e8e5df;
@@ -83,7 +83,7 @@
     height: var(--row-h); position: relative;
     border-bottom: 1px solid var(--border);
   }
-  .proj-row.even { background: rgba(0,0,0,.013); }
+  /* .proj-row.even — removed, no alternating row tint */
 
   /* Grid lines */
   .grid-line {
@@ -136,7 +136,7 @@
     position: absolute; top: 0; height: 100%;
     display: flex; align-items: center; justify-content: center;
     font-size: 10px; overflow: hidden; white-space: nowrap;
-    border-right: 1.5px solid rgba(0,0,0,.08);
+    border-right: 0.5px solid rgba(0,0,0,.10);
     user-select: none; transition: filter .1s;
   }
   .phase-seg:last-child { border-right: none; }
@@ -182,7 +182,6 @@
 
   /* Deadline bar (Revision / M1 / Revised Maker) */
   .bar-deadline-band {
-    height: var(--ph-band);
     position: relative; overflow: hidden; cursor: default;
     display: flex; align-items: center;
     /* diagonal stripe pattern */
@@ -193,9 +192,9 @@
     );
   }
   .deadline-chip {
-    position: absolute; right: 14px;
+    position: absolute; right: 14px; top: 3px;
     color: rgba(255,255,255,.95);
-    font-size: 22px; font-weight: 700;
+    font-size: 17px; font-weight: 700;
     white-space: nowrap; pointer-events: none;
     text-shadow: 0 1px 4px rgba(0,0,0,.25);
     letter-spacing: -.5px;
@@ -470,7 +469,7 @@ const TYPE_COLOR = {
   Presentation:   '#666666',  // Board gray
   V1:             '#666666',  // Board gray
   Revision:       '#666666',  // Board gray
-  JPG:            '#208848',  // keep green
+  JPG:            '#E8914A',  // muted orange
   M1:             '#2A9D8F',  // Board teal
   'Revised Maker':'#2A9D8F',  // Board teal
 };
@@ -649,7 +648,6 @@ function buildTimeline() {
     // Project rows
     for (const p of items) {
       const row = buildRow(p, minDate, today, todayMs);
-      if (rowIdx % 2 === 1) row.classList.add('even');
       rowIdx++;
       rw.appendChild(row);
     }
@@ -740,6 +738,8 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   header.title=`${proj} · ${mainType}${designers?' · '+designers:''}`;
   const nm=mk('span','bar-hdr-name'); nm.textContent=proj;
   const ty=mk('span','bar-hdr-type'); ty.textContent=`· ${mainType}`;
+  // Give Revision / Revised Maker a warm amber type-text to distinguish from V1/Presentation gray
+  if (mainType==='Revision'||mainType==='Revised Maker') ty.style.color='#FFD580';
   header.append(nm,ty);
   if (designers) {
     const ds=mk('span','bar-hdr-type'); ds.textContent=`· ${designers}`;
@@ -761,6 +761,10 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   band.style.background=`rgba(${rgb},.08)`;
 
   if (isDeadlineType) {
+    // Compact height for deadline bars (no phase content)
+    const dlBandH = 20;
+    band.style.height = dlBandH + 'px';
+    bar.style.height = `calc(var(--hdr-band) + ${dlBandH}px)`;
     // Show deadline chip at right edge
     const latestDeadline = cases.reduce((mx,c) => {
       const d = dateMs(c.deadline||c.date);
