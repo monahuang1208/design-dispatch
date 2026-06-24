@@ -654,9 +654,19 @@ function buildTimeline() {
     lbl.textContent = g.label;
     hdr.appendChild(lbl);
     rw.appendChild(hdr);
-    // Project rows
+    // Group by project (keep type-sort order within each project)
+    const projGroups={};
+    const projOrder=[];
     for (const p of items) {
-      const row = buildRow(p, minDate, today, todayMs);
+      if (!projGroups[p.proj]) { projGroups[p.proj]=[]; projOrder.push(p.proj); }
+      projGroups[p.proj].push(p);
+    }
+    // Project rows (multi-type projects share one row)
+    for (const projName of projOrder) {
+      const pItems=projGroups[projName];
+      const row=pItems.length===1
+        ? buildRow(pItems[0], minDate, today, todayMs)
+        : buildMultiRow(pItems, minDate, today, todayMs);
       rowIdx++;
       rw.appendChild(row);
     }
@@ -691,13 +701,8 @@ function renderDateHeader(minDate, totalW) {
 }
 
 // ── Build one project row ─────────────────────────────────────────
-function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs) {
-  const tc=typeColor(mainType);
-  const rgb=hexRgb(tc);
-
-  const row=mk('div','proj-row');
-
-  // Grid lines + weekend background
+// Shared: add grid lines + today line to an existing row div
+function addGridToRow(row, minDate, today) {
   let d=new Date(minDate);
   for (let i=0;i<tlTotalDays;i++) {
     const dow=d.getDay();
@@ -712,14 +717,44 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
     row.appendChild(gl);
     d.setDate(d.getDate()+1);
   }
-
-  // Today line
   const tOff=daysBetween(minDate,today);
   if (tOff>=0&&tOff<tlTotalDays) {
     const tl=mk('div','today-line');
     tl.style.left=(tOff*dayPx+dayPx/2-1)+'px';
     row.appendChild(tl);
   }
+}
+
+// Single-type row (backward compat)
+function buildRow(p, minDate, today, todayMs) {
+  const row=mk('div','proj-row');
+  addGridToRow(row, minDate, today);
+  const bar=buildBarEl(p, minDate, today, todayMs, 7);
+  row.appendChild(bar);
+  return row;
+}
+
+// Multi-type row: all types for one project stacked vertically
+function buildMultiRow(items, minDate, today, todayMs) {
+  const HDR=30, PH=40, PAD=7;
+  const slotH=t=>DEADLINE_TYPES.has(t)?(HDR+PAD*2):(HDR+PH+PAD*2);
+  const totalH=items.reduce((s,p)=>s+slotH(p.mainType),0);
+  const row=mk('div','proj-row');
+  row.style.height=totalH+'px';
+  addGridToRow(row, minDate, today);
+  let barTop=PAD;
+  for (const p of items) {
+    const bar=buildBarEl(p, minDate, today, todayMs, barTop);
+    row.appendChild(bar);
+    barTop+=slotH(p.mainType);
+  }
+  return row;
+}
+
+// Build just the bar element (no row wrapper)
+function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs, topOffset) {
+  const tc=typeColor(mainType);
+  const rgb=hexRgb(tc);
 
   // Phases sorted
   const phases=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
@@ -739,6 +774,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   const bar=mk('div','proj-bar');
   bar.style.left=barX+'px';
   bar.style.width=barW+'px';
+  bar.style.top=topOffset+'px';
 
   // Determine type early — controls bar structure
   const isDeadlineType = DEADLINE_TYPES.has(mainType);
@@ -771,8 +807,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   // ── Deadline type: header band only, no phase band, no chip ──
   if (isDeadlineType) {
     bar.style.height = 'var(--hdr-band)';
-    row.appendChild(bar);
-    return row;
+    return bar;
   }
 
   // ── Phase band (non-deadline types only) ──
@@ -855,8 +890,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
   });
 
   bar.appendChild(band);
-  row.appendChild(bar);
-  return row;
+  return bar;
 }
 
 // ── Drag state ────────────────────────────────────────────────────
