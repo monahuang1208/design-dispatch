@@ -561,7 +561,8 @@ function getFilteredProjects() {
     byKey[key].cases.push(c);
   }
 
-  const result=[];
+  // Compute per-row ranges first
+  const rows=[];
   for (const {proj,type,cases} of Object.values(byKey)) {
     let minMs=Infinity, maxMs=-Infinity;
     for (const c of cases) {
@@ -569,7 +570,6 @@ function getFilteredProjects() {
       if (c.deadline) maxMs=Math.max(maxMs,dateMs(c.deadline));
       else if (c.date) maxMs=Math.max(maxMs,dateMs(c.date));
     }
-    // Phases widen range only for non-deadline types
     if (!DEADLINE_TYPES.has(type)) {
       for (const ph of (phasesMap[proj]||[])) {
         if (ph.start_date) minMs=Math.min(minMs,dateMs(ph.start_date));
@@ -577,20 +577,29 @@ function getFilteredProjects() {
       }
     }
     if (minMs===Infinity) continue;
-    const mainType=type;
-    const market=cases[0].market||'Other';
+    rows.push({proj,type,cases,minMs,maxMs,market:cases[0].market||'Other'});
+  }
 
+  // Determine which projects have ANY row in the time window (project-level filter)
+  const visibleProjects=new Set();
+  for (const {proj,minMs,maxMs} of rows) {
+    let inc=false;
+    if      (filterMode==='all')    inc=true;
+    else if (filterMode==='week')   inc=minMs<weekSunMs&&maxMs>=weekMonMs;
+    else if (filterMode==='biweek') inc=minMs<biweekEndMs&&maxMs>=weekMonMs;
+    if (inc) visibleProjects.add(proj);
+  }
+
+  // Include ALL type-rows for visible projects
+  const result=[];
+  for (const {proj,type,cases,minMs,maxMs,market} of rows) {
+    if (!visibleProjects.has(proj)) continue;
     // Designer filter
     if (filterDesigner) {
       const hasDesigner=cases.some(c=>(Array.isArray(c.designers)?c.designers:[]).includes(filterDesigner));
       if (!hasDesigner) continue;
     }
-
-    let inc=false;
-    if      (filterMode==='all')    inc=true;
-    else if (filterMode==='week')   inc=minMs<weekSunMs&&maxMs>=weekMonMs;
-    else if (filterMode==='biweek') inc=minMs<biweekEndMs&&maxMs>=weekMonMs;
-    if (inc) result.push({proj,cases,minMs,maxMs,mainType,market});
+    result.push({proj,cases,minMs,maxMs,mainType:type,market});
   }
   return result;
 }
