@@ -748,7 +748,7 @@ function buildMultiRow(items, minDate, today, todayMs) {
   for (const p of items) {
     let placed=false;
     for (let li=0;li<laneEnds.length;li++) {
-      if (p.minMs>=laneEnds[li]) {
+      if (p.minMs>laneEnds[li]) {
         laneEnds[li]=p.maxMs;
         itemLane.set(p,li);
         placed=true; break;
