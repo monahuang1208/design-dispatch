@@ -512,6 +512,7 @@ let tlMinDate   = null;
 let tlTotalDays = 0;
 
 let currentProj = null;   // project name currently open in popup
+let currentType = null;   // job type currently open in popup
 
 const H = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
 
@@ -550,28 +551,33 @@ function getFilteredProjects() {
   const weekSunMs=weekMonMs+7*86400000;
   const biweekEndMs=weekMonMs+14*86400000;
 
-  // Aggregate by project (skip 已完成 if hideCompleted)
-  const byProj={};
+  // Aggregate by (project, type) — each type gets its own row
+  const byKey={};
   for (const c of allCases) {
     if (hideCompleted && c.status==='已完成') continue;
-    if (!byProj[c.notion_project]) byProj[c.notion_project]=[];
-    byProj[c.notion_project].push(c);
+    const t=(c.job_types?.[0])||'Other';
+    const key=c.notion_project+'|||'+t;
+    if (!byKey[key]) byKey[key]={proj:c.notion_project,type:t,cases:[]};
+    byKey[key].cases.push(c);
   }
 
   const result=[];
-  for (const [proj, cases] of Object.entries(byProj)) {
+  for (const {proj,type,cases} of Object.values(byKey)) {
     let minMs=Infinity, maxMs=-Infinity;
     for (const c of cases) {
       if (c.date)     minMs=Math.min(minMs,dateMs(c.date));
       if (c.deadline) maxMs=Math.max(maxMs,dateMs(c.deadline));
       else if (c.date) maxMs=Math.max(maxMs,dateMs(c.date));
     }
-    for (const ph of (phasesMap[proj]||[])) {
-      if (ph.start_date) minMs=Math.min(minMs,dateMs(ph.start_date));
-      if (ph.end_date)   maxMs=Math.max(maxMs,dateMs(ph.end_date));
+    // Phases widen range only for non-deadline types
+    if (!DEADLINE_TYPES.has(type)) {
+      for (const ph of (phasesMap[proj]||[])) {
+        if (ph.start_date) minMs=Math.min(minMs,dateMs(ph.start_date));
+        if (ph.end_date)   maxMs=Math.max(maxMs,dateMs(ph.end_date));
+      }
     }
     if (minMs===Infinity) continue;
-    const mainType=(cases[0].job_types?.[0])||'Other';
+    const mainType=type;
     const market=cases[0].market||'Other';
 
     // Designer filter
@@ -750,7 +756,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
     a.onclick=e=>e.stopPropagation();
     header.appendChild(a);
   }
-  header.addEventListener('click', e=>{e.stopPropagation(); openScheduler(proj);});
+  header.addEventListener('click', e=>{e.stopPropagation(); openScheduler(proj, mainType);});
   bar.appendChild(header);
 
   // ── Deadline type: header band only, no phase band, no chip ──
@@ -813,7 +819,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
       seg.addEventListener('click',e=>{
         if (didDrag) return;
         e.stopPropagation();
-        openScheduler(proj);
+        openScheduler(proj, mainType);
       });
 
       band.appendChild(seg);
@@ -836,7 +842,7 @@ function buildRow({proj, cases, minMs, maxMs, mainType}, minDate, today, todayMs
     const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
     if (!isValidTarget||didDrag) return;
     e.stopPropagation();
-    openScheduler(proj);
+    openScheduler(proj, mainType);
   });
 
   bar.appendChild(band);
@@ -879,7 +885,7 @@ function startCreate(e, proj, band, barMinMs) {
     if (!didDrag) return; // band's own click listener handles the popup
     const s=Math.min(startDay,curDay), en=Math.max(startDay,curDay);
     const sd=addDays(barMinMs,s), ed=addDays(barMinMs,en);
-    openScheduler(proj,{startDate:sd,endDate:ed});
+    openScheduler(proj, mainType, {startDate:sd,endDate:ed});
   }
 
   function cleanup() {
@@ -1035,11 +1041,13 @@ function reorderPhase(proj, idx, dir) {
 }
 
 // ── Popup ─────────────────────────────────────────────────────────
-function openScheduler(proj, prefillDates) {
+function openScheduler(proj, type, prefillDates) {
   currentProj=proj;
-  const cases=allCases.filter(c=>c.notion_project===proj);
-  const mt=(cases[0]?.job_types?.[0])||'Other';
+  currentType=type||'Other';
+  const mt=currentType;
   const isDeadline=DEADLINE_TYPES.has(mt);
+  // Filter to cases matching this specific type
+  const cases=allCases.filter(c=>c.notion_project===proj&&(c.job_types?.[0]||'Other')===mt);
 
   document.getElementById('sch-title').textContent=proj;
   document.getElementById('sch-meta').textContent=mt+(cases.length>1?` · ${cases.length} 個派案`:'');
@@ -1093,6 +1101,8 @@ function openScheduler(proj, prefillDates) {
 }
 
 function rerenderPopup() { if (currentProj) renderPhaseList(currentProj); }
+// Full reopen (used after phase edit to sync popup state)
+function reopenPopup() { if (currentProj && currentType) openScheduler(currentProj, currentType); }
 
 function renderPhaseList(proj) {
   const c=document.getElementById('sch-phases'); c.innerHTML='';
