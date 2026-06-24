@@ -734,19 +734,44 @@ function buildRow(p, minDate, today, todayMs) {
   return row;
 }
 
-// Multi-type row: all types for one project stacked vertically
+// Multi-type row: greedy lane-packing
+// Non-overlapping bars share the same lane (same Y) → row height unchanged
+// Overlapping bars get separate lanes (stacked) → row height increases
 function buildMultiRow(items, minDate, today, todayMs) {
-  const HDR=30, PH=40, PAD=7;
-  const slotH=t=>DEADLINE_TYPES.has(t)?(HDR+PAD*2):(HDR+PH+PAD*2);
-  const totalH=items.reduce((s,p)=>s+slotH(p.mainType),0);
+  const PAD=7;
+  const slotH=t=>DEADLINE_TYPES.has(t)?44:84; // 30+7*2 or 30+40+7*2
+
+  // Greedy lane assignment: assign each item to the first lane
+  // where the previous item's range ends before this one starts
+  const laneEnds=[]; // last maxMs per lane
+  const itemLane=new Map();
+  for (const p of items) {
+    let placed=false;
+    for (let li=0;li<laneEnds.length;li++) {
+      if (p.minMs>=laneEnds[li]) {
+        laneEnds[li]=p.maxMs;
+        itemLane.set(p,li);
+        placed=true; break;
+      }
+    }
+    if (!placed) { laneEnds.push(p.maxMs); itemLane.set(p,laneEnds.length-1); }
+  }
+
+  // Per-lane height = max slotH of items in that lane
+  const laneH=new Array(laneEnds.length).fill(0);
+  for (const p of items) laneH[itemLane.get(p)]=Math.max(laneH[itemLane.get(p)],slotH(p.mainType));
+
+  // Cumulative lane Y positions
+  const laneY=[]; let y=0;
+  for (const h of laneH) { laneY.push(y); y+=h; }
+  const totalH=y;
+
   const row=mk('div','proj-row');
   row.style.height=totalH+'px';
-  addGridToRow(row, minDate, today);
-  let barTop=PAD;
+  addGridToRow(row,minDate,today);
   for (const p of items) {
-    const bar=buildBarEl(p, minDate, today, todayMs, barTop);
+    const bar=buildBarEl(p,minDate,today,todayMs,laneY[itemLane.get(p)]+PAD);
     row.appendChild(bar);
-    barTop+=slotH(p.mainType);
   }
   return row;
 }
