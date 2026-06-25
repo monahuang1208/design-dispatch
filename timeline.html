@@ -73,8 +73,8 @@
     padding: 0 8px; line-height: 1.4; word-break: break-word;
   }
 
-  /* Market section separator */
-  .mkt-section + .mkt-section { border-top: 2px solid #D0CEC7; }
+  /* Market section separator (standalone div, avoids box-model accumulation) */
+  .mkt-sep { height: 2px; background: #D0CEC7; flex-shrink: 0; }
 
   /* ── Main scroll ── */
   #main-scroll { flex: 1; overflow: auto; position: relative; }
@@ -678,7 +678,8 @@ function buildTimeline() {
   rw.innerHTML='';
   const labelInner=document.getElementById('label-inner');
   labelInner.innerHTML='';
-  let rowY=0; // cumulative Y in rows-wrap (for label positioning)
+  const SEP_H=2; // separator height in px
+  let rowY=0; // cumulative Y (exact, no border-model tricks)
   let firstGroup=true;
 
   for (const g of MARKET_GROUPS) {
@@ -693,10 +694,19 @@ function buildTimeline() {
       projGroups[p.proj].push(p);
     }
 
-    // Market section wrapper (CSS sibling selector adds separator)
+    // Insert separator between groups (standalone div, height tracked in rowY)
+    if (!firstGroup) {
+      const sep=mk('div','mkt-sep');
+      rw.appendChild(sep);
+      const lblSep=mk('div');
+      lblSep.style.cssText=`position:absolute;left:0;right:0;top:${rowY}px;height:${SEP_H}px;background:#D0CEC7;`;
+      labelInner.appendChild(lblSep);
+      rowY+=SEP_H;
+    }
+
+    const sectionStartY=rowY;
     const section=mk('div','mkt-section');
     let sectionH=0;
-    const sectionStartY=rowY;
 
     // Project rows
     for (const projName of projOrder) {
@@ -710,14 +720,13 @@ function buildTimeline() {
     }
     rw.appendChild(section);
 
-    // Label cell for this group
+    // Label cell — exactly aligned with section (no border offset)
     const cell=mk('div','lbl-cell');
     cell.style.top=sectionStartY+'px';
     cell.style.height=sectionH+'px';
     cell.textContent=g.label;
-    if (!firstGroup) cell.style.borderTop='2px solid #D0CEC7';
-    firstGroup=false;
     labelInner.appendChild(cell);
+    firstGroup=false;
   }
 
   // Scroll sync: label panel follows main-scroll vertically (set up once)
@@ -814,9 +823,9 @@ function packLanes(items) {
 }
 
 function computeRowHeight(pItems) {
-  // +1 for .proj-row border-bottom:1px which adds to layout height
-  if (pItems.length===1) return 85;
-  return packLanes(pItems).totalH + 1;
+  // box-sizing:border-box → border-bottom is included in 84px
+  if (pItems.length===1) return 84;
+  return packLanes(pItems).totalH;
 }
 
 // Multi-type row: greedy lane-packing
