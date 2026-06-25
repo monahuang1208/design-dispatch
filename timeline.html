@@ -48,6 +48,35 @@
   .grp-label { font-size: 11px; color: var(--text-dim); }
   #status-msg { margin-left: auto; font-size: 11px; color: var(--text-dim); }
 
+  /* ── Main layout ── */
+  #tl-body { display: flex; flex: 1; overflow: hidden; }
+
+  /* Left label panel */
+  #label-panel {
+    width: 88px; flex-shrink: 0; position: relative;
+    border-right: 2px solid var(--border);
+    background: var(--surface); overflow: hidden; z-index: 20;
+  }
+  .lbl-spacer {
+    position: absolute; top: 0; left: 0; right: 0; height: 41px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,.05); z-index: 5;
+  }
+  #label-inner {
+    position: absolute; top: 41px; left: 0; right: 0;
+  }
+  .lbl-cell {
+    position: absolute; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: var(--text-dim);
+    letter-spacing: .05em; text-align: center;
+    padding: 0 6px; line-height: 1.5; word-break: break-word;
+    text-transform: uppercase;
+  }
+
+  /* Market section separator */
+  .mkt-section + .mkt-section { border-top: 3px solid #D0CEC7; }
+
   /* ── Main scroll ── */
   #main-scroll { flex: 1; overflow: auto; position: relative; }
   #content-wrap { position: relative; }
@@ -438,10 +467,16 @@
 </div>
 
 <!-- Timeline -->
-<div id="main-scroll">
-  <div id="content-wrap">
-    <div id="date-hdr"></div>
-    <div id="rows-wrap"></div>
+<div id="tl-body">
+  <div id="label-panel">
+    <div class="lbl-spacer"></div>
+    <div id="label-inner"></div>
+  </div>
+  <div id="main-scroll">
+    <div id="content-wrap">
+      <div id="date-hdr"></div>
+      <div id="rows-wrap"></div>
+    </div>
   </div>
 </div>
 
@@ -642,34 +677,55 @@ function buildTimeline() {
   }
 
   rw.innerHTML='';
-  let rowIdx = 0;
+  const labelInner=document.getElementById('label-inner');
+  labelInner.innerHTML='';
+  let rowY=0; // cumulative Y in rows-wrap (for label positioning)
+
   for (const g of MARKET_GROUPS) {
     const items = grouped[g.label];
     if (!items || !items.length) continue;
     items.sort(typeSort);
-    // Group header row
-    const hdr = mk('div','market-group-hdr');
-    hdr.style.width = totalW + 'px';
-    const lbl = mk('span','mkt-lbl');
-    lbl.textContent = g.label;
-    hdr.appendChild(lbl);
-    rw.appendChild(hdr);
+
     // Group by project (keep type-sort order within each project)
-    const projGroups={};
-    const projOrder=[];
+    const projGroups={}, projOrder=[];
     for (const p of items) {
       if (!projGroups[p.proj]) { projGroups[p.proj]=[]; projOrder.push(p.proj); }
       projGroups[p.proj].push(p);
     }
-    // Project rows (multi-type projects share one row)
+
+    // Market section wrapper (CSS sibling selector adds separator)
+    const section=mk('div','mkt-section');
+    let sectionH=0;
+    const sectionStartY=rowY;
+
+    // Project rows
     for (const projName of projOrder) {
       const pItems=projGroups[projName];
       const row=pItems.length===1
         ? buildRow(pItems[0], minDate, today, todayMs)
         : buildMultiRow(pItems, minDate, today, todayMs);
-      rowIdx++;
-      rw.appendChild(row);
+      section.appendChild(row);
+      const rh=computeRowHeight(pItems);
+      sectionH+=rh; rowY+=rh;
     }
+    rw.appendChild(section);
+
+    // Label cell for this group
+    const cell=mk('div','lbl-cell');
+    cell.style.top=sectionStartY+'px';
+    cell.style.height=sectionH+'px';
+    cell.textContent=g.label;
+    labelInner.appendChild(cell);
+  }
+
+  // Scroll sync: label panel follows main-scroll vertically (set up once)
+  const ms=document.getElementById('main-scroll');
+  labelInner.style.transform=`translateY(-${ms.scrollTop}px)`; // sync immediately after rebuild
+  if (!document._lblSyncReady) {
+    document._lblSyncReady=true;
+    ms.addEventListener('scroll', function() {
+      document.getElementById('label-inner').style.transform=`translateY(-${this.scrollTop}px)`;
+    });
   }
 
   setTimeout(scrollToToday, 50);
@@ -734,43 +790,40 @@ function buildRow(p, minDate, today, todayMs) {
   return row;
 }
 
-// Multi-type row: greedy lane-packing
-// Non-overlapping bars share the same lane (same Y) → row height unchanged
-// Overlapping bars get separate lanes (stacked) → row height increases
-function buildMultiRow(items, minDate, today, todayMs) {
+// ── Lane packing (shared by buildMultiRow + computeRowHeight) ────
+function packLanes(items) {
   const PAD=7;
-  const slotH=t=>DEADLINE_TYPES.has(t)?44:84; // 30+7*2 or 30+40+7*2
-
-  // Greedy lane assignment: assign each item to the first lane
-  // where the previous item's range ends before this one starts
-  const laneEnds=[]; // last maxMs per lane
-  const itemLane=new Map();
+  const slotH=t=>DEADLINE_TYPES.has(t)?44:84;
+  const laneEnds=[], itemLane=new Map();
   for (const p of items) {
     let placed=false;
     for (let li=0;li<laneEnds.length;li++) {
-      if (p.minMs>laneEnds[li]) {
-        laneEnds[li]=p.maxMs;
-        itemLane.set(p,li);
-        placed=true; break;
-      }
+      if (p.minMs>laneEnds[li]) { laneEnds[li]=p.maxMs; itemLane.set(p,li); placed=true; break; }
     }
     if (!placed) { laneEnds.push(p.maxMs); itemLane.set(p,laneEnds.length-1); }
   }
-
-  // Per-lane height = max slotH of items in that lane
   const laneH=new Array(laneEnds.length).fill(0);
   for (const p of items) laneH[itemLane.get(p)]=Math.max(laneH[itemLane.get(p)],slotH(p.mainType));
+  let y=0; const laneTopY=[];
+  for (const h of laneH) { laneTopY.push(y); y+=h; }
+  const barTopY=new Map();
+  for (const p of items) barTopY.set(p,laneTopY[itemLane.get(p)]+PAD);
+  return {totalH:y, barTopY};
+}
 
-  // Cumulative lane Y positions
-  const laneY=[]; let y=0;
-  for (const h of laneH) { laneY.push(y); y+=h; }
-  const totalH=y;
+function computeRowHeight(pItems) {
+  if (pItems.length===1) return 84; // CSS --row-h
+  return packLanes(pItems).totalH;
+}
 
+// Multi-type row: greedy lane-packing
+function buildMultiRow(items, minDate, today, todayMs) {
+  const {totalH, barTopY}=packLanes(items);
   const row=mk('div','proj-row');
   row.style.height=totalH+'px';
   addGridToRow(row,minDate,today);
   for (const p of items) {
-    const bar=buildBarEl(p,minDate,today,todayMs,laneY[itemLane.get(p)]+PAD);
+    const bar=buildBarEl(p,minDate,today,todayMs,barTopY.get(p));
     row.appendChild(bar);
   }
   return row;
