@@ -74,7 +74,7 @@
   }
 
   /* Market section separator */
-  .mkt-section + .mkt-section { border-top: 3px solid #D0CEC7; }
+  .mkt-section + .mkt-section { border-top: 2px solid #D0CEC7; }
 
   /* ── Main scroll ── */
   #main-scroll { flex: 1; overflow: auto; position: relative; }
@@ -715,7 +715,7 @@ function buildTimeline() {
     cell.style.top=sectionStartY+'px';
     cell.style.height=sectionH+'px';
     cell.textContent=g.label;
-    if (!firstGroup) cell.style.borderTop='3px solid #D0CEC7';
+    if (!firstGroup) cell.style.borderTop='2px solid #D0CEC7';
     firstGroup=false;
     labelInner.appendChild(cell);
   }
@@ -814,8 +814,9 @@ function packLanes(items) {
 }
 
 function computeRowHeight(pItems) {
-  if (pItems.length===1) return 84; // CSS --row-h
-  return packLanes(pItems).totalH;
+  // +1 for .proj-row border-bottom:1px which adds to layout height
+  if (pItems.length===1) return 85;
+  return packLanes(pItems).totalH + 1;
 }
 
 // Multi-type row: greedy lane-packing
