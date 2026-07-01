@@ -226,6 +226,7 @@ const STATUS_STYLE = {
   "擱置":   {bg:"#FEF9E7",text:"#D4AC0D",dot:"#D4AC0D",border:"#D4AC0D"},
 };
 const TYPE_COLORS = ["#6C63FF","#FF6584","#43BCCD","#F9844A","#4CC9F0","#F72585","#7209B7","#3A0CA3","#4361EE","#4895EF","#E76F51","#2A9D8F"];
+function normalizeType(t){ return t==='Presentation'?'V1':t; }
 const TYPE_COLOR_MAP = {
   "V1":           "#666666",
   "Revision":     "#666666",
@@ -407,14 +408,18 @@ async function loadSettings(){
   const map={};
   (data||[]).forEach(r=>{ map[r.key]=r.value; });
   // Migrate lowercase 'care card' → 'Care Card' in saved settings
-  let jobTypes = (map.jobTypes || DEFAULT_JOB_TYPES).map(t => t === 'care card' ? 'Care Card' : t);
+  let jobTypes = (map.jobTypes || DEFAULT_JOB_TYPES).map(t => t === 'care card' ? 'Care Card' : t).filter(t => t !== 'Presentation');
   // Ensure new default job types are added to existing lists without removing custom entries
   DEFAULT_JOB_TYPES.forEach(t=>{ if(!jobTypes.includes(t)) jobTypes.push(t); });
   let sales = map.sales || DEFAULT_SALES;
   DEFAULT_SALES.forEach(s=>{ if(!sales.includes(s)) sales.push(s); });
+  // Enforce DEFAULT_MARKETS order (add any custom markets at the end)
+  const savedMarkets = map.markets || DEFAULT_MARKETS;
+  const orderedMarkets = [...DEFAULT_MARKETS];
+  savedMarkets.forEach(m=>{ if(!orderedMarkets.includes(m)) orderedMarkets.push(m); });
   return {
     jobTypes,
-    markets:  map.markets  || DEFAULT_MARKETS,
+    markets: orderedMarkets,
     designers:map.designers|| DEFAULT_DESIGNERS,
     sales,
   };
@@ -792,7 +797,7 @@ function renderList(cases){
           </div>
         </td>
         <td>${badge(c.market,"#EEEEFF","#4361EE")}</td>
-        <td>${toArr(c.jobTypes).map(j=>badge(j,typeColor(j,types)+"28",typeColor(j,types))).join(" ")}</td>
+        <td>${toArr(c.jobTypes).map(j=>{ const nj=normalizeType(j); return badge(nj,typeColor(nj,types)+"28",typeColor(nj,types)); }).join(" ")}</td>
         <td style="font-size:12px;font-weight:600">${arrLabel(c.designers)}</td>
         <td style="font-size:11px;color:#888">${c.sales||"—"}</td>
         <td>${statusPill(c.status)}</td>
@@ -1009,7 +1014,7 @@ function renderExcel(cases){
       function getDesignerStatus(c){ return (c.designerStatus&&c.designerStatus[designer])||c.status; }
 
       const chips=dayCases.map(c=>{
-        const firstType=toArr(c.jobTypes)[0]||"";
+        const firstType=normalizeType(toArr(c.jobTypes)[0]||"");
         const tc=typeColor(firstType,types);
         const dStatus=getDesignerStatus(c);
         const isDone=dStatus==="已完成";
@@ -1028,10 +1033,11 @@ function renderExcel(cases){
         const strikeStyle=isDone?"text-decoration:line-through;opacity:0.45":"";
         const textColor=isDone?"#AAAAAA":isRead?"#1a5f8a":""+tc;
         // Main text: note if set, else jobTypes · market
-        const mainText=c.note||(toArr(c.jobTypes).join("/")+` · ${c.market}`);
+        const displayTypes=toArr(c.jobTypes).map(normalizeType).join("/");
+        const mainText=c.note||(displayTypes+` · ${c.market}`);
         // Sub line
         const subParts=[];
-        if(c.note) subParts.push(toArr(c.jobTypes).join("/")+` · ${c.market}`);
+        if(c.note) subParts.push(displayTypes+` · ${c.market}`);
         if(c.deadlineTime) subParts.push(`⏰ ${c.deadlineTime}`);
         const subHtml=subParts.length?`<div style="font-size:9px;color:${isDone?"#BBBBBB":"#888"};margin-top:1px;line-height:1.3;${strikeStyle}">${subParts.join(" · ")}</div>`:"";
         const coDesignerHtml="";
@@ -1137,7 +1143,7 @@ function renderStats(){
   });
 
   const byT={}; types.forEach(t=>byT[t]=0);
-  yearlyForStats.forEach(c=>{ toArr(c.jobTypes).forEach(j=>{ if(byT[j]!==undefined) byT[j]++; }); });
+  yearlyForStats.forEach(c=>{ toArr(c.jobTypes).forEach(j=>{ const nj=normalizeType(j); if(byT[nj]!==undefined) byT[nj]++; }); });
 
   const byM=Array(12).fill(0);
   yearlyForStats.forEach(c=>{byM[parseInt(c.date.slice(5,7))-1]++;});
@@ -1199,7 +1205,7 @@ function renderStats(){
     if(countableTypes.length===0) return;
     toArr(c.designers).forEach(d=>{
       if(byDT[d]===undefined) return;
-      countableTypes.forEach(t=>{ if(byDT[d][t]!==undefined) byDT[d][t]++; });
+      countableTypes.forEach(t=>{ const nt=normalizeType(t); if(byDT[d][nt]!==undefined) byDT[d][nt]++; });
     });
   });
 
@@ -1227,7 +1233,10 @@ function renderStats(){
       }).join("")}
     </div>`:"").join("");
 
-  const sortedTypes=Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const sortedTypes=Object.entries(byT).filter(([,v])=>v>0).sort((a,b)=>{
+    const ai=DEFAULT_JOB_TYPES.indexOf(a[0]); const bi=DEFAULT_JOB_TYPES.indexOf(b[0]);
+    return (ai===-1?99:ai)-(bi===-1?99:bi);
+  });
   const maxT=Math.max(...sortedTypes.map(([,v])=>v),1);
   const typeChips=sortedTypes.map(([t,v])=>{
     const pct=Math.max(8, Math.round(v/maxT*100));

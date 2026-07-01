@@ -118,13 +118,11 @@
     position: absolute; top: 0; bottom: 0; width: 1px;
     background: rgba(0,0,0,.055); pointer-events: none; z-index: 1;
   }
-  .grid-line.mon        { width: 2px; background: #A09890; }
-  .grid-line.wknd-start { width: 2px; background: #A09890; }
 
   /* Today line — dashed, behind bars */
   .today-line {
-    position: absolute; top: 0; bottom: 0; width: 2px;
-    background: repeating-linear-gradient(to bottom, var(--today) 0, var(--today) 5px, transparent 5px, transparent 10px);
+    position: absolute; top: 0; bottom: 0; width: 6px;
+    background: repeating-linear-gradient(-45deg, var(--today) 0, var(--today) 2px, transparent 2px, transparent 7px);
     opacity: .75; pointer-events: none; z-index: 0;
   }
 
@@ -499,7 +497,7 @@ const TYPE_COLOR = {
   Revision:       '#B0A898',  // 米灰色 (warmer, lighter than V1)
   JPG:            '#E8914A',  // muted orange
   M1:             '#2A9D8F',  // Board teal
-  'Revised Maker':'#7BAF9F',  // 灰綠色 (softer, grayer than M1)
+  'Revised Maker':'#A8D5CB',  // 灰綠色（淺）
   'Care Card':    '#43BCCD',  // blue-cyan
 };
 function typeColor(t) { return TYPE_COLOR[t] || '#707888'; }
@@ -618,7 +616,8 @@ function getFilteredProjects() {
   const byKey={};
   for (const c of allCases) {
     if (hideCompleted && c.status==='已完成') continue;
-    const t=(c.job_types?.[0])||'Other';
+    const rawT=(c.job_types?.[0])||'Other';
+    const t=rawT==='Presentation'?'V1':rawT;
     const key=c.notion_project+'|||'+t;
     if (!byKey[key]) byKey[key]={proj:c.notion_project,type:t,cases:[]};
     byKey[key].cases.push(c);
@@ -788,9 +787,13 @@ function renderDateHeader(minDate, totalW) {
     if (!isTod&&(dow===0||dow===6)) cell.classList.add('weekend');
     if (isTod) cell.classList.add('today');
     const DOWS=['日','一','二','三','四','五','六'];
-    const ds=mk('span','day-date'); ds.textContent=`${d.getMonth()+1}/${d.getDate()}`;
-    const dw=mk('span','day-dow');  dw.textContent=DOWS[dow];
-    cell.append(ds,dw);
+    if (!isTod && (dow===0||dow===6)) {
+      const sw=mk('span','day-date'); sw.textContent='S'; cell.append(sw);
+    } else {
+      const ds=mk('span','day-date'); ds.textContent=`${d.getMonth()+1}/${d.getDate()}`;
+      const dw=mk('span','day-dow');  dw.textContent=DOWS[dow];
+      cell.append(ds,dw);
+    }
     if (isTod) { const dot=mk('div','today-dot'); cell.appendChild(dot); }
     hdr.appendChild(cell);
     d.setDate(d.getDate()+1);
@@ -809,8 +812,6 @@ function addGridToRow(row, minDate, today) {
       row.appendChild(wk);
     }
     const gl=mk('div','grid-line');
-    if (dow===1) gl.classList.add('mon');
-    if (dow===6) gl.classList.add('wknd-start');
     gl.style.left=dayOffsets[i]+'px';
     row.appendChild(gl);
     d.setDate(d.getDate()+1);
@@ -826,6 +827,7 @@ function addGridToRow(row, minDate, today) {
 // Single-type row (backward compat)
 function buildRow(p, minDate, today, todayMs) {
   const row=mk('div','proj-row');
+  if (DEADLINE_TYPES.has(p.mainType)) row.style.height='44px';
   addGridToRow(row, minDate, today);
   const bar=buildBarEl(p, minDate, today, todayMs, 7);
   row.appendChild(bar);
@@ -855,7 +857,7 @@ function packLanes(items) {
 
 function computeRowHeight(pItems) {
   // box-sizing:border-box → border-bottom is included in 84px
-  if (pItems.length===1) return 84;
+  if (pItems.length===1) return DEADLINE_TYPES.has(pItems[0].mainType) ? 44 : 84;
   return packLanes(pItems).totalH;
 }
 
