@@ -1067,7 +1067,7 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
     const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
     if (!isValidTarget) return;
     e.preventDefault();
-    startCreate(e, proj, mainType, band, barMinMs);
+    startCreate(e, proj, mainType, band, barMinMs, minMs, maxMs);
   });
   band.addEventListener('click', e=>{
     const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
@@ -1086,12 +1086,17 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
 let dragging=false, didDrag=false;
 let dragCleanup=null;
 
-function startCreate(e, proj, mainType, band, barMinMs) {
+function startCreate(e, proj, mainType, band, barMinMs, caseMinMs, caseMaxMs) {
   dragging=true; didDrag=false;
   const _barSD=daysBetween(tlMinDate,new Date(barMinMs));
+  // Clamp bounds: new phases must stay within the case's own date range
+  const clampMin=daysBetween(new Date(barMinMs),new Date(caseMinMs));
+  const clampMax=daysBetween(new Date(barMinMs),new Date(caseMaxMs));
+  const clamp=d=>Math.max(clampMin,Math.min(clampMax,d));
+
   const bandRect=band.getBoundingClientRect();
   const startRelX=e.clientX-bandRect.left;
-  const startDay=Math.max(0,xToDay(dayOffsets[_barSD]+startRelX)-_barSD);
+  const startDay=clamp(xToDay(dayOffsets[_barSD]+startRelX)-_barSD);
 
   const ghost=document.getElementById('drag-ghost');
   ghost.style.display='block';
@@ -1106,7 +1111,7 @@ function startCreate(e, proj, mainType, band, barMinMs) {
     didDrag=true;
     const rect=band.getBoundingClientRect();
     const relX=ev.clientX-rect.left;
-    curDay=Math.max(0,xToDay(dayOffsets[_barSD]+relX)-_barSD);
+    curDay=clamp(xToDay(dayOffsets[_barSD]+relX)-_barSD);
     const s0=Math.min(startDay,curDay), s1=Math.max(startDay,curDay);
     const left=rect.left+(dayOffsets[_barSD+s0]-dayOffsets[_barSD]);
     const w=Math.max(dayPx, dayOffsets[Math.min(_barSD+s1+1,dayOffsets.length-1)]-dayOffsets[_barSD+s0]);
@@ -1209,6 +1214,11 @@ function startMove(e, ph, proj, bar, barMinMs, seg) {
   const origLeft=parseFloat(seg.style.left);
   const origStartMs=dateMs(ph.start_date);
   const origEndMs=ph.end_date?dateMs(ph.end_date):origStartMs;
+  // Capture content-space X at drag start for accurate day delta
+  const msEl=document.getElementById('main-scroll');
+  const lw=document.getElementById('label-panel').offsetWidth;
+  const startContentX=startX-lw+msEl.scrollLeft;
+  const startDayGlobal=xToDay(startContentX);
 
   seg.style.opacity='.65';
   document.body.style.cursor='grabbing';
@@ -1220,7 +1230,8 @@ function startMove(e, ph, proj, bar, barMinMs, seg) {
   }
   function onUp(ev) {
     cleanup();
-    const daysDelta=Math.round((ev.clientX-startX)/dayPx);
+    const endContentX=ev.clientX-lw+msEl.scrollLeft;
+    const daysDelta=xToDay(endContentX)-startDayGlobal;
     seg.style.left=origLeft+'px';
     if (!didDrag||daysDelta===0) return;
     const newStart=new Date(origStartMs+daysDelta*86400000).toISOString().slice(0,10);
@@ -1244,6 +1255,11 @@ function startResize(e, ph, proj, bar, barMinMs, seg) {
   const startX=e.clientX;
   const origW=parseFloat(seg.style.width);
   const origEndMs=ph.end_date?dateMs(ph.end_date):dateMs(ph.start_date);
+  // Capture content-space X at drag start for accurate day delta
+  const msEl=document.getElementById('main-scroll');
+  const lw=document.getElementById('label-panel').offsetWidth;
+  const startContentX=startX-lw+msEl.scrollLeft;
+  const startDayGlobal=xToDay(startContentX);
 
   document.body.style.cursor='ew-resize';
 
@@ -1254,7 +1270,8 @@ function startResize(e, ph, proj, bar, barMinMs, seg) {
   }
   function onUp(ev) {
     cleanup();
-    const daysDelta=Math.round((ev.clientX-startX)/dayPx);
+    const endContentX=ev.clientX-lw+msEl.scrollLeft;
+    const daysDelta=xToDay(endContentX)-startDayGlobal;
     seg.style.width=origW+'px';
     if (!didDrag||daysDelta===0) return;
     const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
