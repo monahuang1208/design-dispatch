@@ -1168,9 +1168,11 @@ async function saveQuickPhase() {
   const sel=document.getElementById('pqa-name').value;
   const name=sel==='__custom__'?document.getElementById('pqa-custom').value.trim():sel;
   if (!name||!_pqaProj||!_pqaStart) return;
+  // Save locals before closeQuickPhase() nulls them
+  const proj=_pqaProj, type=_pqaType, start=_pqaStart, end=_pqaEnd;
   closeQuickPhase();
   try {
-    const body={project_name:_pqaProj,phase:name,start_date:_pqaStart,end_date:_pqaEnd||null};
+    const body={project_name:proj,phase:name,start_date:start,end_date:end||null};
     const res=await fetch(`${SUPABASE}/rest/v1/project_phases`,{
       method:'POST',
       headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
@@ -1178,12 +1180,12 @@ async function saveQuickPhase() {
     });
     if (res.ok||res.status===201) {
       const rows=await res.json();
-      if (!phasesMap[_pqaProj]) phasesMap[_pqaProj]=[];
-      if (rows[0]) phasesMap[_pqaProj].push(rows[0]);
+      if (!phasesMap[proj]) phasesMap[proj]=[];
+      if (rows[0]) phasesMap[proj].push(rows[0]);
       showMsg('✓ 已新增時程');
       buildTimeline();
-      if (currentProj===_pqaProj) rerenderPopup();
-      else openScheduler(_pqaProj, _pqaType);
+      if (currentProj===proj) rerenderPopup();
+      else openScheduler(proj, type);
     } else showMsg('✗ 新增失敗');
   } catch { showMsg('✗ 新增失敗'); }
 }
