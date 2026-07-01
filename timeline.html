@@ -116,15 +116,16 @@
   /* Grid lines */
   .grid-line {
     position: absolute; top: 0; bottom: 0; width: 1px;
-    background: rgba(0,0,0,.055); pointer-events: none;
+    background: rgba(0,0,0,.055); pointer-events: none; z-index: 1;
   }
-  .grid-line.mon { background: rgba(0,0,0,.11); }
+  .grid-line.mon        { width: 2px; background: #A09890; }
+  .grid-line.wknd-start { width: 2px; background: #A09890; }
 
-  /* Today line */
+  /* Today line — dashed, behind bars */
   .today-line {
     position: absolute; top: 0; bottom: 0; width: 2px;
-    background: var(--today); opacity: .5;
-    pointer-events: none; z-index: 6;
+    background: repeating-linear-gradient(to bottom, var(--today) 0, var(--today) 5px, transparent 5px, transparent 10px);
+    opacity: .75; pointer-events: none; z-index: 0;
   }
 
   /* ── Project bar ── */
@@ -132,6 +133,7 @@
     position: absolute;
     top: var(--bar-pad);
     height: calc(var(--hdr-band) + var(--ph-band));
+    z-index: 2;
     border-radius: 6px; overflow: hidden;
     z-index: 3; box-shadow: 0 1px 4px rgba(0,0,0,.10);
   }
@@ -492,12 +494,13 @@ const START_DATE = '2026-06-08';
 const TYPE_COLOR = {
   KV:             '#FF6584',  // Board pink
   Moodboard:      '#FF6584',  // Board pink
-  Presentation:   '#666666',  // Board gray
+  Presentation:   '#666666',  // Board gray (legacy)
   V1:             '#666666',  // Board gray
-  Revision:       '#666666',  // Board gray
+  Revision:       '#B0A898',  // 米灰色 (warmer, lighter than V1)
   JPG:            '#E8914A',  // muted orange
   M1:             '#2A9D8F',  // Board teal
-  'Revised Maker':'#2A9D8F',  // Board teal
+  'Revised Maker':'#7BAF9F',  // 灰綠色 (softer, grayer than M1)
+  'Care Card':    '#43BCCD',  // blue-cyan
 };
 function typeColor(t) { return TYPE_COLOR[t] || '#707888'; }
 function hexRgb(hex) {
@@ -515,9 +518,9 @@ const MARKET_GROUPS = [
   { label: 'GC',          markets: new Set(['GC','GC Roastery']) },
   { label: 'SBJ',         markets: new Set(['SBJ','SBJ Roastery']) },
   { label: 'SCK',         markets: new Set(['SCK']) },
-  { label: 'EMEA / MENA', markets: new Set(['EMEA','MENA','Milano Roastery']) },
   { label: 'TW',          markets: new Set(['TW']) },
   { label: 'RNA',         markets: new Set(['RNA']) },
+  { label: 'EMEA / MENA', markets: new Set(['EMEA','MENA','Milano Roastery']) },
   { label: 'Other',       markets: new Set(['Other']) },
 ];
 function getMarketGroup(market) {
@@ -526,7 +529,7 @@ function getMarketGroup(market) {
 }
 
 // Type sort order within each market group
-const TYPE_ORDER = ['KV','Moodboard','Presentation','V1','Revision','M1','Revised Maker'];
+const TYPE_ORDER = ['Moodboard','KV','V1','Revision','M1','Revised Maker','Care Card','JPG','Note'];
 function typeSort(a, b) {
   const ai = TYPE_ORDER.indexOf(a.mainType);
   const bi = TYPE_ORDER.indexOf(b.mainType);
@@ -542,8 +545,34 @@ let filterMode    = 'week';
 let filterDesigner= '';     // '' = all designers
 let hideCompleted = true;   // hide 已完成 cases by default
 let dayPx         = 64;
+let dayOffsets  = [];  // dayOffsets[i] = X of day i's left edge
+let dayWidths   = [];  // dayWidths[i]  = pixel width of day i
 let tlMinDate   = null;
 let tlTotalDays = 0;
+
+// Build variable-width day offset tables (weekends narrow)
+function buildDayOffsets(minDate, totalDays) {
+  dayOffsets = [0]; dayWidths = [];
+  const wkndPx = Math.max(4, Math.round(dayPx / 8));
+  let x = 0;
+  const d = new Date(minDate);
+  for (let i = 0; i < totalDays; i++) {
+    const dow = d.getDay();
+    const w = (dow===0||dow===6) ? wkndPx : dayPx;
+    dayWidths.push(w);
+    x += w;
+    dayOffsets.push(x);
+    d.setDate(d.getDate()+1);
+  }
+}
+// Convert absolute X pixel to day index (binary search)
+function xToDay(absX) {
+  if (absX <= 0) return 0;
+  if (absX >= dayOffsets[dayOffsets.length-1]) return dayOffsets.length - 2;
+  let lo=0, hi=dayOffsets.length-2;
+  while (lo<hi) { const mid=(lo+hi+1)>>1; dayOffsets[mid]<=absX ? lo=mid : hi=mid-1; }
+  return lo;
+}
 
 let currentProj = null;   // project name currently open in popup
 let currentType = null;   // job type currently open in popup
@@ -660,7 +689,8 @@ function buildTimeline() {
   const maxDate=new Date(maxMs); maxDate.setDate(maxDate.getDate()+10);
   tlMinDate=minDate;
   tlTotalDays=Math.ceil((maxDate-minDate)/86400000)+1;
-  const totalW=tlTotalDays*dayPx;
+  buildDayOffsets(minDate, tlTotalDays);
+  const totalW=dayOffsets[tlTotalDays];
 
   document.getElementById('content-wrap').style.width=totalW+'px';
 
@@ -751,7 +781,7 @@ function renderDateHeader(minDate, totalW) {
   let d=new Date(minDate);
   for (let i=0;i<tlTotalDays;i++) {
     const cell=mk('div','day-cell');
-    cell.style.width=dayPx+'px';
+    cell.style.width=dayWidths[i]+'px';
     const dow=d.getDay();
     const isTod=sameDay(d,today);
     if (dow===1) cell.classList.add('mon');
@@ -775,19 +805,20 @@ function addGridToRow(row, minDate, today) {
     const dow=d.getDay();
     if (dow===0||dow===6) {
       const wk=mk('div');
-      wk.style.cssText=`position:absolute;left:${i*dayPx}px;top:0;width:${dayPx}px;height:100%;background:rgba(0,0,0,.032);pointer-events:none;z-index:0;`;
+      wk.style.cssText=`position:absolute;left:${dayOffsets[i]}px;top:0;width:${dayWidths[i]}px;height:100%;background:rgba(0,0,0,.032);pointer-events:none;z-index:0;`;
       row.appendChild(wk);
     }
     const gl=mk('div','grid-line');
     if (dow===1) gl.classList.add('mon');
-    gl.style.left=(i*dayPx)+'px';
+    if (dow===6) gl.classList.add('wknd-start');
+    gl.style.left=dayOffsets[i]+'px';
     row.appendChild(gl);
     d.setDate(d.getDate()+1);
   }
   const tOff=daysBetween(minDate,today);
   if (tOff>=0&&tOff<tlTotalDays) {
     const tl=mk('div','today-line');
-    tl.style.left=(tOff*dayPx+dayPx/2-1)+'px';
+    tl.style.left=(dayOffsets[tOff]+dayWidths[tOff]/2-1)+'px';
     row.appendChild(tl);
   }
 }
@@ -858,8 +889,8 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
 
   const barStartDay=daysBetween(minDate,new Date(barMinMs));
   const barEndDay=daysBetween(minDate,new Date(barMaxMs))+1;
-  const barX=barStartDay*dayPx;
-  const barW=Math.max(dayPx*2,(barEndDay-barStartDay)*dayPx);
+  const barX=dayOffsets[barStartDay];
+  const barW=Math.max(dayPx*2, dayOffsets[Math.min(barEndDay,dayOffsets.length-1)]-dayOffsets[barStartDay]);
 
   const bar=mk('div','proj-bar');
   bar.style.left=barX+'px';
@@ -909,8 +940,12 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
       const ph=phases[i];
       const phStartMs=dateMs(ph.start_date);
       const phEndMs=ph.end_date?dateMs(ph.end_date)+86400000:todayMs+86400000;
-      const segLeft=Math.max(0,Math.round((phStartMs-barMinMs)/86400000))*dayPx;
-      const segW=Math.max(dayPx*0.5,Math.round((phEndMs-phStartMs)/86400000)*dayPx);
+      const phSD=Math.max(0,Math.round((phStartMs-barMinMs)/86400000));
+      const phDur=Math.max(0,Math.round((phEndMs-phStartMs)/86400000));
+      const absPS=Math.min(barStartDay+phSD, dayOffsets.length-1);
+      const absPE=Math.min(barStartDay+phSD+phDur, dayOffsets.length-1);
+      const segLeft=dayOffsets[absPS]-dayOffsets[barStartDay];
+      const segW=Math.max(dayPx*0.5, dayOffsets[absPE]-dayOffsets[absPS]);
 
       const isPast=phEndMs<=todayMs;
       const isCurr=phStartMs<=todayMs&&phEndMs>todayMs;
@@ -989,15 +1024,17 @@ let dragCleanup=null;
 
 function startCreate(e, proj, band, barMinMs) {
   dragging=true; didDrag=false;
+  const _barSD=daysBetween(tlMinDate,new Date(barMinMs));
   const bandRect=band.getBoundingClientRect();
   const startRelX=e.clientX-bandRect.left;
-  const startDay=Math.floor(startRelX/dayPx);
+  const startDay=Math.max(0,xToDay(dayOffsets[_barSD]+startRelX)-_barSD);
 
   const ghost=document.getElementById('drag-ghost');
   ghost.style.display='block';
   ghost.style.top=bandRect.top+'px';
   ghost.style.height=bandRect.height+'px';
-  updateGhost(ghost, bandRect.left+startDay*dayPx, dayPx);
+  const _sx=dayOffsets[_barSD+startDay]-dayOffsets[_barSD];
+  updateGhost(ghost, bandRect.left+_sx, dayWidths[_barSD+startDay]||dayPx);
 
   let curDay=startDay;
 
@@ -1005,9 +1042,10 @@ function startCreate(e, proj, band, barMinMs) {
     didDrag=true;
     const rect=band.getBoundingClientRect();
     const relX=ev.clientX-rect.left;
-    curDay=Math.floor(relX/dayPx);
-    const left=rect.left+Math.min(startDay,curDay)*dayPx;
-    const w=(Math.abs(curDay-startDay)+1)*dayPx;
+    curDay=Math.max(0,xToDay(dayOffsets[_barSD]+relX)-_barSD);
+    const s0=Math.min(startDay,curDay), s1=Math.max(startDay,curDay);
+    const left=rect.left+(dayOffsets[_barSD+s0]-dayOffsets[_barSD]);
+    const w=Math.max(dayPx, dayOffsets[Math.min(_barSD+s1+1,dayOffsets.length-1)]-dayOffsets[_barSD+s0]);
     ghost.style.top=rect.top+'px';
     ghost.style.height=rect.height+'px';
     updateGhost(ghost,left,w);

@@ -210,8 +210,8 @@ const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── CONSTANTS ──────────────────────────────────────────────────
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DEFAULT_JOB_TYPES = ["V1","Revision","M1","Revised Maker","KV","Moodboard","Check Info","Pkg Layout","care card","Note"];
-const DEFAULT_MARKETS = ["AP","INT","INT Other","GC","SBJ","SCK","RNA","EMEA","MENA","TW","HK","Other"];
+const DEFAULT_JOB_TYPES = ["Moodboard","KV","V1","Revision","M1","Revised Maker","Care Card","JPG","Note"];
+const DEFAULT_MARKETS = ["AP","INT","GC","SBJ","SCK","TW","RNA","EMEA","MENA","SBJ Roastery","GC Roastery","Milano Roastery","Other"];
 const DEFAULT_DESIGNERS = {
   "2D": ["Faye","Alan","Avis","Carol","Roy","Jou"],
   "插畫": ["Mona","Cathy","Emilia","Echo","Heiwin"],
@@ -234,9 +234,7 @@ const TYPE_COLOR_MAP = {
   "Revised Maker":"#2A9D8F",
   "KV":           "#FF6584",
   "Moodboard":    "#FF6584",
-  "Check Info":   "#43BCCD",
-  "Pkg Layout":   "#43BCCD",
-  "care card":    "#43BCCD",
+  "Care Card":    "#43BCCD",
   "JPG":          "#4361EE",
   "Note":         "#E76F51",
 };
@@ -408,8 +406,9 @@ async function loadSettings(){
   if(error){ console.error("loadSettings",error); }
   const map={};
   (data||[]).forEach(r=>{ map[r.key]=r.value; });
-  // Ensure new default job types (Note) are added to existing lists without removing custom entries
-  let jobTypes = map.jobTypes || DEFAULT_JOB_TYPES;
+  // Migrate lowercase 'care card' → 'Care Card' in saved settings
+  let jobTypes = (map.jobTypes || DEFAULT_JOB_TYPES).map(t => t === 'care card' ? 'Care Card' : t);
+  // Ensure new default job types are added to existing lists without removing custom entries
   DEFAULT_JOB_TYPES.forEach(t=>{ if(!jobTypes.includes(t)) jobTypes.push(t); });
   let sales = map.sales || DEFAULT_SALES;
   DEFAULT_SALES.forEach(s=>{ if(!sales.includes(s)) sales.push(s); });
@@ -1116,7 +1115,7 @@ function renderStats(){
   const todayStr=today();
   const types=S.settings.jobTypes;
   const designers=allDesigners(S.settings.designers);
-  const EXCLUDED_FROM_DESIGNER_STATS=["Check Info","Note"];
+  const EXCLUDED_FROM_DESIGNER_STATS=["Note"];
 
   // Time range logic
   const isCustom=S.statsTimeRange==="custom";
