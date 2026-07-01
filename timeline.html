@@ -358,6 +358,44 @@
     background: rgba(67,97,238,.16); border: 2px dashed #4361EE;
     border-radius: 4px;
   }
+
+  /* ── Inline phase quick-add ── */
+  #phase-quick-add {
+    position: fixed; z-index: 300; display: none;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; width: 230px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.14);
+    font-family: inherit;
+  }
+  #phase-quick-add .pqa-dates {
+    font-size: 11px; color: var(--text-mid); margin-bottom: 10px;
+    font-weight: 600; letter-spacing: .01em;
+  }
+  #phase-quick-add select, #phase-quick-add input[type="text"] {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px; font-family: inherit;
+    background: var(--surface2); color: var(--text); outline: none;
+    margin-bottom: 8px;
+  }
+  #phase-quick-add select:focus, #phase-quick-add input[type="text"]:focus {
+    border-color: #4361EE;
+  }
+  #pqa-custom { display: none; }
+  #phase-quick-add .pqa-btns {
+    display: flex; gap: 6px;
+  }
+  #phase-quick-add .pqa-save {
+    flex: 1; padding: 6px; border: none; border-radius: 6px;
+    background: #1a1817; color: #fff; font-size: 12px; font-family: inherit;
+    cursor: pointer; font-weight: 600;
+  }
+  #phase-quick-add .pqa-save:hover { background: #2d2926; }
+  #phase-quick-add .pqa-cancel {
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: none; color: var(--text-mid); font-size: 12px; font-family: inherit;
+    cursor: pointer;
+  }
+  #phase-quick-add .pqa-cancel:hover { background: var(--surface2); }
 </style>
 </head>
 <body>
@@ -479,6 +517,26 @@
 </div>
 
 <div id="drag-ghost"></div>
+
+<!-- Inline phase quick-add mini popup -->
+<div id="phase-quick-add">
+  <div class="pqa-dates" id="pqa-dates"></div>
+  <select id="pqa-name" onchange="onPqaNameChange()">
+    <option>討論</option>
+    <option>3D草稿/2D包現有型體</option>
+    <option>草稿/彩稿</option>
+    <option>合成</option>
+    <option>微調</option>
+    <option>上版/完成</option>
+    <option>找資料</option>
+    <option value="__custom__">自訂…</option>
+  </select>
+  <input id="pqa-custom" type="text" placeholder="自訂名稱" maxlength="30">
+  <div class="pqa-btns">
+    <button class="pqa-save" onclick="saveQuickPhase()">新增</button>
+    <button class="pqa-cancel" onclick="closeQuickPhase()">取消</button>
+  </div>
+</div>
 
 <script>
 // ── Config ──────────────────────────────────────────────────────
@@ -1057,7 +1115,7 @@ function startCreate(e, proj, band, barMinMs) {
     if (!didDrag) return; // band's own click listener handles the popup
     const s=Math.min(startDay,curDay), en=Math.max(startDay,curDay);
     const sd=addDays(barMinMs,s), ed=addDays(barMinMs,en);
-    openScheduler(proj, mainType, {startDate:sd,endDate:ed});
+    showQuickPhase(proj, mainType, sd, ed, ev.clientX, ev.clientY);
   }
 
   function cleanup() {
@@ -1070,6 +1128,73 @@ function startCreate(e, proj, band, barMinMs) {
   document.addEventListener('mousemove',onMove);
   document.addEventListener('mouseup',onUp);
 }
+
+// ── Inline phase quick-add ────────────────────────────────────────
+let _pqaProj=null, _pqaType=null, _pqaStart=null, _pqaEnd=null;
+
+function showQuickPhase(proj, type, startDate, endDate, mouseX, mouseY) {
+  _pqaProj=proj; _pqaType=type; _pqaStart=startDate; _pqaEnd=endDate;
+  const el=document.getElementById('phase-quick-add');
+  document.getElementById('pqa-dates').textContent=
+    startDate===endDate ? startDate : `${startDate} → ${endDate}`;
+  document.getElementById('pqa-name').value='討論';
+  document.getElementById('pqa-custom').style.display='none';
+  document.getElementById('pqa-custom').value='';
+  // Position near mouse, keep within viewport
+  const W=230, H_EST=140;
+  let x=mouseX+12, y=mouseY-20;
+  if (x+W>window.innerWidth-8) x=mouseX-W-12;
+  if (y+H_EST>window.innerHeight-8) y=window.innerHeight-H_EST-8;
+  el.style.left=x+'px'; el.style.top=y+'px';
+  el.style.display='block';
+  document.getElementById('pqa-name').focus();
+}
+function onPqaNameChange() {
+  const v=document.getElementById('pqa-name').value;
+  const ci=document.getElementById('pqa-custom');
+  ci.style.display=(v==='__custom__')?'block':'none';
+  if (v==='__custom__') ci.focus();
+}
+function closeQuickPhase() {
+  document.getElementById('phase-quick-add').style.display='none';
+  _pqaProj=_pqaType=_pqaStart=_pqaEnd=null;
+}
+async function saveQuickPhase() {
+  const sel=document.getElementById('pqa-name').value;
+  const name=sel==='__custom__'?document.getElementById('pqa-custom').value.trim():sel;
+  if (!name||!_pqaProj||!_pqaStart) return;
+  closeQuickPhase();
+  try {
+    const body={project_name:_pqaProj,phase:name,start_date:_pqaStart,end_date:_pqaEnd||null};
+    const res=await fetch(`${SUPABASE}/rest/v1/project_phases`,{
+      method:'POST',
+      headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body),
+    });
+    if (res.ok||res.status===201) {
+      const rows=await res.json();
+      if (!phasesMap[_pqaProj]) phasesMap[_pqaProj]=[];
+      if (rows[0]) phasesMap[_pqaProj].push(rows[0]);
+      showMsg('✓ 已新增時程');
+      buildTimeline();
+      if (currentProj===_pqaProj) rerenderPopup();
+      else openScheduler(_pqaProj, _pqaType);
+    } else showMsg('✗ 新增失敗');
+  } catch { showMsg('✗ 新增失敗'); }
+}
+
+// Keyboard: Enter = save, Escape = cancel
+document.addEventListener('keydown', e=>{
+  const el=document.getElementById('phase-quick-add');
+  if (el.style.display==='none') return;
+  if (e.key==='Enter') { e.preventDefault(); saveQuickPhase(); }
+  if (e.key==='Escape') closeQuickPhase();
+});
+// Close quick-add when clicking outside
+document.addEventListener('mousedown', e=>{
+  const el=document.getElementById('phase-quick-add');
+  if (el.style.display!=='none'&&!el.contains(e.target)) closeQuickPhase();
+}, true);
 
 function startMove(e, ph, proj, bar, barMinMs, seg) {
   dragging=true; didDrag=false;
