@@ -74,7 +74,7 @@
   }
 
   /* Market section separator (standalone div, avoids box-model accumulation) */
-  .mkt-sep { height: 2px; background: #D0CEC7; flex-shrink: 0; }
+  .mkt-sep { height: 3px; background: #C4C0B8; flex-shrink: 0; }
 
   /* ── Main scroll ── */
   #main-scroll { flex: 1; overflow: auto; position: relative; }
@@ -90,14 +90,14 @@
   .day-cell {
     flex-shrink: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    border-right: 1px solid var(--border);
     font-size: 10px; color: var(--text-dim); position: relative;
     gap: 1px;
   }
+  /* border-left aligns header separators with row grid-lines (both at dayOffsets[i]) */
+  .day-cell + .day-cell { border-left: 1px solid var(--border); }
   .day-cell.today   { color: var(--today); font-weight: 700; }
   .day-cell.weekend { color: #bbb5ac; }
   .day-cell.weekend { background: rgba(0,0,0,.03); }
-  .day-cell.mon     { border-right-color: #d4cfc8; }
   .day-cell .day-date { font-size: 10px; }
   .day-cell .day-dow  { font-size: 9px; opacity: .75; }
   .day-cell .today-dot {
@@ -109,7 +109,6 @@
   #rows-wrap { position: relative; }
   .proj-row {
     height: var(--row-h); position: relative;
-    border-bottom: 1px solid var(--border);
   }
   /* .proj-row.even — removed, no alternating row tint */
 
@@ -707,7 +706,7 @@ function buildTimeline() {
   rw.innerHTML='';
   const labelInner=document.getElementById('label-inner');
   labelInner.innerHTML='';
-  const SEP_H=2; // separator height in px
+  const SEP_H=3; // separator height in px
   let rowY=0; // cumulative Y (exact, no border-model tricks)
   let firstGroup=true;
 
@@ -728,7 +727,7 @@ function buildTimeline() {
       const sep=mk('div','mkt-sep');
       rw.appendChild(sep);
       const lblSep=mk('div');
-      lblSep.style.cssText=`position:absolute;left:0;right:0;top:${rowY}px;height:${SEP_H}px;background:#D0CEC7;`;
+      lblSep.style.cssText=`position:absolute;left:0;right:0;top:${rowY}px;height:${SEP_H}px;background:#C4C0B8;`;
       labelInner.appendChild(lblSep);
       rowY+=SEP_H;
     }
