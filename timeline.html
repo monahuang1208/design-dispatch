@@ -1059,18 +1059,23 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
     band.appendChild(empty);
   }
 
-  // Drag on band background or empty div to create phase; plain click opens popup
+  // Cursor hint on band background
+  band.style.cursor='crosshair';
+
+  // Drag on band background or empty div to create phase; plain click shows quick-add
   band.addEventListener('mousedown', e=>{
     const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
     if (!isValidTarget) return;
     e.preventDefault();
-    startCreate(e, proj, band, barMinMs);
+    startCreate(e, proj, mainType, band, barMinMs);
   });
   band.addEventListener('click', e=>{
     const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
     if (!isValidTarget||didDrag) return;
     e.stopPropagation();
-    openScheduler(proj, mainType);
+    // Single click on empty area: show quick-add centered on click point
+    const today=new Date().toISOString().slice(0,10);
+    showQuickPhase(proj, mainType, today, today, e.clientX, e.clientY);
   });
 
   bar.appendChild(band);
@@ -1081,7 +1086,7 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
 let dragging=false, didDrag=false;
 let dragCleanup=null;
 
-function startCreate(e, proj, band, barMinMs) {
+function startCreate(e, proj, mainType, band, barMinMs) {
   dragging=true; didDrag=false;
   const _barSD=daysBetween(tlMinDate,new Date(barMinMs));
   const bandRect=band.getBoundingClientRect();
