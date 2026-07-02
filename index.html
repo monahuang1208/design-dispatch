@@ -408,13 +408,14 @@ async function loadSettings(){
   const map={};
   (data||[]).forEach(r=>{ map[r.key]=r.value; });
   // Migrate lowercase 'care card' → 'Care Card' in saved settings
-  let jobTypes = (map.jobTypes || DEFAULT_JOB_TYPES).map(t => t === 'care card' ? 'Care Card' : t).filter(t => t !== 'Presentation');
+  let jobTypes = (map.jobTypes || DEFAULT_JOB_TYPES).map(t => t === 'care card' ? 'Care Card' : t)
+    .filter(t => t !== 'Presentation' && t !== 'Check Info' && t !== 'Pkg Layout');
   // Ensure new default job types are added to existing lists without removing custom entries
   DEFAULT_JOB_TYPES.forEach(t=>{ if(!jobTypes.includes(t)) jobTypes.push(t); });
   let sales = map.sales || DEFAULT_SALES;
   DEFAULT_SALES.forEach(s=>{ if(!sales.includes(s)) sales.push(s); });
-  // Enforce DEFAULT_MARKETS order (add any custom markets at the end)
-  const savedMarkets = map.markets || DEFAULT_MARKETS;
+  // Enforce DEFAULT_MARKETS order; remove legacy HK; add any custom markets at the end
+  const savedMarkets = (map.markets || DEFAULT_MARKETS).filter(m => m !== 'HK');
   const orderedMarkets = [...DEFAULT_MARKETS];
   savedMarkets.forEach(m=>{ if(!orderedMarkets.includes(m)) orderedMarkets.push(m); });
   return {
