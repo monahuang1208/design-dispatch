@@ -1036,12 +1036,15 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
       seg.addEventListener('mousemove', e=>{
         if (dragging) return;
         const rect=seg.getBoundingClientRect();
-        seg.style.cursor=(rect.right-e.clientX<=8)?'ew-resize':'grab';
+        if (rect.right-e.clientX<=8) seg.style.cursor='ew-resize';
+        else if (e.clientX-rect.left<=8) seg.style.cursor='w-resize';
+        else seg.style.cursor='grab';
       });
       seg.addEventListener('mousedown', e=>{
         e.stopPropagation(); e.preventDefault();
         const rect=seg.getBoundingClientRect();
         if (rect.right-e.clientX<=8) startResize(e,ph,proj,bar,barMinMs,seg);
+        else if (e.clientX-rect.left<=8) startResizeLeft(e,ph,proj,bar,barMinMs,seg);
         else startMove(e,ph,proj,bar,barMinMs,seg);
       });
       seg.addEventListener('click',e=>{
@@ -1073,9 +1076,16 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
     const isValidTarget=e.target===band||e.target.classList.contains('bar-empty');
     if (!isValidTarget||didDrag) return;
     e.stopPropagation();
-    // Single click on empty area: show quick-add centered on click point
-    const today=new Date().toISOString().slice(0,10);
-    showQuickPhase(proj, mainType, today, today, e.clientX, e.clientY);
+    // Compute actual clicked date from content-space X
+    const _ms2=document.getElementById('main-scroll');
+    const _lw2=document.getElementById('label-panel').offsetWidth;
+    const _cx=e.clientX-_lw2+_ms2.scrollLeft;
+    const _di=Math.max(0,xToDay(_cx));
+    let cd=new Date(dateMs(tlMinDate)+_di*86400000).toISOString().slice(0,10);
+    const caseMin=new Date(minMs).toISOString().slice(0,10);
+    const caseMax=new Date(maxMs).toISOString().slice(0,10);
+    if (cd<caseMin) cd=caseMin; if (cd>caseMax) cd=caseMax;
+    showQuickPhase(proj, mainType, cd, cd, e.clientX, e.clientY);
   });
 
   bar.appendChild(band);
@@ -1094,10 +1104,12 @@ function startCreate(e, proj, mainType, band, barMinMs, caseMinMs, caseMaxMs) {
   const clampMax=daysBetween(new Date(barMinMs),new Date(caseMaxMs));
   const clamp=d=>Math.max(clampMin,Math.min(clampMax,d));
 
-  const bandRect=band.getBoundingClientRect();
-  const startRelX=e.clientX-bandRect.left;
-  const startDay=clamp(xToDay(dayOffsets[_barSD]+startRelX)-_barSD);
+  // Use content-space X for accurate column mapping (handles variable weekend col widths)
+  const msEl=document.getElementById('main-scroll');
+  const lw=document.getElementById('label-panel').offsetWidth;
+  const startDay=clamp(xToDay(e.clientX-lw+msEl.scrollLeft)-_barSD);
 
+  const bandRect=band.getBoundingClientRect();
   const ghost=document.getElementById('drag-ghost');
   ghost.style.display='block';
   ghost.style.top=bandRect.top+'px';
@@ -1109,10 +1121,9 @@ function startCreate(e, proj, mainType, band, barMinMs, caseMinMs, caseMaxMs) {
 
   function onMove(ev) {
     didDrag=true;
-    const rect=band.getBoundingClientRect();
-    const relX=ev.clientX-rect.left;
-    curDay=clamp(xToDay(dayOffsets[_barSD]+relX)-_barSD);
+    curDay=clamp(xToDay(ev.clientX-lw+msEl.scrollLeft)-_barSD);
     const s0=Math.min(startDay,curDay), s1=Math.max(startDay,curDay);
+    const rect=band.getBoundingClientRect();
     const left=rect.left+(dayOffsets[_barSD+s0]-dayOffsets[_barSD]);
     const w=Math.max(dayPx, dayOffsets[Math.min(_barSD+s1+1,dayOffsets.length-1)]-dayOffsets[_barSD+s0]);
     ghost.style.top=rect.top+'px';
@@ -1173,6 +1184,8 @@ async function saveQuickPhase() {
   const sel=document.getElementById('pqa-name').value;
   const name=sel==='__custom__'?document.getElementById('pqa-custom').value.trim():sel;
   if (!name||!_pqaProj||!_pqaStart) return;
+  // Overlap check before saving
+  if (hasOverlap(_pqaProj, null, _pqaStart, _pqaEnd||_pqaStart)) { showMsg('✗ 時程重疊，請調整日期'); return; }
   // Save locals before closeQuickPhase() nulls them
   const proj=_pqaProj, type=_pqaType, start=_pqaStart, end=_pqaEnd;
   closeQuickPhase();
@@ -1208,6 +1221,16 @@ document.addEventListener('mousedown', e=>{
   if (el.style.display!=='none'&&!el.contains(e.target)) closeQuickPhase();
 }, true);
 
+// Returns true if [startDate, endDate] overlaps any existing phase of proj, excluding skipId
+function hasOverlap(proj, skipId, startDate, endDate) {
+  const s=dateMs(startDate), e2=dateMs(endDate||startDate)+86400000;
+  return (phasesMap[proj]||[]).some(p=>{
+    if (p.id===skipId) return false;
+    const ps=dateMs(p.start_date), pe=(p.end_date?dateMs(p.end_date):dateMs(p.start_date))+86400000;
+    return ps<e2 && pe>s;
+  });
+}
+
 function startMove(e, ph, proj, bar, barMinMs, seg) {
   dragging=true; didDrag=false;
   const startX=e.clientX;
@@ -1236,6 +1259,7 @@ function startMove(e, ph, proj, bar, barMinMs, seg) {
     if (!didDrag||daysDelta===0) return;
     const newStart=new Date(origStartMs+daysDelta*86400000).toISOString().slice(0,10);
     const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
+    if (hasOverlap(proj, ph.id, newStart, newEnd)) { showMsg('✗ 時程重疊，請調整'); return; }
     updatePhase(ph.id,proj,{start_date:newStart,end_date:newEnd});
   }
   function cleanup() {
@@ -1275,6 +1299,7 @@ function startResize(e, ph, proj, bar, barMinMs, seg) {
     seg.style.width=origW+'px';
     if (!didDrag||daysDelta===0) return;
     const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
+    if (hasOverlap(proj, ph.id, ph.start_date, newEnd)) { showMsg('✗ 時程重疊，請調整'); return; }
     updatePhase(ph.id,proj,{end_date:newEnd});
   }
   function cleanup() {
@@ -1282,6 +1307,45 @@ function startResize(e, ph, proj, bar, barMinMs, seg) {
     document.removeEventListener('mouseup',onUp);
     document.body.style.cursor='';
     dragging=false;
+  }
+  dragCleanup=cleanup;
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+function startResizeLeft(e, ph, proj, bar, barMinMs, seg) {
+  dragging=true; didDrag=false;
+  const startX=e.clientX;
+  const origLeft=parseFloat(seg.style.left);
+  const origW=parseFloat(seg.style.width);
+  const origStartMs=dateMs(ph.start_date);
+  const msEl=document.getElementById('main-scroll');
+  const lw=document.getElementById('label-panel').offsetWidth;
+  const startDayGlobal=xToDay(startX-lw+msEl.scrollLeft);
+
+  document.body.style.cursor='w-resize';
+
+  function onMove(ev) {
+    didDrag=true;
+    const dx=ev.clientX-startX;
+    const newLeft=Math.max(0, origLeft+dx);
+    seg.style.left=newLeft+'px';
+    seg.style.width=Math.max(dayPx*0.5, origW-dx)+'px';
+  }
+  function onUp(ev) {
+    cleanup();
+    const daysDelta=xToDay(ev.clientX-lw+msEl.scrollLeft)-startDayGlobal;
+    seg.style.left=origLeft+'px'; seg.style.width=origW+'px';
+    if (!didDrag||daysDelta===0) return;
+    const newStart=new Date(origStartMs+daysDelta*86400000).toISOString().slice(0,10);
+    // Overlap check (exclude self)
+    if (hasOverlap(proj, ph.id, newStart, ph.end_date||ph.start_date)) { showMsg('✗ 時程重疊，請調整'); return; }
+    updatePhase(ph.id,proj,{start_date:newStart});
+  }
+  function cleanup() {
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    document.body.style.cursor=''; dragging=false;
   }
   dragCleanup=cleanup;
   document.addEventListener('mousemove',onMove);
