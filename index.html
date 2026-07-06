@@ -88,7 +88,7 @@ td{padding:9px 12px;vertical-align:middle}
 .k-col-hdr{display:flex;align-items:center;margin-bottom:10px;gap:6px}
 .k-col-title{font-weight:700;font-size:12px}
 .k-col-count{margin-left:auto;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:800;font-family:'Noto Sans TC',sans-serif}
-.k-card{background:var(--surface);border-radius:9px;padding:12px;margin-bottom:9px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s;border-left:3px solid transparent}
+.k-card{background:var(--surface);border-radius:9px;padding:12px;margin-bottom:9px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s}
 .k-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
 .k-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:4px}
 .k-card-name{font-weight:700;color:var(--text);font-size:13px;margin-bottom:3px}
@@ -1323,7 +1323,7 @@ function renderReview(){
   const cols=REVIEW_COLS.map(col=>{
     const colCases=reviewedCases.filter(c=>c.review===col.val);
     const cards=colCases.map(c=>`
-      <div class="k-card" style="border-left-color:${col.border}" onclick="openEdit('${c.id}')">
+      <div class="k-card" onclick="openEdit('${c.id}')">
         ${c.notionProject?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.3">${c.notionProject}</div>`:""}
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${toArr(c.jobTypes).map(j=>`<span style="display:inline-block;background:${typeColor(j,types)}22;color:${typeColor(j,types)};border-radius:5px;padding:3px 8px;font-size:13px;font-weight:700;letter-spacing:.2px">${j}</span>`).join("")}</div>
         <div class="k-card-top">
