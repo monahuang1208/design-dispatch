@@ -19,7 +19,7 @@
     --today:    #4361EE;
     --row-h:    84px;
     --hdr-band: 30px;
-    --ph-band:  40px;
+    --ph-band:  20px;
     --bar-pad:  7px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -74,7 +74,7 @@
   }
 
   /* Market section separator (standalone div, avoids box-model accumulation) */
-  .mkt-sep { height: 3px; background: #C4C0B8; flex-shrink: 0; }
+  .mkt-sep { height: 1px; background: #C4C0B8; flex-shrink: 0; }
 
   /* ── Main scroll ── */
   #main-scroll { flex: 1; overflow: auto; position: relative; }
@@ -118,11 +118,10 @@
     background: rgba(0,0,0,.055); pointer-events: none; z-index: 1;
   }
 
-  /* Today line — dashed, behind bars */
+  /* Today line — solid blue */
   .today-line {
-    position: absolute; top: 0; bottom: 0; width: 6px;
-    background: repeating-linear-gradient(-45deg, var(--today) 0, var(--today) 2px, transparent 2px, transparent 7px);
-    opacity: .75; pointer-events: none; z-index: 0;
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--today); opacity: .6; pointer-events: none; z-index: 0;
   }
 
   /* ── Project bar ── */
@@ -169,7 +168,6 @@
   .phase-seg:last-child { border-right: none; }
   .phase-seg:hover { filter: brightness(.93); }
   .phase-seg.past { background: #EBEBEB !important; color: #AAAAAA !important; }
-  .phase-seg.current { box-shadow: inset 0 0 0 2px currentColor; }
   .seg-label {
     padding: 0 5px; pointer-events: none;
     overflow: hidden; text-overflow: ellipsis; max-width: 100%;
@@ -368,9 +366,16 @@
     font-family: inherit;
   }
   #phase-quick-add .pqa-dates {
-    font-size: 11px; color: var(--text-mid); margin-bottom: 10px;
-    font-weight: 600; letter-spacing: .01em;
+    display: flex; align-items: center; gap: 4px;
+    margin-bottom: 10px;
   }
+  #phase-quick-add .pqa-dates input[type="text"] {
+    flex: 1; width: 0; padding: 4px 6px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 11px; font-family: inherit;
+    background: var(--surface2); color: var(--text);
+    margin-bottom: 0 !important;
+  }
+  #phase-quick-add .pqa-dates span { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
   #phase-quick-add select, #phase-quick-add input[type="text"] {
     width: 100%; padding: 6px 8px; border: 1px solid var(--border);
     border-radius: 6px; font-size: 12px; font-family: inherit;
@@ -442,11 +447,11 @@
       <div class="form-row">
         <div class="form-field">
           <label>開始日期</label>
-          <input id="phase-start" type="date">
+          <input id="phase-start" type="text" placeholder="YYYY-MM-DD" maxlength="10">
         </div>
         <div class="form-field">
           <label>結束日期</label>
-          <input id="phase-end" type="date">
+          <input id="phase-end" type="text" placeholder="YYYY-MM-DD" maxlength="10">
         </div>
       </div>
       <button class="add-btn" onclick="addPhase()">新增</button>
@@ -520,7 +525,11 @@
 
 <!-- Inline phase quick-add mini popup -->
 <div id="phase-quick-add">
-  <div class="pqa-dates" id="pqa-dates"></div>
+  <div class="pqa-dates">
+    <input id="pqa-start-in" type="text" placeholder="YYYY-MM-DD" maxlength="10">
+    <span>→</span>
+    <input id="pqa-end-in" type="text" placeholder="YYYY-MM-DD" maxlength="10">
+  </div>
   <select id="pqa-name" onchange="onPqaNameChange()">
     <option>討論</option>
     <option>3D草稿/2D包現有型體</option>
@@ -1043,6 +1052,7 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
       seg.addEventListener('mousedown', e=>{
         e.stopPropagation(); e.preventDefault();
         const rect=seg.getBoundingClientRect();
+        if (rect.width<24) return; // too narrow: let click handler open popup
         if (rect.right-e.clientX<=8) startResize(e,ph,proj,bar,barMinMs,seg);
         else if (e.clientX-rect.left<=8) startResizeLeft(e,ph,proj,bar,barMinMs,seg);
         else startMove(e,ph,proj,bar,barMinMs,seg);
@@ -1081,7 +1091,7 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
     const _lw2=document.getElementById('label-panel').offsetWidth;
     const _cx=e.clientX-_lw2+_ms2.scrollLeft;
     const _di=Math.max(0,xToDay(_cx));
-    let cd=new Date(dateMs(tlMinDate)+_di*86400000).toISOString().slice(0,10);
+    let cd=addDays(tlMinDate.getTime(),_di);
     const caseMin=new Date(minMs).toISOString().slice(0,10);
     const caseMax=new Date(maxMs).toISOString().slice(0,10);
     if (cd<caseMin) cd=caseMin; if (cd>caseMax) cd=caseMax;
@@ -1156,8 +1166,8 @@ let _pqaProj=null, _pqaType=null, _pqaStart=null, _pqaEnd=null;
 function showQuickPhase(proj, type, startDate, endDate, mouseX, mouseY) {
   _pqaProj=proj; _pqaType=type; _pqaStart=startDate; _pqaEnd=endDate;
   const el=document.getElementById('phase-quick-add');
-  document.getElementById('pqa-dates').textContent=
-    startDate===endDate ? startDate : `${startDate} → ${endDate}`;
+  document.getElementById('pqa-start-in').value=startDate||'';
+  document.getElementById('pqa-end-in').value=endDate||'';
   document.getElementById('pqa-name').value='討論';
   document.getElementById('pqa-custom').style.display='none';
   document.getElementById('pqa-custom').value='';
@@ -1183,11 +1193,14 @@ function closeQuickPhase() {
 async function saveQuickPhase() {
   const sel=document.getElementById('pqa-name').value;
   const name=sel==='__custom__'?document.getElementById('pqa-custom').value.trim():sel;
-  if (!name||!_pqaProj||!_pqaStart) return;
+  // Read dates from editable inputs
+  const start=document.getElementById('pqa-start-in').value.trim();
+  const end=document.getElementById('pqa-end-in').value.trim();
+  if (!name||!_pqaProj||!start) return;
   // Overlap check before saving
-  if (hasOverlap(_pqaProj, null, _pqaStart, _pqaEnd||_pqaStart)) { showMsg('✗ 時程重疊，請調整日期'); return; }
+  if (hasOverlap(_pqaProj, null, start, end||start)) { showMsg('✗ 時程重疊，請調整日期'); return; }
   // Save locals before closeQuickPhase() nulls them
-  const proj=_pqaProj, type=_pqaType, start=_pqaStart, end=_pqaEnd;
+  const proj=_pqaProj, type=_pqaType;
   closeQuickPhase();
   try {
     const body={project_name:proj,phase:name,start_date:start,end_date:end||null};
@@ -1247,6 +1260,7 @@ function startMove(e, ph, proj, bar, barMinMs, seg) {
   document.body.style.cursor='grabbing';
 
   function onMove(ev) {
+    if (!didDrag && Math.abs(ev.clientX-startX)<4) return;
     didDrag=true;
     const dx=ev.clientX-startX;
     seg.style.left=Math.max(0,origLeft+dx)+'px';
@@ -1257,8 +1271,8 @@ function startMove(e, ph, proj, bar, barMinMs, seg) {
     const daysDelta=xToDay(endContentX)-startDayGlobal;
     seg.style.left=origLeft+'px';
     if (!didDrag||daysDelta===0) return;
-    const newStart=new Date(origStartMs+daysDelta*86400000).toISOString().slice(0,10);
-    const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
+    const newStart=addDays(origStartMs,daysDelta);
+    const newEnd=addDays(origEndMs,daysDelta);
     if (hasOverlap(proj, ph.id, newStart, newEnd)) { showMsg('✗ 時程重疊，請調整'); return; }
     updatePhase(ph.id,proj,{start_date:newStart,end_date:newEnd});
   }
@@ -1288,6 +1302,7 @@ function startResize(e, ph, proj, bar, barMinMs, seg) {
   document.body.style.cursor='ew-resize';
 
   function onMove(ev) {
+    if (!didDrag && Math.abs(ev.clientX-startX)<4) return;
     didDrag=true;
     const dx=ev.clientX-startX;
     seg.style.width=Math.max(dayPx*0.5,origW+dx)+'px';
@@ -1298,7 +1313,7 @@ function startResize(e, ph, proj, bar, barMinMs, seg) {
     const daysDelta=xToDay(endContentX)-startDayGlobal;
     seg.style.width=origW+'px';
     if (!didDrag||daysDelta===0) return;
-    const newEnd=new Date(origEndMs+daysDelta*86400000).toISOString().slice(0,10);
+    const newEnd=addDays(origEndMs,daysDelta);
     if (hasOverlap(proj, ph.id, ph.start_date, newEnd)) { showMsg('✗ 時程重疊，請調整'); return; }
     updatePhase(ph.id,proj,{end_date:newEnd});
   }
@@ -1326,6 +1341,7 @@ function startResizeLeft(e, ph, proj, bar, barMinMs, seg) {
   document.body.style.cursor='w-resize';
 
   function onMove(ev) {
+    if (!didDrag && Math.abs(ev.clientX-startX)<4) return;
     didDrag=true;
     const dx=ev.clientX-startX;
     const newLeft=Math.max(0, origLeft+dx);
@@ -1337,8 +1353,7 @@ function startResizeLeft(e, ph, proj, bar, barMinMs, seg) {
     const daysDelta=xToDay(ev.clientX-lw+msEl.scrollLeft)-startDayGlobal;
     seg.style.left=origLeft+'px'; seg.style.width=origW+'px';
     if (!didDrag||daysDelta===0) return;
-    const newStart=new Date(origStartMs+daysDelta*86400000).toISOString().slice(0,10);
-    // Overlap check (exclude self)
+    const newStart=addDays(origStartMs,daysDelta);
     if (hasOverlap(proj, ph.id, newStart, ph.end_date||ph.start_date)) { showMsg('✗ 時程重疊，請調整'); return; }
     updatePhase(ph.id,proj,{start_date:newStart});
   }
@@ -1547,9 +1562,9 @@ function buildPhaseEditInline(container, ph, proj) {
   sel.onchange=()=>{ ci.style.display=sel.value==='__custom__'?'block':'none'; };
   selWrap.appendChild(ci);
 
-  const sIn=mk('input'); sIn.type='date'; sIn.value=ph.start_date||'';
-  sIn.style.cssText='padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:112px;';
-  const eIn=mk('input'); eIn.type='date'; eIn.value=ph.end_date||'';
+  const sIn=mk('input'); sIn.type='text'; sIn.placeholder='YYYY-MM-DD'; sIn.maxLength=10; sIn.value=ph.start_date||'';
+  sIn.style.cssText='padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;width:98px;';
+  const eIn=mk('input'); eIn.type='text'; eIn.placeholder='YYYY-MM-DD'; eIn.maxLength=10; eIn.value=ph.end_date||'';
   eIn.style.cssText=sIn.style.cssText;
 
   const saveB=mk('button'); saveB.textContent='✓';
@@ -1741,7 +1756,9 @@ function dateMs(s) {
   return new Date(y,m-1,d).getTime();
 }
 function addDays(baseMs, days) {
-  return new Date(baseMs+days*86400000).toISOString().slice(0,10);
+  // Use local date to avoid UTC offset shifting the date (e.g. UTC+8)
+  const d=new Date(baseMs+days*86400000);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function daysBetween(a,b) {
   const am=a instanceof Date?new Date(a).setHours(0,0,0,0):dateMs(a);
