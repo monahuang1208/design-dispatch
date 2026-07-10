@@ -457,6 +457,8 @@ function caseToDb(c){
     email_link:c.emailLink||null,
     designer_status:c.designerStatus||null,
     review:c.review||null,
+    review_scope:c.reviewScope||null,
+    review_note:c.reviewNote||null,
     notion_project:c.notionProject||null,
     notion_page_id:c.notionPageId||null,
   };
@@ -471,6 +473,8 @@ function dbToCase(r){
     emailLink:r.email_link||"",
     designerStatus:r.designer_status||{},
     review:r.review||"",
+    reviewScope:r.review_scope||"",
+    reviewNote:r.review_note||"",
     notionProject:r.notion_project||"",
     notionPageId:r.notion_page_id||"",
   };
@@ -705,9 +709,10 @@ let S = {
   settings: { jobTypes:DEFAULT_JOB_TYPES, markets:DEFAULT_MARKETS, designers:DEFAULT_DESIGNERS, sales:DEFAULT_SALES },
   vacations: [],
   freeRows: [],
-  view: "list",
+  view: "excel",
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   reviewFilter: {market:"",designer:"",jobType:""},
+  expandedReview: null,
   excelWeekOffset: 0, // 0=current week, -1=prev, +1=next etc
   excelSpan: 1, // 1=一週(5天) 2=兩週(10天)
   statsTimeRange: "all", // "all" | "custom"
@@ -1287,18 +1292,12 @@ function renderStats(){
 }
 
 // ── REVIEW VIEW ────────────────────────────────────────────────
-const REVIEW_COLS=[
-  {val:"良好",icon:"",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},
-  {val:"混亂",icon:"",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},
-  {val:"檢討",icon:"",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},
-];
 function renderReview(){
-  const f=S.reviewFilter;
+  const f=S.reviewFilter||{};
   const types=S.settings.jobTypes;
   const markets=S.settings.markets;
   const designers=allDesigners(S.settings.designers);
 
-  // Filter bar
   function sel(key,opts,label){
     return `<div class="fg"><label>${label}</label><select onchange="S.reviewFilter['${key}']=this.value;render()">
       <option value="">All</option>
@@ -1320,35 +1319,89 @@ function renderReview(){
     return true;
   });
 
-  const cols=REVIEW_COLS.map(col=>{
-    const colCases=reviewedCases.filter(c=>c.review===col.val);
-    const cards=colCases.map(c=>`
-      <div class="k-card" onclick="openEdit('${c.id}')">
-        ${(c.notionProject||c.note)?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.3">${c.notionProject||c.note}</div>`:""}
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${toArr(c.jobTypes).map(j=>`<span style="display:inline-block;background:${typeColor(j,types)}22;color:${typeColor(j,types)};border-radius:5px;padding:3px 8px;font-size:13px;font-weight:700;letter-spacing:.2px">${j}</span>`).join("")}</div>
-        <div class="k-card-top">
-          <div class="k-card-name">${arrLabel(c.designers)}</div>
-          <span class="review-badge review-${col.val==="良好"?"good":col.val==="混亂"?"chaos":"check"}">${col.val}</span>
-        </div>
-        <div class="k-card-meta">${c.market}${c.sales?" · "+c.sales:""} · ${c.date}</div>
-        ${c.note?`<div class="k-card-note">${c.note}</div>`:""}
-      </div>`).join("");
-    return `<div class="k-col">
-      <div class="k-col-hdr">
-        <span class="k-col-title" style="color:${col.text}">${col.val}</span>
-        <span class="k-col-count" style="background:${col.bg};color:${col.text}">${colCases.length}</span>
-      </div>
-      ${cards||`<div style="text-align:center;padding:20px;color:#ccc;font-size:12px">無案件</div>`}
-    </div>`;
-  }).join("");
+  const total=reviewedCases.length;
+  const goodCases=reviewedCases.filter(c=>c.review==="順利");
+  const badCases=reviewedCases.filter(c=>c.review==="有問題");
+  const goodRate=total>0?Math.round(goodCases.length/total*100):0;
 
-  const totalReviewed=reviewedCases.length;
-  return `<div>
-    ${filterBar}
-    ${totalReviewed===0&&!f.market&&!f.designer&&!f.jobType
-      ?`<div class="empty" style="padding:60px">尚無回顧記錄 — 在編輯案件中標記「回顧」後會顯示在此</div>`
-      :`<div class="kanban">${cols}</div>`}
-  </div>`;
+  const statsBar=total>0?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem">
+    <div style="background:var(--surface2);border-radius:9px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:3px">已回顧</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text)">${total}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:9px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:3px">順利率</div>
+      <div style="font-size:22px;font-weight:700;color:#27AE60">${goodRate}%</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:9px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:3px">需追蹤</div>
+      <div style="font-size:22px;font-weight:700;color:#C0392B">${badCases.length}</div>
+    </div>
+  </div>`:"";
+
+  function renderRow(c){
+    const isExp=S.expandedReview===c.id;
+    const scope=c.reviewScope||"";
+    const note=c.reviewNote||"";
+    const notePreview=note?note.slice(0,80)+(note.length>80?"…":""):"";
+    const dotColor=c.review==="順利"?"#27AE60":"#C0392B";
+    const scopeBadge=scope?`<span style="font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;background:${scope==="整體流程"?"#FFF0E0":"#FEE8E8"};color:${scope==="整體流程"?"#994D00":"#8B0000"}">${scope}</span>`:"";
+    const title=c.notionProject||c.note||(toArr(c.jobTypes).join("/")+` · ${c.market}`);
+    const expanded=isExp?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">問題範疇</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        ${["整體流程","個案事件"].map(s=>{
+          const act=scope===s;
+          return `<div onclick="saveReviewScope('${c.id}','${act?'':s}')" style="flex:1;text-align:center;padding:6px;border-radius:7px;border:1.5px solid ${act?(s==="整體流程"?"#994D00":"#8B0000"):"#ddd"};background:${act?(s==="整體流程"?"#FFF0E0":"#FEE8E8"):"#F5F5F5"};color:${act?(s==="整體流程"?"#994D00":"#8B0000"):"#999"};font-size:11px;font-weight:700;cursor:pointer">${s}</div>`;
+        }).join("")}
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px">反思記錄</div>
+      <textarea id="rnote-${c.id}" onblur="saveReviewNote('${c.id}',this.value)" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;min-height:72px;box-sizing:border-box;background:var(--surface);color:var(--text)">${note}</textarea>
+    </div>`:"";
+    return `<div style="border-bottom:0.5px solid var(--border);padding:10px 0;cursor:pointer" onclick="toggleExpandReview('${c.id}')">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:5px"></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-size:14px;font-weight:500;color:var(--text)">${title}</span>
+            ${scopeBadge}
+          </div>
+          <div style="font-size:12px;color:var(--text3)">${c.market}${c.sales?" · "+c.sales:""} · ${arrLabel(c.designers)} · ${c.date}</div>
+          ${notePreview&&!isExp?`<div style="font-size:12px;color:var(--text2);margin-top:3px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notePreview}</div>`:""}
+          ${expanded}
+        </div>
+        <span style="font-size:10px;color:var(--text3);flex-shrink:0;margin-top:4px">${isExp?"▲":"▼"}</span>
+      </div>
+    </div>`;
+  }
+
+  function renderSection(label,cases,dotColor){
+    if(!cases.length) return "";
+    return `<div style="margin-bottom:1.5rem">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:.5rem 0;border-bottom:1px solid var(--border);margin-bottom:4px">${label} · ${cases.length}</div>
+      ${cases.map(renderRow).join("")}
+    </div>`;
+  }
+
+  if(total===0&&!f.market&&!f.designer&&!f.jobType)
+    return `<div>${filterBar}<div class="empty" style="padding:60px">尚無回顧記錄 — 在編輯案件中標記「回顧」後會顯示在此</div></div>`;
+
+  return `<div>${filterBar}${statsBar}${renderSection("順利",goodCases,"#27AE60")}${renderSection("有問題",badCases,"#C0392B")}</div>`;
+}
+function toggleExpandReview(id){
+  S.expandedReview=S.expandedReview===id?null:id;
+  render();
+}
+async function saveReviewScope(id,scope){
+  const idx=S.cases.findIndex(c=>c.id===id);
+  if(idx>=0) S.cases[idx].reviewScope=scope;
+  await db.from("cases").update({review_scope:scope||null}).eq("id",id);
+  render();
+}
+async function saveReviewNote(id,note){
+  const idx=S.cases.findIndex(c=>c.id===id);
+  if(idx>=0) S.cases[idx].reviewNote=note;
+  await db.from("cases").update({review_note:note||null}).eq("id",id);
 }
 
 // ── SETTINGS VIEW ──────────────────────────────────────────────
@@ -1464,13 +1517,6 @@ function renderModal(){
     <div class="modal" onclick="closeMsDropdownsOnOutside(event)">
       <h3>${isNew?"+ New Case":"✏️ Edit Case"}</h3>
       <div id="vac-warn">${vacationWarn}</div>
-      <div class="form-row">
-        <div class="fg-modal"><label>Dispatch Date</label><input type="date" id="f-date" value="${c.date}"/></div>
-        <div class="fg-modal"><label>Deadline</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
-      </div>
-      <div class="form-row">
-        <div class="fg-modal"><label>Time <span style="font-weight:400;color:#aaa">(e.g. noon, 17:00)</span></label><input type="text" id="f-deadline-time" placeholder="Optional, e.g. noon, EOD, 17:00" value="${c.deadlineTime||""}"/></div>
-      </div>
       <div class="form-row single">
         <div class="fg-modal">
           <label>📎 Notion Project <span style="font-weight:400;color:#aaa">(optional — same name groups into one project)</span></label>
@@ -1485,6 +1531,17 @@ function renderModal(){
           ${c.notionPageId?`<div style="margin-top:4px;font-size:10px;color:#27AE60">✅ 已連結 Notion 頁面</div>`:`<div style="margin-top:4px;font-size:10px;color:#aaa">填寫後，下次同步時自動建立或更新 Notion 專案</div>`}
         </div>
       </div>
+      <div class="form-row">
+        <div class="fg-modal">
+          <label>Dispatch Date</label>
+          <div style="display:flex;gap:5px;margin-bottom:5px">
+            <button type="button" onclick="setDispatchDate(0)" style="padding:3px 10px;font-size:11px;font-weight:600;border:1.5px solid #4361EE;border-radius:6px;background:#EEF1FD;color:#4361EE;cursor:pointer;font-family:inherit">今天</button>
+            <button type="button" onclick="setDispatchDate(-1)" style="padding:3px 10px;font-size:11px;font-weight:600;border:1.5px solid #ddd;border-radius:6px;background:#F5F5F5;color:#888;cursor:pointer;font-family:inherit">昨天</button>
+          </div>
+          <input type="date" id="f-date" value="${c.date}"/>
+        </div>
+        <div class="fg-modal"><label>Deadline</label><input type="date" id="f-deadline" value="${c.deadline||""}"/></div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="fg-modal"><label>Market</label><select id="f-market" onchange="onMarketChange(this.value)">${markets.map(m=>`<option${m===c.market?" selected":""}>${m}</option>`).join("")}</select></div>
         <div class="fg-modal"><label>Type</label>${msJobTypes()}</div>
@@ -1495,30 +1552,29 @@ function renderModal(){
       <div class="form-row single">
         <div class="fg-modal"><label>Designer</label>${msDesigners()}</div>
       </div>
-      <div class="form-row single">
-        <div class="fg-modal"><label>Notes</label><textarea id="f-note" placeholder="Project brief, references...">${c.note||""}</textarea></div>
-      </div>
-      <div class="form-row single">
-        <div class="fg-modal">
-          <label>🔗 Links <span style="font-weight:400;color:#aaa;font-size:11px">(synced to timeline — saved per Notion Project)</span></label>
-          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
-            ${renderLinkField("meeting", (S.projectLinks[c.notionProject||""]||{}).meeting_link||"", "Meeting link", "🎥")}
-            ${renderLinkField("discussion", (S.projectLinks[c.notionProject||""]||{}).discussion_link||"", "Discussion board", "💬")}
-            ${renderLinkField("brief", (S.projectLinks[c.notionProject||""]||{}).brief_link||"", "Brief", "📄")}
-          </div>
-        </div>
-      </div>
       <div class="form-row">
         <div class="fg-modal"><label>Status</label><select id="f-status">${STATUSES.map(s=>`<option${s===c.status?" selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="fg-modal">
+          <label>Deadline Time <span style="font-weight:400;color:#aaa">(optional)</span></label>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px">
+            ${["上午","noon","17:00","EOD","18:00"].map(t=>`<button type="button" onclick="selectDeadlineTime('${t}')" style="padding:3px 9px;font-size:11px;font-weight:600;border:1.5px solid ${(c.deadlineTime||""===t)?"#4361EE":"#ddd"};border-radius:6px;background:${(c.deadlineTime||""===t)?"#EEF1FD":"#F5F5F5"};color:${(c.deadlineTime||""===t)?"#4361EE":"#888"};cursor:pointer;font-family:inherit">${t}</button>`).join("")}
+          </div>
+          <input type="text" id="f-deadline-time" placeholder="或自訂，e.g. 14:00" value="${c.deadlineTime||""}"/>
+        </div>
+      </div>
+      <div class="form-row single">
         <div class="fg-modal"><label>Review <span style="font-weight:400;color:#aaa">(optional)</span></label>
           <div style="display:flex;gap:6px;margin-top:4px">
-            ${[{val:"良好",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},{val:"混亂",bg:"#FEF9E7",border:"#D4AC0D",text:"#D4AC0D"},{val:"檢討",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},{val:"",bg:"#F5F5F5",border:"#DDD",text:"#999"}].map(r=>`
+            ${[{val:"順利",bg:"#EAFAF1",border:"#27AE60",text:"#27AE60"},{val:"有問題",bg:"#FFF0EE",border:"#E74C3C",text:"#E74C3C"},{val:"",bg:"#F5F5F5",border:"#DDD",text:"#999"}].map(r=>`
             <label style="cursor:pointer;flex:1">
               <input type="radio" name="f-review" value="${r.val}" ${(c.review||"")===(r.val)?"checked":""} style="display:none" onchange=""/>
               <div onclick="selectReview('${r.val}')" style="padding:7px 4px;width:100%;text-align:center;border-radius:7px;border:1.5px solid ${(c.review||"")===(r.val)?r.border:"transparent"};background:${r.bg};font-size:11px;font-weight:700;color:${r.text};cursor:pointer;transition:all .15s">${r.val||"無"}</div>
             </label>`).join("")}
           </div>
         </div>
+      </div>
+      <div class="form-row single">
+        <div class="fg-modal"><label>Notes</label><textarea id="f-note" placeholder="Project brief, references...">${c.note||""}</textarea></div>
       </div>
       <div class="modal-btns">
         ${!isNew?`<button class="btn-danger" style="margin-right:auto;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;background:#FFF0EE;color:var(--red);border:1.5px solid #FFCDD2" onclick="deleteCaseFromModal('${c.id}')">🗑 Delete</button>`:""}
@@ -1653,10 +1709,10 @@ function renderVacationModal(){
 
 // ── RENDER ─────────────────────────────────────────────────────
 const VIEWS=[
-  {key:"list",label:"List"},
   {key:"excel",label:"Board"},
-  {key:"stats",label:"Stats"},
   {key:"review",label:"Review"},
+  {key:"list",label:"List"},
+  {key:"stats",label:"Stats"},
   {key:"settings",label:"Settings"},
 ];
 
@@ -1826,6 +1882,25 @@ function toggleModalJobType(name,checked){
   if(S.modal._preset){ S.modal._preset.jobTypes=updated; }
   else { S.modal.jobTypes=updated; }
   render();
+}
+function setDispatchDate(offset){
+  const d=new Date(); d.setDate(d.getDate()+offset);
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+  const el=document.getElementById('f-date');
+  if(el) el.value=`${y}-${m}-${day}`;
+}
+function selectDeadlineTime(val){
+  const el=document.getElementById('f-deadline-time');
+  if(!el) return;
+  el.value = el.value===val ? '' : val;
+  // update chip highlight without re-render
+  document.querySelectorAll('#f-deadline-time').forEach(()=>{});
+  el.parentElement.querySelectorAll('button[type=button]').forEach(btn=>{
+    const active=btn.textContent===el.value;
+    btn.style.border=active?'1.5px solid #4361EE':'1.5px solid #ddd';
+    btn.style.background=active?'#EEF1FD':'#F5F5F5';
+    btn.style.color=active?'#4361EE':'#888';
+  });
 }
 function selectReview(val){
   syncModalFields();
