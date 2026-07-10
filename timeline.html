@@ -193,7 +193,7 @@
     display: flex; align-items: center;
     background: #F5F5FC;
     border-bottom: 1px solid #DDDDF0;
-    border-top: 2px solid #DDDDF0;
+    border-top: 1px solid #DDDDF0;
     z-index: 2;
     flex-shrink: 0;
   }
@@ -773,7 +773,7 @@ function buildTimeline() {
   rw.innerHTML='';
   const labelInner=document.getElementById('label-inner');
   labelInner.innerHTML='';
-  const SEP_H=3; // separator height in px
+  const SEP_H=1; // separator height in px
   let rowY=0; // cumulative Y (exact, no border-model tricks)
   let firstGroup=true;
 
