@@ -217,14 +217,18 @@
   .deadline-chip.urgent { color: #FFCBC5; }
   .deadline-chip.warn   { color: #FFE8A0; }
 
-  /* ── Popup ── */
+  /* ── Popup (right-side panel) ── */
   .popup {
     position: fixed; z-index: 200; background: var(--surface);
-    border: 1px solid var(--border); border-radius: 12px; padding: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.13); min-width: 300px; max-width: 360px;
-    display: none; max-height: 88vh; overflow-y: auto;
+    border-left: 1px solid var(--border);
+    padding: 16px 18px;
+    box-shadow: -4px 0 20px rgba(0,0,0,.09); width: 340px;
+    right: -340px; bottom: 0;
+    overflow-y: auto;
+    border-radius: 0;
+    transition: right .2s cubic-bezier(.25,.8,.25,1);
   }
-  .popup.visible { display: block; }
+  .popup.visible { right: 0; }
   .popup-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
   .popup-meta  { font-size: 11px; color: var(--text-mid); margin-bottom: 10px; }
   .popup-divider { height: 1px; background: var(--border); margin: 11px 0; }
@@ -486,7 +490,6 @@
   <div class="sep"></div>
   <span class="grp-label">顯示：</span>
   <button class="btn active" id="f-week"   onclick="setFilter('week')">本週</button>
-  <button class="btn"        id="f-biweek" onclick="setFilter('biweek')">雙週</button>
   <button class="btn"        id="f-all"    onclick="setFilter('all')">全部</button>
   <div class="sep"></div>
   <span class="grp-label">縮放：</span>
@@ -496,14 +499,23 @@
   <div class="sep"></div>
   <span class="grp-label">設計師：</span>
   <select id="designer-filter" onchange="setDesignerFilter(this.value)"
-    style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;max-width:130px;">
+    style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;max-width:120px;">
+    <option value="">全部</option>
+  </select>
+  <span class="grp-label">市場：</span>
+  <select id="market-filter" onchange="setMarketFilter(this.value)"
+    style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;max-width:120px;">
+    <option value="">全部</option>
+  </select>
+  <span class="grp-label">Type：</span>
+  <select id="type-filter" onchange="setTypeFilter(this.value)"
+    style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;max-width:110px;">
     <option value="">全部</option>
   </select>
   <div class="sep"></div>
   <button class="btn active" id="hide-done-btn" onclick="toggleHideCompleted()">已完成已隱藏</button>
   <div class="sep"></div>
   <button class="btn" onclick="scrollToToday()">今天</button>
-  <button class="btn" onclick="loadData()">重新整理</button>
   <span id="status-msg"></span>
 </div>
 
@@ -574,7 +586,7 @@ function hexRgb(hex) {
 
 const PHASE_OPTS = ['討論','3D草稿/2D包現有型體','草稿/彩稿','合成','微調','上版/完成','找資料'];
 // Types that show deadline chip instead of phase tracking
-const DEADLINE_TYPES = new Set(['Revision','M1','Revised Maker']);
+const DEADLINE_TYPES = new Set(['M1','Revised Maker']);
 
 // Market groups (left-side fixed categories)
 const MARKET_GROUPS = [
@@ -607,6 +619,8 @@ let progressMap = {};
 let phasesMap   = {};
 let filterMode    = 'week';
 let filterDesigner= '';     // '' = all designers
+let filterMarket  = '';     // '' = all market groups
+let filterType    = '';     // '' = all types
 let hideCompleted = true;   // hide 已完成 cases by default
 let dayPx         = 64;
 let dayOffsets  = [];  // dayOffsets[i] = X of day i's left edge
@@ -660,7 +674,7 @@ async function loadData() {
     for (const r of (phs||[])) { if (!phasesMap[r.project_name]) phasesMap[r.project_name]=[]; phasesMap[r.project_name].push(r); }
     notionMap={};
     if (nR?.ok) { const {items=[]}=await nR.json().catch(()=>({})); for (const it of items) if(it.name&&it.url) notionMap[it.name.trim()]=it.url; }
-    populateDesignerFilter();
+    populateFilters();
     buildTimeline();
     const ps=new Set(allCases.map(c=>c.notion_project));
     showMsg(`${allCases.length} 筆派案 · ${ps.size} 個專案`);
@@ -727,6 +741,10 @@ function getFilteredProjects() {
       const hasDesigner=cases.some(c=>(Array.isArray(c.designers)?c.designers:[]).includes(filterDesigner));
       if (!hasDesigner) continue;
     }
+    // Market filter (by group label)
+    if (filterMarket && getMarketGroup(market) !== filterMarket) continue;
+    // Type filter
+    if (filterType && type !== filterType) continue;
     result.push({proj,cases,minMs,maxMs,mainType:type,market});
   }
   return result;
@@ -975,8 +993,6 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
   header.title=`${proj} · ${mainType}${designers?' · '+designers:''}`;
   const nm=mk('span','bar-hdr-name'); nm.textContent=proj;
   const ty=mk('span','bar-hdr-type'); ty.textContent=`· ${mainType}`;
-  // Revision / Revised Maker: amber type text to distinguish from other gray bars
-  if (mainType==='Revision'||mainType==='Revised Maker') ty.style.color='#FFD580';
   header.append(nm,ty);
   if (designers) {
     const ds=mk('span','bar-hdr-type'); ds.textContent=`· ${designers}`;
@@ -1495,8 +1511,7 @@ function openScheduler(proj, type, prefillDates) {
   }
 
   const pop=document.getElementById('sch-popup');
-  pop.style.top='80px';
-  pop.style.left=Math.max(10,(window.innerWidth-370)/2)+'px';
+  pop.style.top=document.getElementById('topbar').offsetHeight+'px';
   pop.classList.add('visible');
 }
 
@@ -1704,23 +1719,42 @@ async function saveNote() {
 }
 
 // ── Controls ──────────────────────────────────────────────────────
-function populateDesignerFilter() {
-  const sel=document.getElementById('designer-filter');
-  const current=sel.value;
+function populateFilters() {
+  // Designer
+  const dsel=document.getElementById('designer-filter');
+  const curD=dsel.value;
   const designers=[...new Set(allCases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))].sort((a,b)=>a.localeCompare(b,'zh-TW'));
-  // Keep "全部" option, rebuild the rest
-  sel.innerHTML='<option value="">全部</option>';
+  dsel.innerHTML='<option value="">全部</option>';
   for (const d of designers) {
-    const opt=document.createElement('option');
-    opt.value=d; opt.textContent=d;
-    if (d===current) opt.selected=true;
-    sel.appendChild(opt);
+    const opt=document.createElement('option'); opt.value=d; opt.textContent=d;
+    if (d===curD) opt.selected=true; dsel.appendChild(opt);
+  }
+  // Market (by group, only groups that have data)
+  const msel=document.getElementById('market-filter');
+  const curM=msel.value;
+  const usedMarkets=new Set(allCases.map(c=>c.market||'Other'));
+  msel.innerHTML='<option value="">全部</option>';
+  for (const g of MARKET_GROUPS) {
+    if ([...g.markets].some(m=>usedMarkets.has(m))) {
+      const opt=document.createElement('option'); opt.value=g.label; opt.textContent=g.label;
+      if (g.label===curM) opt.selected=true; msel.appendChild(opt);
+    }
+  }
+  // Type (only types that appear in data)
+  const tsel=document.getElementById('type-filter');
+  const curT=tsel.value;
+  const usedTypes=new Set(allCases.map(c=>{const t=c.job_types?.[0]||'Other'; return t==='Presentation'?'V1':t;}));
+  tsel.innerHTML='<option value="">全部</option>';
+  for (const t of TYPE_ORDER) {
+    if (usedTypes.has(t)) {
+      const opt=document.createElement('option'); opt.value=t; opt.textContent=t;
+      if (t===curT) opt.selected=true; tsel.appendChild(opt);
+    }
   }
 }
-function setDesignerFilter(val) {
-  filterDesigner=val;
-  buildTimeline();
-}
+function setDesignerFilter(val) { filterDesigner=val; buildTimeline(); }
+function setMarketFilter(val)   { filterMarket=val;   buildTimeline(); }
+function setTypeFilter(val)     { filterType=val;     buildTimeline(); }
 function toggleHideCompleted() {
   hideCompleted=!hideCompleted;
   const btn=document.getElementById('hide-done-btn');
