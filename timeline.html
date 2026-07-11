@@ -1012,8 +1012,8 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
     const ds=mk('span','bar-hdr-type'); ds.textContent=`· ${designers}`;
     header.appendChild(ds);
   }
-  // Notion link: only for non-deadline types (deadline bars show chip there instead)
-  if (notionMap[proj] && !isDeadlineType) {
+  // Notion link: show on all bar types
+  if (notionMap[proj]) {
     const a=mk('a','bar-hdr-link');
     a.href=notionMap[proj]; a.target='_blank'; a.rel='noopener noreferrer';
     a.textContent='↗'; a.title='Notion';
