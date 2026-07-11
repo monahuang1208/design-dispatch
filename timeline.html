@@ -713,9 +713,16 @@ function getFilteredProjects() {
       else if (c.date) maxMs=Math.max(maxMs,dateMs(c.date));
     }
     if (!DEADLINE_TYPES.has(type)) {
+      const caseMinMs=minMs, caseMaxMs=maxMs;
       for (const ph of (phasesMap[proj]||[])) {
-        if (ph.start_date) minMs=Math.min(minMs,dateMs(ph.start_date));
-        if (ph.end_date)   maxMs=Math.max(maxMs,dateMs(ph.end_date));
+        const phS=ph.start_date?dateMs(ph.start_date):null;
+        const phE=ph.end_date?dateMs(ph.end_date):phS;
+        if (phS===null) continue;
+        // Only include phase if it overlaps with this bar's case date range
+        if (phS<=caseMaxMs && phE>=caseMinMs) {
+          minMs=Math.min(minMs,phS);
+          if (ph.end_date) maxMs=Math.max(maxMs,phE);
+        }
       }
     }
     if (minMs===Infinity) continue;
@@ -966,11 +973,18 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
   // Phases sorted
   const phases=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
 
-  // Bar range: encompass cases + phases
+  // Bar range: encompass cases + phases (only phases overlapping with case range)
   let barMinMs=minMs, barMaxMs=maxMs;
   if (phases.length) {
-    barMinMs=Math.min(barMinMs,...phases.map(p=>dateMs(p.start_date)));
-    barMaxMs=Math.max(barMaxMs,...phases.map(p=>p.end_date?dateMs(p.end_date):todayMs));
+    const relevantPhases=phases.filter(p=>{
+      const phS=dateMs(p.start_date);
+      const phE=p.end_date?dateMs(p.end_date):phS;
+      return phS<=maxMs && phE>=minMs;
+    });
+    if (relevantPhases.length) {
+      barMinMs=Math.min(barMinMs,...relevantPhases.map(p=>dateMs(p.start_date)));
+      barMaxMs=Math.max(barMaxMs,...relevantPhases.map(p=>p.end_date?dateMs(p.end_date):todayMs));
+    }
   }
 
   const barStartDay=daysBetween(minDate,new Date(barMinMs));
