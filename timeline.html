@@ -661,19 +661,23 @@ const H = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
   try {
-    const [cR, prR, phR, nR] = await Promise.all([
+    const [cR, prR, phR] = await Promise.all([
       fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, {headers:H}),
       fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, {headers:H}),
       fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, {headers:H}),
-      fetch(NOTION_FN, {headers:H}).catch(()=>null),
     ]);
     allCases = await cR.json().catch(()=>[]); if (!Array.isArray(allCases)) allCases=[];
     const prs = await prR.json().catch(()=>[]); progressMap={};
     for (const r of (prs||[])) progressMap[r.project_name]=r;
     const phs = await phR.json().catch(()=>[]); phasesMap={};
     for (const r of (phs||[])) { if (!phasesMap[r.project_name]) phasesMap[r.project_name]=[]; phasesMap[r.project_name].push(r); }
+    // Build notionMap from cases directly (notion_page_id already stored per case)
     notionMap={};
-    if (nR?.ok) { const {items=[]}=await nR.json().catch(()=>({})); for (const it of items) if(it.name&&it.url) notionMap[it.name.trim()]=it.url; }
+    for (const c of allCases) {
+      if (c.notion_project && c.notion_page_id && !notionMap[c.notion_project]) {
+        notionMap[c.notion_project]='https://www.notion.so/'+c.notion_page_id.replace(/-/g,'');
+      }
+    }
     populateFilters();
     buildTimeline();
     const ps=new Set(allCases.map(c=>c.notion_project));
