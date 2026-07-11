@@ -1594,6 +1594,7 @@ function buildPhaseRow(ph, proj, idx, total) {
 
   item.onclick=e=>{
     if(e.target===del||e.target===up||e.target===dn) return;
+    e.stopPropagation();
     item.innerHTML=''; item.style.cssText='';
     buildPhaseEditInline(item,ph,proj);
   };
