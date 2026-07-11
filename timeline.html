@@ -265,13 +265,7 @@
     cursor: pointer; font-size: 11px; font-family: inherit; text-align: left;
   }
   #add-phase-toggle:hover { background: var(--surface2); border-style: solid; color: var(--text); }
-  #template-btn {
-    width: 100%; padding: 6px; border-radius: 7px; margin-top: 5px;
-    border: 1px dashed var(--border); background: none; color: var(--text-dim);
-    cursor: pointer; font-size: 11px; font-family: inherit; text-align: left;
-  }
-  #template-btn:hover { background: var(--surface2); border-style: solid; color: var(--text); }
-  #add-phase-form { display: none; margin-top: 8px; }
+#add-phase-form { display: none; margin-top: 8px; }
   #add-phase-form.open { display: block; }
   .date-chips { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
   .date-chip {
@@ -442,7 +436,6 @@
     <div class="popup-section">時程規劃</div>
     <div id="sch-phases"></div>
     <button id="add-phase-toggle" onclick="toggleAddForm()">＋ 新增時程</button>
-    <button id="template-btn" onclick="applyTemplate()">⚡ 套用標準流程</button>
     <div id="add-phase-form">
       <div class="form-row">
         <div class="form-field" style="flex:1.4">
@@ -471,11 +464,9 @@
           <label>結束日期</label>
           <input id="phase-end" type="date">
           <div class="date-chips">
-            <button type="button" class="date-chip" onclick="setEndChip(0)">同天</button>
             <button type="button" class="date-chip" onclick="setEndChip(1)">+1天</button>
+            <button type="button" class="date-chip" onclick="setEndChip(2)">+2天</button>
             <button type="button" class="date-chip" onclick="setEndChip(3)">+3天</button>
-            <button type="button" class="date-chip" onclick="setEndChip(7)">+7天</button>
-            <button type="button" class="date-chip" onclick="setEndChip(14)">+14天</button>
           </div>
         </div>
       </div>
@@ -1468,7 +1459,6 @@ async function addPhase() {
 }
 
 async function deletePhase(id, proj) {
-  if (!confirm('確定刪除這個時程？')) return;
   try {
     const res=await fetch(`${SUPABASE}/rest/v1/project_phases?id=eq.${id}`,{
       method:'DELETE', headers:{...H,'Prefer':'return=minimal'},
@@ -1586,7 +1576,20 @@ function buildPhaseRow(ph, proj, idx, total) {
   dates.textContent=fmtDate(ph.start_date)+(ph.end_date?' → '+fmtDate(ph.end_date):' → 今天');
   const name=mk('span','phase-name-lbl'); name.textContent=ph.phase;
   const del=mk('button','phase-del'); del.textContent='×'; del.title='刪除';
-  del.onclick=e=>{e.stopPropagation(); deletePhase(ph.id,proj);};
+  del.onclick=e=>{
+    e.stopPropagation();
+    // Inline confirm: replace × with 確定？[✓][✕]
+    del.style.display='none';
+    const confirmWrap=mk('span');
+    confirmWrap.style.cssText='display:flex;align-items:center;gap:3px;';
+    const lbl=mk('span'); lbl.textContent='刪除？'; lbl.style.cssText='font-size:10px;color:#e05;';
+    const yes=mk('button'); yes.textContent='✓'; yes.style.cssText='background:#e05;color:#fff;border:none;border-radius:4px;padding:1px 5px;cursor:pointer;font-size:10px;';
+    const no=mk('button'); no.textContent='✕'; no.style.cssText='background:none;border:1px solid var(--border);border-radius:4px;padding:1px 5px;cursor:pointer;font-size:10px;color:var(--text-dim);';
+    yes.onclick=e=>{e.stopPropagation(); deletePhase(ph.id,proj);};
+    no.onclick=e=>{e.stopPropagation(); confirmWrap.remove(); del.style.display='';};
+    confirmWrap.append(lbl,yes,no);
+    item.appendChild(confirmWrap);
+  };
   item.append(rbtns,dot,dates,name,del);
 
   item.onclick=e=>{
@@ -1675,48 +1678,6 @@ function setEndChip(days) {
 function onPhaseNameChange() {
   const v=document.getElementById('phase-name-select').value;
   document.getElementById('custom-phase-input').style.display=v==='__custom__'?'block':'none';
-}
-async function applyTemplate() {
-  if (!currentProj) return;
-  if ((phasesMap[currentProj]||[]).length > 0) {
-    if (!confirm('已有時程規劃，套用標準流程會新增在現有項目之後，確定繼續？')) return;
-  }
-  // Base date: last existing phase end + 1, or earliest case date
-  const phases=(phasesMap[currentProj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
-  let baseMs;
-  if (phases.length) {
-    const last=phases[phases.length-1];
-    baseMs=dateMs(last.end_date||last.start_date)+86400000;
-  } else {
-    const projCases=allCases.filter(c=>c.notion_project===currentProj).sort((a,b)=>dateMs(a.date)-dateMs(b.date));
-    baseMs=projCases.length?dateMs(projCases[0].date):Date.now();
-  }
-  const addDays=d=>new Date(baseMs+d*86400000).toISOString().slice(0,10);
-  // Standard flow: 討論(0-1) → 草稿/彩稿(2-5) → 合成(6-7) → 上版/完成(8-8)
-  const template=[
-    {phase:'討論',       start:addDays(0), end:addDays(1)},
-    {phase:'草稿/彩稿',  start:addDays(2), end:addDays(5)},
-    {phase:'合成',       start:addDays(6), end:addDays(7)},
-    {phase:'上版/完成',  start:addDays(8), end:addDays(8)},
-  ];
-  showMsg('建立中…');
-  let ok=0;
-  for (const t of template) {
-    const body={project_name:currentProj,phase:t.phase,start_date:t.start,end_date:t.end};
-    const res=await fetch(`${SUPABASE}/rest/v1/project_phases`,{
-      method:'POST',
-      headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(body),
-    });
-    if (res.ok||res.status===201) {
-      const data=await res.json();
-      if (!phasesMap[currentProj]) phasesMap[currentProj]=[];
-      phasesMap[currentProj].push(Array.isArray(data)?data[0]:data||body);
-      ok++;
-    }
-  }
-  renderPhaseList(currentProj); buildTimeline();
-  showMsg(`✓ 已新增 ${ok} 個標準時程`);
 }
 function closePopup() {
   document.getElementById('sch-popup').classList.remove('visible');
