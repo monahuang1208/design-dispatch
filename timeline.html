@@ -1602,6 +1602,7 @@ function buildPhaseRow(ph, proj, idx, total) {
 }
 
 function buildPhaseEditInline(container, ph, proj) {
+  container.onclick=null; // prevent item.onclick from re-triggering on clicks inside edit form
   const selWrap=mk('div'); selWrap.style.cssText='flex:1.2;min-width:0;';
   const sel=mk('select'); sel.style.cssText='width:100%;padding:3px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;';
   for (const opt of PHASE_OPTS) {
