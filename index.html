@@ -849,7 +849,7 @@ function renderFreeRows(dates){
       const cellText=Array.isArray(rawCells)
         ?rawCells.map(l=>l.text||"").filter(Boolean).join("\n")
         :(rawCells||"");
-      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;background:#FFFEF5">
+      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px">
         <textarea onblur="saveFreeRowCell('${row.id}','${date}',this.value)"
           style="width:100%;min-height:36px;font-size:10px;border:none;resize:none;background:transparent;font-family:inherit;outline:none;padding:2px;color:#555;line-height:1.5;overflow:hidden;display:block"
           oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
@@ -857,7 +857,7 @@ function renderFreeRows(dates){
       </td>`;
     }).join("");
     return `<tr>
-      <td style="background:#FFFEF5;position:sticky;left:0;z-index:5;padding:6px 10px;border:1px solid #E8E8F0;border-right:2px solid #D0D0E8;vertical-align:middle">
+      <td style="background:#F5F5FC;position:sticky;left:0;z-index:5;padding:6px 10px;border:1px solid #E8E8F0;border-right:2px solid #D0D0E8;vertical-align:middle">
         <span style="font-size:11px;font-weight:700;color:#888">備忘</span>
       </td>${cells}
     </tr>`;
@@ -982,7 +982,9 @@ function renderExcel(cases){
 
   const rows=designers.map(designer=>{
     const group=designerGroupMap[designer];
-    const groupBadge=group?`<span style="font-size:9px;background:#EEEEFF;color:var(--accent);border-radius:3px;padding:1px 5px;font-weight:700">${group}</span>`:"";
+    const GROUP_LABEL={"插畫":"Illustrator"};
+    const groupLabel=group?(GROUP_LABEL[group]||group):"";
+    const groupBadge=groupLabel?`<span style="font-size:9px;background:#EEEEFF;color:var(--accent);border-radius:3px;padding:1px 5px;font-weight:700">${groupLabel}</span>`:`<span></span>`;
     // Workload: warn if any single day this week has >3 cases
     const maxDayCount=dates.reduce((max,d)=>{
       return Math.max(max, dayCounts[`${designer}|${d}`]||0);
@@ -1068,8 +1070,11 @@ function renderExcel(cases){
       <td class="excel-th-designer" style="${designerCellStyle};vertical-align:middle;text-align:center">
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
           <span style="font-size:13px;font-weight:700">${designer}${overloadBadge}</span>
-          ${groupBadge}
-          <button onclick="openVacationModal('${designer}')" title="設定休假" style="background:#F0F0F8;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 4px;color:#888;font-family:inherit;white-space:nowrap">休假</button>
+          <div style="display:flex;align-items:center;gap:4px;justify-content:center">
+            ${groupBadge}
+            ${groupLabel?`<span style="font-size:9px;color:#ccc">／</span>`:""}
+            <button onclick="openVacationModal('${designer}')" title="設定休假" style="background:none;border:none;cursor:pointer;font-size:9px;padding:0;color:#aaa;font-family:inherit;white-space:nowrap">休假</button>
+          </div>
         </div>
       </td>${cells}
     </tr>`;
@@ -2149,6 +2154,7 @@ async function initApp(){
     S.vacations=vacations;
     S.freeRows=freeRows;
     if(!S.freeRows.length){ const row={id:uid(),label:"備忘",cells:{}}; S.freeRows.push(row); saveFreeRowDb(row); }
+    else if(S.freeRows.length>1){ S.freeRows.slice(1).forEach(r=>deleteFreeRowDb(r.id)); S.freeRows=S.freeRows.slice(0,1); }
     cleanupOldThumbs();
     render();
   } catch(e) {
