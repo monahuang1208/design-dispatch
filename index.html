@@ -248,7 +248,10 @@ const DESIGNER_GROUP_ORDER = ["2D","插畫","3D"];
 function allDesigners(dObj){
   const ordered = DESIGNER_GROUP_ORDER.filter(g=>dObj[g]).flatMap(g=>dObj[g]||[]);
   const others  = Object.entries(dObj).filter(([g])=>!DESIGNER_GROUP_ORDER.includes(g)).flatMap(([,v])=>v||[]);
-  return [...ordered,...others];
+  const all=[...ordered,...others];
+  const monaIdx=all.indexOf("Mona");
+  if(monaIdx>0){ all.splice(monaIdx,1); all.unshift("Mona"); }
+  return all;
 }
 
 // Deadline helpers
@@ -842,33 +845,20 @@ function renderFreeRows(dates){
   if(!S.freeRows||!S.freeRows.length) return "";
   return S.freeRows.map(row=>{
     const cells=dates.map(date=>{
-      const rawLines=row.cells[date];
-      const lines=Array.isArray(rawLines)?rawLines:[];
-      const lineHtml=lines.map((ln,i)=>{
-        const struck=ln.struck||false;
-        return `<div style="display:flex;align-items:flex-start;gap:2px;margin-bottom:2px">
-          <div contenteditable="true"
-            onblur="saveFreeCell('${row.id}','${date}',${i},this.innerText.trim())"
-            style="font-size:10px;color:${struck?"#aaa":"#555"};min-height:16px;outline:none;line-height:1.5;white-space:pre-wrap;word-break:break-word;flex:1;${struck?"text-decoration:line-through":""}"
-          >${ln.text}</div>
-          <button onclick="toggleFreeCellStrike('${row.id}','${date}',${i})" title="刪除線"
-            style="background:none;border:none;cursor:pointer;font-size:10px;padding:1px 2px;color:${struck?"#E74C3C":"#ccc"};flex-shrink:0;line-height:1">S̶</button>
-        </div>`;
-      }).join("");
+      const rawCells=row.cells[date];
+      const cellText=Array.isArray(rawCells)
+        ?rawCells.map(l=>l.text||"").filter(Boolean).join("\n")
+        :(rawCells||"");
       return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;background:#FFFEF5">
-        ${lineHtml}
-        <button onclick="addFreeCellLine('${row.id}','${date}')"
-          style="background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:1px 2px;width:100%;text-align:left;font-family:inherit">＋</button>
+        <textarea onblur="saveFreeRowCell('${row.id}','${date}',this.value)"
+          style="width:100%;min-height:36px;font-size:10px;border:none;resize:none;background:transparent;font-family:inherit;outline:none;padding:2px;color:#555;line-height:1.5;overflow:hidden;display:block"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+        >${cellText}</textarea>
       </td>`;
     }).join("");
     return `<tr>
       <td style="background:#FFFEF5;position:sticky;left:0;z-index:5;padding:6px 10px;border:1px solid #E8E8F0;border-right:2px solid #D0D0E8;vertical-align:middle">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span contenteditable="true" onblur="saveFreeRowLabel('${row.id}',this.innerText.trim())"
-            style="font-size:11px;font-weight:700;color:#888;outline:none;min-width:30px;cursor:text"
-          >${row.label||"備注列"}</span>
-          <button onclick="deleteFreeRow('${row.id}')" title="刪除此列" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:0;line-height:1;flex-shrink:0" onmouseover="this.style.color='#E74C3C'" onmouseout="this.style.color='#ccc'">×</button>
-        </div>
+        <span style="font-size:11px;font-weight:700;color:#888">備忘</span>
       </td>${cells}
     </tr>`;
   }).join("");
@@ -986,7 +976,13 @@ function renderExcel(cases){
     }
   });
 
+  // Build designer → group lookup for badges
+  const designerGroupMap={};
+  DESIGNER_GROUP_ORDER.forEach(g=>{(S.settings.designers[g]||[]).forEach(d=>{designerGroupMap[d]=g;});});
+
   const rows=designers.map(designer=>{
+    const group=designerGroupMap[designer];
+    const groupBadge=group?`<span style="font-size:9px;background:#EEEEFF;color:var(--accent);border-radius:3px;padding:1px 5px;font-weight:700">${group}</span>`:"";
     // Workload: warn if any single day this week has >3 cases
     const maxDayCount=dates.reduce((max,d)=>{
       return Math.max(max, dayCounts[`${designer}|${d}`]||0);
@@ -1072,6 +1068,7 @@ function renderExcel(cases){
       <td class="excel-th-designer" style="${designerCellStyle};vertical-align:middle;text-align:center">
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
           <span style="font-size:13px;font-weight:700">${designer}${overloadBadge}</span>
+          ${groupBadge}
           <button onclick="openVacationModal('${designer}')" title="設定休假" style="background:#F0F0F8;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 4px;color:#888;font-family:inherit;white-space:nowrap">休假</button>
         </div>
       </td>${cells}
@@ -1112,11 +1109,8 @@ function renderExcel(cases){
         <th class="excel-th-corner" style="padding:6px 10px;font-size:10px;font-weight:700;color:#888;position:sticky;left:0;top:0;z-index:25;text-align:center;vertical-align:middle">設計師 ╲ 截止日</th>
         ${dateHeaders}
       </tr></thead>
-      <tbody>${rows}${renderFreeRows(dates)}</tbody>
+      <tbody>${renderFreeRows(dates)}${rows}</tbody>
     </table>
-    </div>
-    <div style="padding:10px 14px;border-top:1px solid var(--border);background:#FAFAFE">
-      <button onclick="addFreeRow()" style="background:none;border:1.5px dashed #C0C0D8;border-radius:7px;padding:5px 14px;font-size:11px;font-weight:700;color:#888;cursor:pointer;font-family:inherit">＋ 新增自由文字列</button>
     </div>
   </div>`;
 }
@@ -1713,7 +1707,6 @@ const VIEWS=[
   {key:"review",label:"Review"},
   {key:"list",label:"List"},
   {key:"stats",label:"Stats"},
-  {key:"settings",label:"Settings"},
 ];
 
 function render(){
@@ -1732,6 +1725,7 @@ function render(){
             ${VIEWS.map(v=>`<button class="nav-btn${S.view===v.key?" active":""}" onclick="setView('${v.key}')">${v.label}${v.key==="review"&&reviewCount?` <span style="background:#4361EE;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">${reviewCount}</span>`:""}</button>`).join("")}
           </nav>
           <div class="hdr-actions">
+            <button class="btn btn-ghost btn-sm" onclick="setView('settings')" title="設定" style="padding:6px 10px">⚙️</button>
             <button class="btn btn-ghost btn-sm" onclick="openNew()">+ New Case</button>
           </div>
         </div>
@@ -1796,6 +1790,7 @@ function render(){
       <div class="hdr-actions">
         ${S.view==="list"?`<button class="btn btn-ghost btn-sm" onclick="exportCSV(filtered())">⬇ CSV</button>`:""}
         ${S.view==="excel"?`<button class="btn btn-ghost btn-sm" onclick="openExcelExportModal()">⬇ Excel</button>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="setView('settings')" title="設定" style="padding:6px 10px">⚙️</button>
         <button class="btn btn-primary btn-sm" onclick="openNew()">+ New Case</button>
       </div>
     </div>
@@ -2104,6 +2099,12 @@ function saveFreeRowLabel(id,label){
   const row=S.freeRows.find(r=>r.id===id);
   if(row){ row.label=label; saveFreeRowDb(row); }
 }
+function saveFreeRowCell(rowId,date,text){
+  const row=S.freeRows.find(r=>r.id===rowId);
+  if(!row) return;
+  row.cells[date]=text;
+  saveFreeRowDb(row);
+}
 function addFreeCellLine(rowId,date){
   const row=S.freeRows.find(r=>r.id===rowId);
   if(!row) return;
@@ -2147,6 +2148,7 @@ async function initApp(){
     S.settings=settings;
     S.vacations=vacations;
     S.freeRows=freeRows;
+    if(!S.freeRows.length){ const row={id:uid(),label:"備忘",cells:{}}; S.freeRows.push(row); saveFreeRowDb(row); }
     cleanupOldThumbs();
     render();
   } catch(e) {
