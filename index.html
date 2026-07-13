@@ -982,9 +982,9 @@ function renderExcel(cases){
 
   const rows=designers.map(designer=>{
     const group=designerGroupMap[designer];
-    const GROUP_LABEL={"插畫":"Illustrator"};
+    const GROUP_LABEL={"插畫":"ill"};
     const groupLabel=group?(GROUP_LABEL[group]||group):"";
-    const groupBadge=groupLabel?`<span style="font-size:9px;background:#EEEEFF;color:var(--accent);border-radius:3px;padding:1px 5px;font-weight:700">${groupLabel}</span>`:`<span></span>`;
+    const groupBadge=groupLabel?`<span style="font-size:9px;color:#aaa;font-weight:700">${groupLabel}</span>`:`<span></span>`;
     // Workload: warn if any single day this week has >3 cases
     const maxDayCount=dates.reduce((max,d)=>{
       return Math.max(max, dayCounts[`${designer}|${d}`]||0);
