@@ -296,8 +296,8 @@
   }
   .add-btn:hover { background: #2d2926; }
 
-  .leader-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
-  .leader-label { font-size: 10px; color: var(--text-dim); font-weight: 700; width: 82px; flex-shrink: 0; }
+  .staff-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .staff-label { font-size: 10px; color: var(--text-dim); font-weight: 700; width: 32px; flex-shrink: 0; }
   .leader-input {
     flex: 1; padding: 5px 8px; border-radius: 7px;
     border: 1px solid var(--border); background: var(--bg);
@@ -422,12 +422,19 @@
 <div id="sch-popup" class="popup">
   <div id="sch-title" class="popup-title"></div>
   <div id="sch-meta"  class="popup-meta"></div>
-  <div id="sch-designers-row" style="display:none;font-size:11px;color:var(--text-mid);margin:2px 0 8px;line-height:1.5"></div>
-
-  <div id="sch-leader-section">
-    <div class="leader-row">
-      <span class="leader-label">Project Leader</span>
-      <input id="leader-input" type="text" class="leader-input" placeholder="輸入負責人…" onblur="saveLeader()">
+  <div id="sch-staffing-section">
+    <div id="sch-staff-auto"></div>
+    <div class="staff-row">
+      <span class="staff-label">3D</span>
+      <input id="staffing-3d-input" type="text" class="leader-input" placeholder="輸入3D設計師…"
+        oninput="refreshLeaderOptions()" onblur="saveStaffing()">
+    </div>
+    <div style="border-top:1px solid var(--border);margin:8px 0 6px"></div>
+    <div class="staff-row">
+      <span class="staff-label" style="width:42px">負責人</span>
+      <select id="leader-select" class="leader-input" onchange="saveStaffing()">
+        <option value="">— 未指定 —</option>
+      </select>
     </div>
   </div>
 
@@ -625,9 +632,10 @@ function typeSort(a, b) {
 }
 
 // ── State ────────────────────────────────────────────────────────
-let allCases    = [];
-let notionMap   = {};
-let progressMap = {};
+let allCases        = [];
+let notionMap       = {};
+let progressMap     = {};
+let designerGroupMap = {};
 let phasesMap   = {};
 let filterMode    = 'week';
 let filterDesigner= '';     // '' = all designers
@@ -673,16 +681,21 @@ const H = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` };
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
   try {
-    const [cR, prR, phR] = await Promise.all([
+    const [cR, prR, phR, stR] = await Promise.all([
       fetch(`${SUPABASE}/rest/v1/cases?select=*&order=date.asc&date=gte.${START_DATE}&notion_project=not.is.null`, {headers:H}),
       fetch(`${SUPABASE}/rest/v1/project_progress?select=*`, {headers:H}),
       fetch(`${SUPABASE}/rest/v1/project_phases?select=*&order=start_date.asc`, {headers:H}),
+      fetch(`${SUPABASE}/rest/v1/settings?select=key,value&key=in.(designers)`, {headers:H}),
     ]);
     allCases = await cR.json().catch(()=>[]); if (!Array.isArray(allCases)) allCases=[];
     const prs = await prR.json().catch(()=>[]); progressMap={};
     for (const r of (prs||[])) progressMap[r.project_name]=r;
     const phs = await phR.json().catch(()=>[]); phasesMap={};
     for (const r of (phs||[])) { if (!phasesMap[r.project_name]) phasesMap[r.project_name]=[]; phasesMap[r.project_name].push(r); }
+    const sts = await stR.json().catch(()=>[]);
+    const dObj = (sts||[]).find(r=>r.key==='designers')?.value || {};
+    designerGroupMap = {};
+    for (const [grp, names] of Object.entries(dObj)) { for (const n of (names||[])) designerGroupMap[n]=grp; }
     // Build notionMap from cases directly (notion_page_id already stored per case)
     notionMap={};
     for (const c of allCases) {
@@ -1521,20 +1534,40 @@ function openScheduler(proj, type, prefillDates) {
   document.getElementById('sch-title').textContent=proj;
   document.getElementById('sch-meta').textContent=mt+(cases.length>1?` · ${cases.length} 個派案`:'');
 
-  // Designers row
-  const designers=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))].join('  ·  ');
-  const dRow=document.getElementById('sch-designers-row');
-  dRow.textContent=designers;
-  dRow.style.display=designers?'':'none';
+  // Staffing section
+  const caseDesigners=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))];
+  const STAFF_ORDER=['2D','插畫'];
+  const STAFF_LABEL={'插畫':'ill'};
+  const grouped={}; const ungrouped=[];
+  for (const d of caseDesigners) {
+    const g=designerGroupMap[d];
+    if (g){ if(!grouped[g]) grouped[g]=[]; grouped[g].push(d); } else ungrouped.push(d);
+  }
+  let autoHtml='';
+  const shownGroups=new Set();
+  for (const g of STAFF_ORDER) {
+    if (grouped[g]?.length){
+      autoHtml+=`<div class="staff-row"><span class="staff-label">${STAFF_LABEL[g]||g}</span><span style="font-size:11px;color:var(--text-mid)">${grouped[g].join('  ·  ')}</span></div>`;
+      shownGroups.add(g);
+    }
+  }
+  for (const [g,ns] of Object.entries(grouped)) {
+    if (!shownGroups.has(g))
+      autoHtml+=`<div class="staff-row"><span class="staff-label">${STAFF_LABEL[g]||g}</span><span style="font-size:11px;color:var(--text-mid)">${ns.join('  ·  ')}</span></div>`;
+  }
+  if (ungrouped.length)
+    autoHtml+=`<div class="staff-row"><span class="staff-label"></span><span style="font-size:11px;color:var(--text-mid)">${ungrouped.join('  ·  ')}</span></div>`;
+  document.getElementById('sch-staff-auto').innerHTML=autoHtml;
+  document.getElementById('staffing-3d-input').value=progressMap[proj]?.staffing_3d||'';
+  updateLeaderOptions(caseDesigners, progressMap[proj]?.staffing_3d||'', progressMap[proj]?.project_leader||'');
+  document.getElementById('sch-staffing-section').style.display=isDeadline?'none':'';
 
   // Toggle sections based on type
-  document.getElementById('sch-leader-section').style.display=isDeadline?'none':'';
   document.getElementById('sch-phase-section').style.display=isDeadline?'none':'';
   document.getElementById('sch-links-section').style.display=isDeadline?'none':'';
   document.getElementById('sch-note-section').style.display=isDeadline?'':'none';
 
   if (!isDeadline) {
-    document.getElementById('leader-input').value=(progressMap[proj]?.project_leader)||'';
     renderPhaseList(proj);
   } else {
     document.getElementById('sch-note-input').value=(progressMap[proj]?.custom_label)||'';
@@ -1774,18 +1807,36 @@ async function saveLinks() {
   } catch { showMsg('✗ 儲存失敗'); }
 }
 
-// ── Project Leader ────────────────────────────────────────────────
-async function saveLeader() {
+// ── 人力配置 ──────────────────────────────────────────────────────
+function updateLeaderOptions(caseDesigners, threeD, currentLeader) {
+  const sel=document.getElementById('leader-select');
+  const threeDNames=threeD?threeD.split(/[\/·,、\s]+/).map(s=>s.trim()).filter(Boolean):[];
+  const opts=[...new Set([...caseDesigners,...threeDNames])];
+  sel.innerHTML='<option value="">— 未指定 —</option>'+
+    opts.map(n=>`<option value="${n}"${n===currentLeader?' selected':''}>${n}</option>`).join('');
+  if (currentLeader&&!opts.includes(currentLeader))
+    sel.innerHTML+=`<option value="${currentLeader}" selected>${currentLeader}</option>`;
+}
+function refreshLeaderOptions() {
   if (!currentProj) return;
-  const leader=document.getElementById('leader-input').value.trim();
+  const cases=allCases.filter(c=>c.notion_project===currentProj);
+  const caseDesigners=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))];
+  updateLeaderOptions(caseDesigners, document.getElementById('staffing-3d-input').value, document.getElementById('leader-select').value);
+}
+async function saveStaffing() {
+  if (!currentProj) return;
+  const threeD=document.getElementById('staffing-3d-input').value.trim();
+  const leader=document.getElementById('leader-select').value;
+  refreshLeaderOptions();
   try {
     const res=await fetch(`${SUPABASE}/rest/v1/project_progress`,{
       method:'POST',
       headers:{...H,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({project_name:currentProj,project_leader:leader||null,updated_at:new Date().toISOString()}),
+      body:JSON.stringify({project_name:currentProj,staffing_3d:threeD||null,project_leader:leader||null,updated_at:new Date().toISOString()}),
     });
     if (res.ok||res.status===204||res.status===201) {
       if (!progressMap[currentProj]) progressMap[currentProj]={};
+      progressMap[currentProj].staffing_3d=threeD||null;
       progressMap[currentProj].project_leader=leader||null;
       showMsg('✓ 已儲存');
     }
