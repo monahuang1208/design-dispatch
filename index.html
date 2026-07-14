@@ -840,31 +840,43 @@ function renderList(cases){
 
 
 // ── FREE ROWS (自由文字列) ────────────────────────────────────────
-// cells[date] 格式：{text:"...", struck:false}（舊陣列格式自動相容）
-function parseFreeCell(raw){
-  if(!raw) return {text:"",struck:false};
-  if(Array.isArray(raw)) return {text:raw.map(l=>l.text||"").filter(Boolean).join("\n"),struck:false};
-  if(typeof raw==="object") return {text:raw.text||"",struck:raw.struck||false};
-  return {text:raw,struck:false};
+// cells[date] 格式：[{text:"...", struck:false}, ...]
+function parseFreeCellLines(raw){
+  if(!raw) return [{text:"",struck:false}];
+  if(Array.isArray(raw)) return raw.length?raw.map(l=>({text:l.text||"",struck:l.struck||false})):[{text:"",struck:false}];
+  if(typeof raw==="object"){
+    const t=raw.text||"",s=raw.struck||false;
+    return t?t.split("\n").map(line=>({text:line,struck:s})):[{text:"",struck:false}];
+  }
+  if(typeof raw==="string"&&raw) return [{text:raw,struck:false}];
+  return [{text:"",struck:false}];
 }
 function renderFreeRows(dates){
   if(!S.freeRows||!S.freeRows.length) return "";
   return S.freeRows.map(row=>{
     const cells=dates.map(date=>{
-      const {text:cellText,struck:cellStruck}=parseFreeCell(row.cells[date]);
-      const textStyle=cellStruck?"text-decoration:line-through;color:#bbb":"color:#555";
-      const btnColor=cellStruck?"#E74C3C":"#ccc";
-      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px;position:relative">
-        <textarea onblur="saveFreeRowCell('${row.id}','${date}',this.value)"
-          style="width:100%;min-height:36px;font-size:10px;border:none;resize:none;background:transparent;font-family:inherit;outline:none;padding:2px;line-height:1.5;overflow:hidden;display:block;${textStyle}"
-          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-        >${cellText}</textarea>
-        <button onclick="toggleFreeRowStrike('${row.id}','${date}')" title="刪除線"
-          style="position:absolute;bottom:2px;right:2px;background:none;border:none;cursor:pointer;font-size:9px;padding:1px 3px;color:${btnColor};line-height:1">S̶</button>
+      const lines=parseFreeCellLines(row.cells[date]);
+      const linesHtml=lines.map((ln,i)=>{
+        const struck=ln.struck||false;
+        const textStyle=struck?"text-decoration:line-through;color:#bbb":"color:#555";
+        const btnColor=struck?"#E74C3C":"#ccc";
+        return `<div style="display:flex;align-items:flex-start;gap:2px;margin-bottom:1px">
+          <div contenteditable="true"
+            onblur="saveFreeLine('${row.id}','${date}',${i},this.innerText)"
+            style="font-size:10px;min-height:14px;outline:none;line-height:1.5;flex:1;word-break:break-word;${textStyle}"
+          >${ln.text}</div>
+          <button onclick="toggleFreeLineStrike('${row.id}','${date}',${i})" title="刪除線"
+            style="background:none;border:none;cursor:pointer;font-size:9px;padding:0 2px;color:${btnColor};line-height:1.5;flex-shrink:0">S̶</button>
+        </div>`;
+      }).join("");
+      return `<td style="vertical-align:top;border:1px solid #E8E8F0;padding:4px">
+        ${linesHtml}
+        <button onclick="addFreeLine('${row.id}','${date}')"
+          style="background:none;border:none;cursor:pointer;font-size:10px;color:#ddd;padding:0;width:100%;text-align:left;font-family:inherit;margin-top:1px">＋</button>
       </td>`;
     }).join("");
     return `<tr>
-      <td style="background:#F5F5FC;position:sticky;left:0;z-index:5;padding:6px 10px;border:1px solid #E8E8F0;border-right:2px solid #D0D0E8;vertical-align:middle">
+      <td style="background:#F5F5FC;position:sticky;left:0;z-index:5;padding:6px 10px;border:1px solid #E8E8F0;border-right:2px solid #D0D0E8;vertical-align:middle;text-align:center">
         <span style="font-size:11px;font-weight:700;color:#888">備忘</span>
       </td>${cells}
     </tr>`;
@@ -2111,18 +2123,32 @@ function saveFreeRowLabel(id,label){
   const row=S.freeRows.find(r=>r.id===id);
   if(row){ row.label=label; saveFreeRowDb(row); }
 }
-function saveFreeRowCell(rowId,date,text){
+function saveFreeLine(rowId,date,idx,text){
   const row=S.freeRows.find(r=>r.id===rowId);
   if(!row) return;
-  const struck=parseFreeCell(row.cells[date]).struck;
-  row.cells[date]={text,struck};
+  const lines=parseFreeCellLines(row.cells[date]);
+  while(lines.length<=idx) lines.push({text:"",struck:false});
+  lines[idx]={...lines[idx],text:(text||"").trim()};
+  while(lines.length>1&&!lines[lines.length-1].text) lines.pop();
+  row.cells[date]=lines;
   saveFreeRowDb(row);
 }
-function toggleFreeRowStrike(rowId,date){
+function toggleFreeLineStrike(rowId,date,idx){
   const row=S.freeRows.find(r=>r.id===rowId);
   if(!row) return;
-  const {text,struck}=parseFreeCell(row.cells[date]);
-  row.cells[date]={text,struck:!struck};
+  const lines=parseFreeCellLines(row.cells[date]);
+  while(lines.length<=idx) lines.push({text:"",struck:false});
+  lines[idx]={...lines[idx],struck:!lines[idx].struck};
+  row.cells[date]=lines;
+  saveFreeRowDb(row);
+  render();
+}
+function addFreeLine(rowId,date){
+  const row=S.freeRows.find(r=>r.id===rowId);
+  if(!row) return;
+  const lines=parseFreeCellLines(row.cells[date]);
+  lines.push({text:"",struck:false});
+  row.cells[date]=lines;
   saveFreeRowDb(row);
   render();
 }
