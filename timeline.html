@@ -1047,7 +1047,31 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
 
   // ── Phase band (non-deadline types only) ──
   const band=mk('div','bar-phases');
-  band.style.background=`rgba(${rgb},.08)`;
+  band.style.background='transparent';
+
+  // ── Case segments: merged date ranges shown as background blocks ──
+  {
+    const cRanges=cases
+      .map(c=>({sMs:c.date?dateMs(c.date):null,eMs:c.deadline?dateMs(c.deadline)+86400000:c.date?dateMs(c.date)+86400000:null}))
+      .filter(r=>r.sMs!==null)
+      .sort((a,b)=>a.sMs-b.sMs);
+    const merged=[];
+    for (const r of cRanges){
+      if (merged.length&&r.sMs<=merged[merged.length-1].eMs)
+        merged[merged.length-1].eMs=Math.max(merged[merged.length-1].eMs,r.eMs);
+      else merged.push({...r});
+    }
+    for (const {sMs,eMs} of merged){
+      const sd=Math.max(0,Math.round((sMs-barMinMs)/86400000));
+      const absS=Math.min(barStartDay+sd,dayOffsets.length-1);
+      const absE=Math.min(barStartDay+sd+Math.max(1,Math.round((eMs-sMs)/86400000)),dayOffsets.length-1);
+      const segLeft=dayOffsets[absS]-dayOffsets[barStartDay];
+      const segW=Math.max(dayPx*0.5,dayOffsets[absE]-dayOffsets[absS]);
+      const cs=mk('div');
+      cs.style.cssText=`position:absolute;top:0;left:${segLeft}px;width:${segW}px;height:100%;background:rgba(${rgb},.15);pointer-events:none`;
+      band.appendChild(cs);
+    }
+  }
 
   if (phases.length) {
     for (let i=0;i<phases.length;i++) {
@@ -1113,7 +1137,7 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
     }
   } else {
     const empty=mk('div','bar-empty');
-    empty.style.background=`rgba(${rgb},.06)`;
+    empty.style.background='transparent';
     empty.style.cursor='crosshair';
     band.appendChild(empty);
   }
