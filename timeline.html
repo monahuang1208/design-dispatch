@@ -426,8 +426,13 @@
     <div id="sch-staff-auto"></div>
     <div class="staff-row">
       <span class="staff-label">3D</span>
-      <input id="staffing-3d-input" type="text" class="leader-input" placeholder="輸入3D設計師…"
-        oninput="refreshLeaderOptions()" onblur="saveStaffing()">
+      <span id="staffing-3d-display" onclick="edit3D()"
+        style="font-size:11px;cursor:pointer;min-width:20px;min-height:14px;display:inline-block"></span>
+      <input id="staffing-3d-input" type="text" class="leader-input" style="display:none"
+        placeholder="輸入3D設計師…"
+        oninput="refreshLeaderOptions()"
+        onblur="save3DAndClose()"
+        onkeydown="if(event.key==='Enter')this.blur()">
     </div>
     <div style="border-top:1px solid var(--border);margin:8px 0 6px"></div>
     <div class="staff-row">
@@ -1558,8 +1563,14 @@ function openScheduler(proj, type, prefillDates) {
   if (ungrouped.length)
     autoHtml+=`<div class="staff-row"><span class="staff-label"></span><span style="font-size:11px;color:var(--text-mid)">${ungrouped.join('  ·  ')}</span></div>`;
   document.getElementById('sch-staff-auto').innerHTML=autoHtml;
-  document.getElementById('staffing-3d-input').value=progressMap[proj]?.staffing_3d||'';
-  updateLeaderOptions(caseDesigners, progressMap[proj]?.staffing_3d||'', progressMap[proj]?.project_leader||'');
+  const s3d=progressMap[proj]?.staffing_3d||'';
+  document.getElementById('staffing-3d-input').value=s3d;
+  document.getElementById('staffing-3d-input').style.display='none';
+  const disp3d=document.getElementById('staffing-3d-display');
+  disp3d.textContent=s3d||'—';
+  disp3d.style.color=s3d?'var(--text-mid)':'var(--text-dim)';
+  disp3d.style.display='';
+  updateLeaderOptions(caseDesigners, s3d, progressMap[proj]?.project_leader||'');
   document.getElementById('sch-staffing-section').style.display=isDeadline?'none':'';
 
   // Toggle sections based on type
@@ -1808,6 +1819,24 @@ async function saveLinks() {
 }
 
 // ── 人力配置 ──────────────────────────────────────────────────────
+function edit3D() {
+  document.getElementById('staffing-3d-display').style.display='none';
+  const inp=document.getElementById('staffing-3d-input');
+  inp.style.display='';
+  inp.focus();
+  inp.select();
+}
+function save3DAndClose() {
+  const inp=document.getElementById('staffing-3d-input');
+  const val=inp.value.trim();
+  const disp=document.getElementById('staffing-3d-display');
+  disp.textContent=val||'—';
+  disp.style.color=val?'var(--text-mid)':'var(--text-dim)';
+  disp.style.display='';
+  inp.style.display='none';
+  refreshLeaderOptions();
+  saveStaffing();
+}
 function updateLeaderOptions(caseDesigners, threeD, currentLeader) {
   const sel=document.getElementById('leader-select');
   const threeDNames=threeD?threeD.split(/[\/·,、\s]+/).map(s=>s.trim()).filter(Boolean):[];
