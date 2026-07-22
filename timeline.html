@@ -1024,7 +1024,7 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
   const barStartDay=daysBetween(minDate,new Date(barMinMs));
   const barEndDay=daysBetween(minDate,new Date(barMaxMs))+1;
   const barX=dayOffsets[barStartDay];
-  const barW=Math.max(dayPx*2, dayOffsets[Math.min(barEndDay,dayOffsets.length-1)]-dayOffsets[barStartDay]);
+  const barW=Math.max(dayPx, dayOffsets[Math.min(barEndDay,dayOffsets.length-1)]-dayOffsets[barStartDay]);
 
   const bar=mk('div','proj-bar');
   bar.style.left=barX+'px';
