@@ -1096,6 +1096,8 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
       const ph=phases[i];
       const phStartMs=dateMs(ph.start_date);
       const phEndMs=ph.end_date?dateMs(ph.end_date)+86400000:todayMs+86400000;
+      // Skip phases entirely outside this bar's date range
+      if (phEndMs<=barMinMs || phStartMs>barMaxMs) continue;
       const phSD=Math.max(0,Math.round((phStartMs-barMinMs)/86400000));
       const phDur=Math.max(0,Math.round((phEndMs-phStartMs)/86400000));
       const absPS=Math.min(barStartDay+phSD, dayOffsets.length-1);
