@@ -1621,12 +1621,30 @@ function reopenPopup() { if (currentProj && currentType) openScheduler(currentPr
 
 function renderPhaseList(proj) {
   const c=document.getElementById('sch-phases'); c.innerHTML='';
-  const phases=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
-  if (!phases.length) {
+  const allSorted=(phasesMap[proj]||[]).slice().sort((a,b)=>dateMs(a.start_date)-dateMs(b.start_date));
+  // Filter to phases overlapping current type's case date range
+  let display=allSorted;
+  if (currentType) {
+    const tCases=allCases.filter(ca=>ca.notion_project===proj&&(ca.job_types?.[0]||'Other')===currentType);
+    if (tCases.length) {
+      const tMin=Math.min(...tCases.map(ca=>ca.date?dateMs(ca.date):Infinity));
+      const tMax=Math.max(...tCases.map(ca=>(ca.deadline||ca.date)?dateMs(ca.deadline||ca.date):0));
+      display=allSorted.filter(p=>{
+        const phS=dateMs(p.start_date);
+        const phE=p.end_date?dateMs(p.end_date):phS;
+        return phS<=tMax && phE>=tMin;
+      });
+    }
+  }
+  if (!display.length) {
     const em=mk('div'); em.style.cssText='font-size:11px;color:var(--text-dim);margin-bottom:8px;';
     em.textContent='尚無時程規劃'; c.appendChild(em); return;
   }
-  for (let i=0;i<phases.length;i++) c.appendChild(buildPhaseRow(phases[i],proj,i,phases.length));
+  // Pass original index (from allSorted) so reorderPhase uses the correct full-array position
+  for (const ph of display) {
+    const origIdx=allSorted.indexOf(ph);
+    c.appendChild(buildPhaseRow(ph,proj,origIdx,allSorted.length));
+  }
 }
 
 function buildPhaseRow(ph, proj, idx, total) {
