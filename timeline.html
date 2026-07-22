@@ -1537,7 +1537,13 @@ function openScheduler(proj, type, prefillDates) {
   const cases=allCases.filter(c=>c.notion_project===proj&&(c.job_types?.[0]||'Other')===mt);
 
   document.getElementById('sch-title').textContent=proj;
-  document.getElementById('sch-meta').textContent=mt+(cases.length>1?` · ${cases.length} 個派案`:'');
+  // Build meta: type · date range · case count
+  const cDates=cases.map(c=>c.date).filter(Boolean).sort();
+  const cDls=cases.map(c=>c.deadline||c.date).filter(Boolean).sort();
+  const cMinD=cDates[0]||'', cMaxD=cDls[cDls.length-1]||'';
+  const fmtMd=d=>d?d.replace(/^\d{4}-/,'').replace('-','/'):'' ;
+  const dateRng=cMinD?(cMinD===cMaxD?fmtMd(cMinD):`${fmtMd(cMinD)} → ${fmtMd(cMaxD)}`):'' ;
+  document.getElementById('sch-meta').textContent=mt+(dateRng?` · ${dateRng}`:'')+( cases.length>1?` · ${cases.length} 個派案`:'');
 
   // Staffing section
   const caseDesigners=[...new Set(cases.flatMap(c=>Array.isArray(c.designers)?c.designers:[]))];
