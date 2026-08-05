@@ -110,7 +110,7 @@ td{padding:9px 12px;vertical-align:middle}
 .excel-th-date{background:#F0F0F8;min-width:0;width:calc((100% - 110px)/5);text-align:center;padding:6px 8px;font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;font-family:'Noto Sans TC',sans-serif;position:sticky;top:0;z-index:10}
 .excel-th-date.today-col{background:#EEF0FF;color:var(--accent)}
 .excel-th-designer{background:#F0F0F8;position:sticky;left:0;z-index:5;padding:7px 10px;font-weight:700;font-size:11px;color:var(--text);min-width:110px;white-space:nowrap;border-right:2px solid #D0D0E8}
-.excel-cell{vertical-align:top;padding:4px;width:calc((100% - 110px)/5);background:var(--surface);position:relative}
+.excel-cell{vertical-align:top;padding:4px;width:calc((100% - 110px)/5);background:var(--surface);position:relative;height:136px}
 .excel-cell.today-col{background:var(--surface)}
 .excel-chip{border-radius:5px;padding:3px 6px;margin-bottom:3px;cursor:pointer;transition:box-shadow .1s;border-left:3px solid transparent}
 .excel-chip:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -716,6 +716,7 @@ let S = {
   filter: {market:"",designer:"",jobType:"",status:"",sales:""},
   reviewFilter: {market:"",designer:"",jobType:""},
   expandedReview: null,
+  expandedCells: new Set(),
   excelWeekOffset: 0, // 0=current week, -1=prev, +1=next etc
   excelSpan: 1, // 1=一週(5天) 2=兩週(10天)
   statsTimeRange: "all", // "all" | "custom"
@@ -1036,7 +1037,7 @@ function renderExcel(cases){
       // Per-designer status helper
       function getDesignerStatus(c){ return (c.designerStatus&&c.designerStatus[designer])||c.status; }
 
-      const chips=dayCases.map(c=>{
+      const allChips=dayCases.map(c=>{
         const firstType=normalizeType(toArr(c.jobTypes)[0]||"");
         const tc=typeColor(firstType,types);
         const dStatus=getDesignerStatus(c);
@@ -1057,10 +1058,13 @@ function renderExcel(cases){
         const textColor=isDone?"#AAAAAA":isRead?"#1a5f8a":""+tc;
         // Main text: notionProject > note > jobTypes · market
         const displayTypes=toArr(c.jobTypes).map(normalizeType).join("/");
-        const mainText=c.notionProject||c.note||(displayTypes+` · ${c.market}`);
+        const projName=c.notionProject||c.note||"";
+        const typeLabel=displayTypes||"";
+        const typeSpan=typeLabel?`<span style="font-size:9px;font-weight:400;opacity:0.72;margin-left:3px;white-space:nowrap">${typeLabel}</span>`:"";
+        const mainText=projName||typeLabel; // used for strike/color span
+        const mainLineHtml=projName?`${projName}${typeSpan}`:typeLabel;
         // Sub line
         const subParts=[];
-        if(c.notionProject||c.note) subParts.push(displayTypes+` · ${c.market}`);
         if(c.deadlineTime) subParts.push(`⏰ ${c.deadlineTime}`);
         const subHtml=subParts.length?`<div style="font-size:9px;color:${isDone?"#BBBBBB":"#888"};margin-top:1px;line-height:1.3;${strikeStyle}">${subParts.join(" · ")}</div>`:"";
         const coDesignerHtml="";
@@ -1071,16 +1075,28 @@ function renderExcel(cases){
         const statusIcon=dotColor?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor}"></span>`:"▶";
         return `<div class="excel-chip" style="background:${chipBg};margin-bottom:3px;padding:4px 6px;border-radius:5px;cursor:pointer;position:relative" onclick="openEdit('${c.id}')">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:1px">
-            <span style="font-size:10px;font-weight:500;color:${textColor};flex:1;line-height:1.3;${strikeStyle}">${mainText}${coDesignerHtml}</span>
+            <span style="font-size:10px;font-weight:500;color:${textColor};flex:1;line-height:1.3;${strikeStyle}">${mainLineHtml}${coDesignerHtml}</span>
             <button onclick="event.stopPropagation();quickDesignerStatus('${c.id}','${designer}','${nextDStatus}')" title="切換狀態" style="background:none;border:none;cursor:pointer;font-size:10px;padding:0;line-height:1">${statusIcon}</button>
           </div>
           ${subHtml}
         </div>`;
-      }).join("");
+      });
 
-      return `<td class="excel-cell${isToday?" today-col":""}" style="vertical-align:top">
+      const BOARD_MAX=4;
+      const cellKey=`${designer}|${date}`;
+      const isExpanded=S.expandedCells.has(cellKey);
+      const visible=isExpanded?allChips:allChips.slice(0,BOARD_MAX);
+      const overflow=allChips.length-BOARD_MAX;
+      const overflowBtn=overflow>0&&!isExpanded
+        ?`<div onclick="event.stopPropagation();toggleExpandCell('${cellKey}')" style="font-size:9px;font-weight:700;color:var(--accent);cursor:pointer;padding:2px 4px;border-radius:4px;background:#EEF0FF;text-align:center;margin-bottom:2px">+${overflow}</div>`
+        :isExpanded&&allChips.length>BOARD_MAX
+        ?`<div onclick="event.stopPropagation();toggleExpandCell('${cellKey}')" style="font-size:9px;color:#aaa;cursor:pointer;padding:2px 4px;text-align:center;margin-bottom:2px">收起</div>`
+        :"";
+
+      return `<td class="excel-cell${isToday?" today-col":""}" style="vertical-align:top${isExpanded?";height:auto":""}">
         ${otherVacBadge}
-        ${chips}
+        ${visible.join("")}
+        ${overflowBtn}
         <button class="excel-add-btn" onclick="openNewForDesignerDate('${designer}','${date}')">＋</button>
       </td>`;
     }).join("");
@@ -1984,6 +2000,11 @@ function deleteCase(id){
   render();
 }
 
+function toggleExpandCell(key){
+  if(S.expandedCells.has(key)) S.expandedCells.delete(key);
+  else S.expandedCells.add(key);
+  render();
+}
 async function quickDesignerStatus(caseId,designer,nextStatus){
   const idx=S.cases.findIndex(x=>x.id===caseId);
   if(idx<0) return;
