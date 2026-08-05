@@ -110,7 +110,7 @@ td{padding:9px 12px;vertical-align:middle}
 .excel-th-date{background:#F0F0F8;min-width:0;width:calc((100% - 110px)/5);text-align:center;padding:6px 8px;font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;font-family:'Noto Sans TC',sans-serif;position:sticky;top:0;z-index:10}
 .excel-th-date.today-col{background:#EEF0FF;color:var(--accent)}
 .excel-th-designer{background:#F0F0F8;position:sticky;left:0;z-index:5;padding:7px 10px;font-weight:700;font-size:11px;color:var(--text);min-width:110px;white-space:nowrap;border-right:2px solid #D0D0E8}
-.excel-cell{vertical-align:top;padding:4px;width:calc((100% - 110px)/5);background:var(--surface);position:relative;height:136px}
+.excel-cell{vertical-align:top;padding:4px;width:calc((100% - 110px)/5);background:var(--surface);position:relative;height:100px}
 .excel-cell.today-col{background:var(--surface)}
 .excel-chip{border-radius:5px;padding:3px 6px;margin-bottom:3px;cursor:pointer;transition:box-shadow .1s;border-left:3px solid transparent}
 .excel-chip:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -1082,7 +1082,7 @@ function renderExcel(cases){
         </div>`;
       });
 
-      const BOARD_MAX=4;
+      const BOARD_MAX=3;
       const cellKey=`${designer}|${date}`;
       const isExpanded=S.expandedCells.has(cellKey);
       const visible=isExpanded?allChips:allChips.slice(0,BOARD_MAX);
