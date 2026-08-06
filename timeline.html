@@ -453,6 +453,7 @@
         <div class="form-field" style="flex:1.4">
           <label>階段名稱</label>
           <select id="phase-name-select" onchange="onPhaseNameChange()">
+            <option>報價</option>
             <option>討論</option>
             <option>3D草稿/2D包現有型體</option>
             <option>草稿/彩稿</option>
@@ -567,6 +568,7 @@
     <input id="pqa-end-in" type="text" placeholder="YYYY-MM-DD" maxlength="10">
   </div>
   <select id="pqa-name" onchange="onPqaNameChange()">
+    <option>報價</option>
     <option>討論</option>
     <option>3D草稿/2D包現有型體</option>
     <option>草稿/彩稿</option>
@@ -608,7 +610,8 @@ function hexRgb(hex) {
   return `${r},${g},${b}`;
 }
 
-const PHASE_OPTS = ['討論','3D草稿/2D包現有型體','草稿/彩稿','合成','微調','上版/完成','找資料'];
+const PHASE_OPTS = ['報價','討論','3D草稿/2D包現有型體','草稿/彩稿','合成','微調','上版/完成','找資料'];
+const PHASE_COLOR = { '報價': '#8878C3' };
 // Types that show deadline chip instead of phase tracking
 const DEADLINE_TYPES = new Set(['M1','Revised Maker']);
 
@@ -1113,11 +1116,14 @@ function buildBarEl({proj, cases, minMs, maxMs, mainType}, minDate, today, today
       seg.dataset.proj=proj;
       seg.style.left=segLeft+'px';
       seg.style.width=segW+'px';
+      const phaseOverride=PHASE_COLOR[ph.phase];
+      const segTc=phaseOverride||tc;
+      const segRgb=phaseOverride?hexRgb(phaseOverride):rgb;
       if (isPast) {
         seg.classList.add('past');
       } else {
-        seg.style.background=`rgba(${rgb},${isCurr?.28:.16})`;
-        seg.style.color=tc;
+        seg.style.background=`rgba(${segRgb},${isCurr?.28:.16})`;
+        seg.style.color=segTc;
         if (isCurr) seg.classList.add('current');
       }
 
