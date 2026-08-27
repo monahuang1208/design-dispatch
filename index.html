@@ -17,7 +17,7 @@
   --green: #27AE60;
   --yellow: #D4AC0D;
   --red: #E74C3C;
-  --orange: #F9844A;
+  --orange: #F9844A
   --border: #E8E8F0;
   --text: #1a1a2e;
   --text2: #666;
@@ -213,7 +213,7 @@ const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"
 const DEFAULT_JOB_TYPES = ["Moodboard","KV","V1","Revision","M1","Revised Maker","Care Card","JPG","Note"];
 const DEFAULT_MARKETS = ["AP","INT","GC","SBJ","SCK","TW","RNA","EMEA","MENA","SBJ Roastery","GC Roastery","Milano Roastery","Other"];
 const DEFAULT_DESIGNERS = {
-  "2D": ["Faye","Alan","Avis","Carol","Roy","Jou"],
+  "2D": ["Faye","Alan","Avis","Carol","Roy","Jou","2D Zolah"],
   "插畫": ["Mona","Cathy","Emilia","Echo","Heiwin"],
   "3D": []
 };
@@ -1970,6 +1970,14 @@ function saveCase(id){
     notionPageId,
     designerStatus:isNew?{}:(S.modal.designerStatus||{}),
   };
+  // 雙向同步 case-level status 與 designerStatus
+  if(c.status==="已完成"){
+    toArr(c.designers).forEach(d=>{ c.designerStatus[d]="已完成"; });
+  } else {
+    toArr(c.designers).forEach(d=>{
+      if((c.designerStatus[d]||"")==="已完成") c.designerStatus[d]="進行中";
+    });
+  }
   // 若 case-level status 設為已完成，所有設計師狀態一併升為已完成
   if(c.status==="已完成"){
     toArr(c.designers).forEach(d=>{ c.designerStatus[d]="已完成"; });
